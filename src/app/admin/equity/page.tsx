@@ -106,7 +106,7 @@ export default function EquityPage() {
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          "Profit share" is each investor's cut of gross profit computed live from{' '}
+          &quot;Profit share&quot; is each investor&apos;s cut of gross profit computed live from{' '}
           <Link href="/admin/sales-analysis" className="text-primary hover:underline">
             Sales Analysis
           </Link>{' '}
