@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import type { PaginationParams } from '@/lib/api/types';
 
-type ProductParams = PaginationParams & { category?: string; status?: string; lowStockOnly?: boolean };
+type ProductParams = PaginationParams & { category?: string; status?: string; outOfStockOnly?: boolean };
 
 export const productKeys = {
   all: ['products'] as const,

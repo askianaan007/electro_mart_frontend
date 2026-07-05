@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -12,11 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { QuickAddProductDialog } from '@/components/admin/quick-add-product-dialog';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useProducts } from '@/hooks/use-products';
 import { useCreatePurchase } from '@/hooks/use-purchases';
 import { getErrorMessage } from '@/lib/api/error';
 import { formatCurrency } from '@/lib/utils';
+import type { Product } from '@/lib/api/types';
 
 const lineItemSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
@@ -58,6 +61,29 @@ export default function NewPurchasePage() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
+
+  function openQuickAdd(index: number | null) {
+    setQuickAddIndex(index);
+    setQuickAddOpen(true);
+  }
+
+  function handleProductSelect(index: number, productId: string) {
+    form.setValue(`items.${index}.productId`, productId);
+    const product = products?.data.find((p) => p.id === productId);
+    if (product) {
+      form.setValue(`items.${index}.unitCost`, String(product.costPrice ?? 0));
+    }
+  }
+
+  function handleProductCreated(product: Product) {
+    if (quickAddIndex !== null) {
+      form.setValue(`items.${quickAddIndex}.productId`, product.id);
+      form.setValue(`items.${quickAddIndex}.unitCost`, String(product.costPrice ?? 0));
+    }
+  }
   const grandTotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0),
     0,
@@ -160,15 +186,21 @@ export default function NewPurchasePage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle>Line items</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ productId: '', quantity: '1', unitCost: '0' })}
-              >
-                <Plus />
-                Add Item
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => openQuickAdd(null)}>
+                  <Plus />
+                  New Product
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ productId: '', quantity: '1', unitCost: '0' })}
+                >
+                  <Plus />
+                  Add Item
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="hidden sm:block">
@@ -186,24 +218,35 @@ export default function NewPurchasePage() {
                     {fields.map((rowField, index) => (
                       <TableRow key={rowField.id}>
                         <TableCell>
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.productId`}
-                            render={({ field }) => (
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {products?.data.map((product) => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
+                          <div className="flex gap-1">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.productId`}
+                              render={({ field }) => (
+                                <Select value={field.value} onValueChange={(value) => handleProductSelect(index, value)}>
+                                  <SelectTrigger className="flex-1">
+                                    <SelectValue placeholder="Select product" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {products?.data.map((product) => (
+                                      <SelectItem key={product.id} value={product.id}>
+                                        {product.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              title="Create new product"
+                              onClick={() => openQuickAdd(index)}
+                            >
+                              <Plus className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <FormField
@@ -262,20 +305,31 @@ export default function NewPurchasePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Product</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select product" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {products?.data.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={field.value} onValueChange={(value) => handleProductSelect(index, value)}>
+                              <FormControl>
+                                <SelectTrigger className="flex-1">
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {products?.data.map((product) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              title="Create new product"
+                              onClick={() => openQuickAdd(index)}
+                            >
+                              <Plus className="size-4" />
+                            </Button>
+                          </div>
                         </FormItem>
                       )}
                     />
@@ -332,6 +386,8 @@ export default function NewPurchasePage() {
           </div>
         </form>
       </Form>
+
+      <QuickAddProductDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} onCreated={handleProductCreated} />
     </div>
   );
 }

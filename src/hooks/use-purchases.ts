@@ -43,3 +43,17 @@ export function useCreatePurchase() {
     },
   });
 }
+
+export function useDeletePurchase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.purchases.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['purchase-returns'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}

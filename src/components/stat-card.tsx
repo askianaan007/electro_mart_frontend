@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -8,12 +9,21 @@ export function StatCard({
   icon: Icon,
   tone = 'default',
   hint,
+  change,
+  changeLabel,
+  href,
 }: {
   label: string;
   value: string | number;
   icon: LucideIcon;
   tone?: 'default' | 'warning' | 'destructive' | 'success';
   hint?: string;
+  /** Percentage change vs. the prior period, e.g. 22 renders as "+22%" */
+  change?: number;
+  /** Suffix shown after the change badge, e.g. "vs Last Month" */
+  changeLabel?: string;
+  /** When provided, renders a small "View All" link */
+  href?: string;
 }) {
   return (
     <Card>
@@ -29,10 +39,21 @@ export function StatCard({
         >
           <Icon className="size-5" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
           <p className="truncate text-xl font-semibold">{value}</p>
+          {typeof change === 'number' && (
+            <p className={cn('truncate text-xs font-medium', change >= 0 ? 'text-success' : 'text-destructive')}>
+              {change >= 0 ? '+' : ''}
+              {change.toFixed(0)}%{changeLabel ? ` ${changeLabel}` : ''}
+            </p>
+          )}
           {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
+          {href && (
+            <Link href={href} className="mt-0.5 inline-block text-xs font-medium text-primary hover:underline">
+              View All
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

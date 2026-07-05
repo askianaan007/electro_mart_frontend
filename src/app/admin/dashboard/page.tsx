@@ -1,7 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { IndianRupee, ShoppingCart, ClipboardCheck, AlertTriangle, Wallet, PackageSearch } from 'lucide-react';
+import {
+  IndianRupee,
+  ShoppingCart,
+  ClipboardCheck,
+  AlertTriangle,
+  Wallet,
+  PackageSearch,
+  Undo2,
+  Truck,
+  Landmark,
+  TrendingUp,
+  Receipt,
+  CreditCard,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -12,6 +25,7 @@ import { EmptyState } from '@/components/empty-state';
 import { RevenueChart } from '@/components/admin/revenue-chart';
 import { TopProductsList } from '@/components/admin/top-products-list';
 import { RecentActivityFeed } from '@/components/admin/recent-activity-feed';
+import { WalletCard } from '@/components/wallet-card';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 import { useActivityLog } from '@/hooks/use-activity-log';
 import { formatCurrency } from '@/lib/utils';
@@ -26,6 +40,30 @@ export default function AdminDashboardPage() {
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Snapshot of today&apos;s business</p>
       </div>
+
+      {isLoading || !data ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <WalletCard
+            label="Liquid Cash"
+            value={formatCurrency(data.liquidCash)}
+            subtitle="Investments + collections − supplier payments − expenses"
+            tone="cash"
+            mask="CASH"
+          />
+          <WalletCard
+            label="Credit Balance"
+            value={formatCurrency(data.creditBalance)}
+            subtitle="Total owed to suppliers across all purchases"
+            tone="liability"
+            mask="OWED"
+          />
+        </div>
+      )}
 
       {isLoading || !data ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -44,12 +82,75 @@ export default function AdminDashboardPage() {
             tone={data.pendingApprovals > 0 ? 'warning' : 'default'}
           />
           <StatCard
-            label="Low Stock Items"
-            value={data.lowStockItems}
+            label="Out of Stock Items"
+            value={data.outOfStockItems}
             icon={AlertTriangle}
-            tone={data.lowStockItems > 0 ? 'destructive' : 'default'}
+            tone={data.outOfStockItems > 0 ? 'destructive' : 'default'}
           />
           <StatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} />
+        </div>
+      )}
+
+      {isLoading || !data ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard
+            label="Net Sales"
+            value={formatCurrency(data.netSales)}
+            icon={IndianRupee}
+            change={data.netSalesChangePct}
+            changeLabel="vs Last Month"
+          />
+          <StatCard
+            label="Total Sales Return"
+            value={formatCurrency(data.totalSalesReturn)}
+            icon={Undo2}
+            change={data.totalSalesReturnChangePct}
+            changeLabel="vs Last Month"
+          />
+          <StatCard
+            label="Net Purchase"
+            value={formatCurrency(data.netPurchase)}
+            icon={Truck}
+            change={data.netPurchaseChangePct}
+            changeLabel="vs Last Month"
+          />
+          <StatCard label="Net Cash Flow" value={formatCurrency(data.netCashFlow)} icon={Landmark} hint="Net" />
+          <StatCard
+            label="Profit"
+            value={formatCurrency(data.profit)}
+            icon={TrendingUp}
+            change={data.profitChangePct}
+            changeLabel="vs Last Month"
+            href="/admin/equity"
+          />
+          <StatCard
+            label="Invoice Due"
+            value={formatCurrency(data.invoiceDue)}
+            icon={Receipt}
+            href="/admin/invoices"
+          />
+          <StatCard
+            label="Total Expenses"
+            value={formatCurrency(data.totalExpenses)}
+            icon={CreditCard}
+            change={data.totalExpensesChangePct}
+            changeLabel="vs Last Month"
+            href="/admin/expenses"
+          />
+          <StatCard
+            label="Invoice Due Payments"
+            value={formatCurrency(data.invoiceDuePayments)}
+            icon={Wallet}
+            change={data.invoiceDuePaymentsChangePct}
+            changeLabel="Collected vs Last Month"
+            href="/admin/payments"
+          />
         </div>
       )}
 

@@ -67,7 +67,6 @@ export default function InventoryPage() {
                 <TableRow>
                   <TableHead>Product</TableHead>
                   <TableHead>Current Qty</TableHead>
-                  <TableHead>Minimum</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden sm:table-cell">Last Updated</TableHead>
                   <TableHead className="w-10" />
@@ -81,7 +80,6 @@ export default function InventoryPage() {
                       <p className="text-xs text-muted-foreground">{row.productCode}</p>
                     </TableCell>
                     <TableCell>{row.currentStock}</TableCell>
-                    <TableCell>{row.minimumStock}</TableCell>
                     <TableCell>
                       <StockStatusBadge status={row.status} />
                     </TableCell>

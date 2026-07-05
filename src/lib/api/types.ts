@@ -4,7 +4,8 @@ export type OrderStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'PACKED
 export type PaymentStatus = 'PAID' | 'PENDING' | 'OVERDUE' | 'PARTIAL';
 export type PaymentMode = 'CASH' | 'CHEQUE' | 'BANK_TRANSFER';
 export type InventoryLogType = 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RESERVE' | 'RELEASE';
-export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+export type StockStatus = 'IN_STOCK' | 'OUT_OF_STOCK';
+export type ChequeStatus = 'PENDING' | 'CLEARED' | 'RETURNED';
 
 export interface PaginationMeta {
   page: number;
@@ -89,6 +90,12 @@ export interface Supplier {
   address: string | null;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Product {
   id: string;
   productCode: string;
@@ -102,14 +109,12 @@ export interface Product {
   imageUrl: string | null;
   costPrice?: string;
   wholesalePrice: string;
-  sellingPrice: string;
   currentStock: number;
-  minimumStock: number;
   warranty: string | null;
   status: AccountStatus;
   createdAt: string;
   updatedAt: string;
-  isLowStock: boolean;
+  isOutOfStock: boolean;
 }
 
 export interface InventoryStockRow {
@@ -117,7 +122,6 @@ export interface InventoryStockRow {
   productCode: string;
   name: string;
   currentStock: number;
-  minimumStock: number;
   updatedAt: string;
   status: StockStatus;
 }
@@ -154,6 +158,74 @@ export interface Purchase {
   admin?: { id: string; name: string; email: string };
   createdAt: string;
   items: PurchaseItem[];
+}
+
+export interface PurchaseReturnItem {
+  id: string;
+  purchaseReturnId: string;
+  productId: string;
+  product?: Product;
+  quantity: number;
+  unitCost: string;
+  lineTotal: string;
+}
+
+export interface PurchaseReturn {
+  id: string;
+  returnNumber: string;
+  purchaseId: string;
+  purchase?: Purchase;
+  supplierId: string;
+  supplier?: Supplier;
+  reason: string;
+  totalAmount: string;
+  returnDate: string;
+  createdAt: string;
+  items: PurchaseReturnItem[];
+}
+
+export interface SupplierPayment {
+  id: string;
+  supplierId: string;
+  supplier?: Supplier;
+  amount: string;
+  mode: PaymentMode;
+  reference: string | null;
+  paymentDate: string;
+  chequeStatus: ChequeStatus | null;
+  chequeDepositDate: string | null;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface CreditSummaryEntry {
+  supplierId: string;
+  supplierName: string;
+  totalPurchases: string;
+  totalReturns: string;
+  totalSettled: string;
+  creditBalance: string;
+}
+
+export interface CreditsSummary {
+  entries: CreditSummaryEntry[];
+  totals: {
+    totalPurchases: string;
+    totalReturns: string;
+    totalSettled: string;
+    totalCreditBalance: string;
+  };
+}
+
+export interface SupplierCreditDetail {
+  supplier: Supplier;
+  totalPurchases: string;
+  totalReturns: string;
+  totalSettled: string;
+  creditBalance: string;
+  purchases: Purchase[];
+  purchaseReturns: PurchaseReturn[];
+  payments: SupplierPayment[];
 }
 
 export interface OrderItem {
@@ -217,6 +289,91 @@ export interface Payment {
   createdAt: string;
 }
 
+export interface Investor {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  profitSharePercentage: string;
+  createdAt: string;
+}
+
+export interface Investment {
+  id: string;
+  investorId: string;
+  investor?: Investor;
+  amount: string;
+  mode: PaymentMode;
+  investmentDate: string;
+  reason: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: string;
+  expenseDate: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface ProfitEntry {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: string;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface EquityEntry {
+  investorId: string;
+  investorName: string;
+  profitSharePercentage: string;
+  totalInvestment: string;
+  profitShare: string;
+  expenseShare: string;
+  equity: string;
+}
+
+export interface EquitySummary {
+  investorCount: number;
+  entries: EquityEntry[];
+  totals: {
+    totalInvestment: string;
+    totalProfit: string;
+    percentageTotal: string;
+    totalExpenses: string;
+    totalEquity: string;
+  };
+}
+
+export interface SalesReturnItem {
+  id: string;
+  salesReturnId: string;
+  productId: string;
+  product?: Product;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+}
+
+export interface SalesReturn {
+  id: string;
+  returnNumber: string;
+  orderId: string;
+  order?: Order;
+  dealerId: string;
+  dealer?: Dealer;
+  reason: string;
+  totalAmount: string;
+  returnDate: string;
+  createdAt: string;
+  items: SalesReturnItem[];
+}
+
 export interface ActivityLog {
   id: string;
   adminId: string;
@@ -231,11 +388,27 @@ export interface AdminDashboardSummary {
   todaysSales: string;
   todaysOrders: number;
   pendingApprovals: number;
-  lowStockItems: number;
+  outOfStockItems: number;
   outstandingPayments: string;
   recentOrders: Order[];
   monthlyRevenue: { month: string; revenue: string }[];
   topProducts: { product: { id: string; name: string; productCode: string } | null; quantitySold: number }[];
+  netSales: number;
+  netSalesChangePct: number;
+  totalSalesReturn: number;
+  totalSalesReturnChangePct: number;
+  netPurchase: number;
+  netPurchaseChangePct: number;
+  netCashFlow: number;
+  profit: number;
+  profitChangePct: number;
+  totalExpenses: number;
+  totalExpensesChangePct: number;
+  invoiceDuePayments: number;
+  invoiceDuePaymentsChangePct: number;
+  invoiceDue: string;
+  liquidCash: number;
+  creditBalance: string;
 }
 
 export interface DealerDashboardSummary {

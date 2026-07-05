@@ -1,17 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { useCreateProduct, useUpdateProduct } from '@/hooks/use-products';
+import { useAllCategories } from '@/hooks/use-categories';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
 
@@ -30,9 +33,7 @@ const schema = z.object({
   imageUrl: z.string(),
   costPrice: numberField('Cost price'),
   wholesalePrice: numberField('Wholesale price'),
-  sellingPrice: numberField('Selling price'),
   currentStock: numberField('Current stock'),
-  minimumStock: numberField('Minimum stock'),
   warranty: z.string(),
   status: z.enum(['ACTIVE', 'INACTIVE']),
 });
@@ -52,9 +53,7 @@ function defaultValuesFor(product?: Product): FormValues {
     imageUrl: product?.imageUrl ?? '',
     costPrice: product?.costPrice ?? '',
     wholesalePrice: product?.wholesalePrice ?? '',
-    sellingPrice: product?.sellingPrice ?? '',
     currentStock: product ? String(product.currentStock) : '0',
-    minimumStock: product ? String(product.minimumStock) : '0',
     warranty: product?.warranty ?? '',
     status: product?.status ?? 'ACTIVE',
   };
@@ -73,6 +72,8 @@ export function ProductFormDialog({
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct(product?.id ?? '');
   const pending = createProduct.isPending || updateProduct.isPending;
+  const { data: categories } = useAllCategories();
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -96,8 +97,6 @@ export function ProductFormDialog({
       imageUrl: values.imageUrl || undefined,
       costPrice: Number(values.costPrice),
       wholesalePrice: Number(values.wholesalePrice),
-      sellingPrice: Number(values.sellingPrice),
-      minimumStock: Number(values.minimumStock),
       warranty: values.warranty || undefined,
       status: values.status,
     };
@@ -123,6 +122,7 @@ export function ProductFormDialog({
   });
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={isEdit ? 'Edit product' : 'Add product'} className="max-w-2xl">
         <DialogHeader>
@@ -202,9 +202,31 @@ export function ProductFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category (optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="TV, Refrigerator, AC..." {...field} />
-                    </FormControl>
+                    <div className="flex gap-2">
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories?.data.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setCategoryManagerOpen(true)}
+                        title="Manage categories"
+                      >
+                        <Settings2 className="size-4" />
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -265,7 +287,7 @@ export function ProductFormDialog({
               )}
             />
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="costPrice"
@@ -292,22 +314,9 @@ export function ProductFormDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="sellingPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Selling price</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="currentStock"
@@ -316,19 +325,6 @@ export function ProductFormDialog({
                     <FormLabel>Current stock</FormLabel>
                     <FormControl>
                       <Input type="number" min={0} disabled={isEdit} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="minimumStock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Minimum stock</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -368,5 +364,7 @@ export function ProductFormDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    <CategoryManagerDialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} />
+    </>
   );
 }

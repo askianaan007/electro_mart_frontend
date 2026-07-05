@@ -26,7 +26,7 @@ export default function DealerProductDetailPage() {
   }
 
   const outOfStock = product.currentStock <= 0;
-  const status = outOfStock ? 'OUT_OF_STOCK' : product.isLowStock ? 'LOW_STOCK' : 'IN_STOCK';
+  const status = outOfStock ? 'OUT_OF_STOCK' : 'IN_STOCK';
 
   function handleAdd() {
     addItem(product!.id, quantity);

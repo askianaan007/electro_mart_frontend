@@ -23,8 +23,13 @@ const ACCOUNT_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['v
 
 const STOCK_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
   IN_STOCK: { label: 'In Stock', variant: 'success' },
-  LOW_STOCK: { label: 'Low Stock', variant: 'warning' },
   OUT_OF_STOCK: { label: 'Out of Stock', variant: 'destructive' },
+};
+
+const CHEQUE_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  PENDING: { label: 'Pending', variant: 'warning' },
+  CLEARED: { label: 'Cleared', variant: 'success' },
+  RETURNED: { label: 'Returned', variant: 'destructive' },
 };
 
 function StatusBadge({
@@ -58,4 +63,8 @@ export function AccountStatusBadge({ status, className }: { status: string; clas
 
 export function StockStatusBadge({ status, className }: { status: string; className?: string }) {
   return <StatusBadge status={status} map={STOCK_STATUS_MAP} className={className} />;
+}
+
+export function ChequeStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <StatusBadge status={status} map={CHEQUE_STATUS_MAP} className={className} />;
 }

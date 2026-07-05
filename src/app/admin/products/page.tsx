@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, MoreHorizontal, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal, Package, Plus, Search, Tags, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
+import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { useDeleteProduct, useProducts, useSetProductStatus } from '@/hooks/use-products';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { formatCurrency } from '@/lib/utils';
@@ -73,12 +74,13 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [outOfStockOnly, setOutOfStockOnly] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const deleteProduct = useDeleteProduct();
 
@@ -87,7 +89,7 @@ export default function ProductsPage() {
     limit: 20,
     search: debouncedSearch || undefined,
     status: status === 'all' ? undefined : status,
-    lowStockOnly: lowStockOnly || undefined,
+    outOfStockOnly: outOfStockOnly || undefined,
   });
 
   function openCreate() {
@@ -121,10 +123,16 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-semibold">Products</h1>
           <p className="text-sm text-muted-foreground">Manage your product catalog</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>
+            <Tags />
+            Categories
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -157,14 +165,14 @@ export default function ProductsPage() {
           </SelectContent>
         </Select>
         <Button
-          variant={lowStockOnly ? 'default' : 'outline'}
+          variant={outOfStockOnly ? 'default' : 'outline'}
           onClick={() => {
-            setLowStockOnly((v) => !v);
+            setOutOfStockOnly((v) => !v);
             setPage(1);
           }}
         >
           <AlertTriangle />
-          Low stock only
+          Out of stock only
         </Button>
       </div>
 
@@ -214,7 +222,7 @@ export default function ProductsPage() {
                     <TableCell className="hidden md:table-cell">{product.category ?? '—'}</TableCell>
                     <TableCell>{formatCurrency(product.wholesalePrice)}</TableCell>
                     <TableCell>
-                      <span className={product.isLowStock ? 'font-medium text-warning-foreground' : ''}>
+                      <span className={product.isOutOfStock ? 'font-medium text-destructive' : ''}>
                         {product.currentStock}
                       </span>
                     </TableCell>
@@ -234,6 +242,7 @@ export default function ProductsPage() {
       </div>
 
       <ProductFormDialog open={formOpen} onOpenChange={setFormOpen} product={editingProduct} />
+      <CategoryManagerDialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} />
 
       <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
         <AlertDialogContent>

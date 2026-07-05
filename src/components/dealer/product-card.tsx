@@ -12,10 +12,8 @@ import { useCartStore } from '@/stores/cart-store';
 import { formatCurrency } from '@/lib/utils';
 import type { Product } from '@/lib/api/types';
 
-function stockStatus(product: Product): 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' {
-  if (product.currentStock <= 0) return 'OUT_OF_STOCK';
-  if (product.isLowStock) return 'LOW_STOCK';
-  return 'IN_STOCK';
+function stockStatus(product: Product): 'IN_STOCK' | 'OUT_OF_STOCK' {
+  return product.currentStock <= 0 ? 'OUT_OF_STOCK' : 'IN_STOCK';
 }
 
 export function ProductCard({ product }: { product: Product }) {

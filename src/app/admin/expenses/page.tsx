@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { MoreHorizontal, Plus, Trash2, Truck } from 'lucide-react';
+import { CreditCard, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,80 +24,88 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useDeletePurchase, usePurchases } from '@/hooks/use-purchases';
+import { ExpenseFormDialog } from '@/components/admin/expense-form-dialog';
+import { useDeleteExpense, useExpenses } from '@/hooks/use-expenses';
 import { getErrorMessage } from '@/lib/api/error';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { Purchase } from '@/lib/api/types';
+import type { Expense } from '@/lib/api/types';
 
-export default function PurchasesPage() {
+export default function ExpensesPage() {
   const [page, setPage] = useState(1);
-  const { data, isLoading } = usePurchases({ page, limit: 20 });
-  const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(null);
-  const deletePurchase = useDeletePurchase();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+
+  const deleteExpense = useDeleteExpense();
+  const { data, isLoading } = useExpenses({ page, limit: 20 });
+
+  function openCreate() {
+    setEditingExpense(undefined);
+    setFormOpen(true);
+  }
+
+  function openEdit(expense: Expense) {
+    setEditingExpense(expense);
+    setFormOpen(true);
+  }
 
   function confirmDelete() {
-    if (!deletingPurchase) return;
-    deletePurchase.mutate(deletingPurchase.id, {
+    if (!deletingExpense) return;
+    deleteExpense.mutate(deletingExpense.id, {
       onSuccess: () => {
-        toast.success('Purchase deleted — stock reversed');
-        setDeletingPurchase(null);
+        toast.success('Expense deleted');
+        setDeletingExpense(null);
       },
       onError: (error) => {
         toast.error(getErrorMessage(error));
-        setDeletingPurchase(null);
+        setDeletingExpense(null);
       },
     });
   }
+
+  const total = (data?.data ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Purchases</h1>
-          <p className="text-sm text-muted-foreground">Stock purchases recorded from suppliers</p>
+          <h1 className="text-2xl font-semibold">Expenses</h1>
+          <p className="text-sm text-muted-foreground">Shared business expenses, split equally across investors</p>
         </div>
-        <Button asChild>
-          <Link href="/admin/purchases/new">
-            <Plus />
-            Record Purchase
-          </Link>
+        <Button onClick={openCreate}>
+          <Plus />
+          Add Expense
         </Button>
       </div>
 
       <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
           <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Truck} title="No purchases recorded yet" description="Record your first supplier purchase" />
+          <EmptyState icon={CreditCard} title="No expenses recorded" description="Add a business expense to track it here" />
         ) : (
           <>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Invoice #</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total Value</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="hidden sm:table-cell">Remarks</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.data.map((purchase) => (
-                  <TableRow key={purchase.id}>
-                    <TableCell>
-                      <Link href={`/admin/purchases/${purchase.id}`} className="font-medium text-primary">
-                        {purchase.supplier.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{purchase.invoiceNumber}</TableCell>
-                    <TableCell>{formatDate(purchase.purchaseDate)}</TableCell>
-                    <TableCell>{purchase.items.length}</TableCell>
-                    <TableCell>{formatCurrency(purchase.totalValue)}</TableCell>
+                {data.data.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>{formatDate(expense.expenseDate)}</TableCell>
+                    <TableCell className="font-medium">{expense.description}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{expense.remarks ?? '—'}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -107,10 +114,8 @@ export default function PurchasesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/admin/purchases/${purchase.id}`}>View details</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeletingPurchase(purchase)}>
+                          <DropdownMenuItem onClick={() => openEdit(expense)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onClick={() => setDeletingExpense(expense)}>
                             <Trash2 />
                             Delete
                           </DropdownMenuItem>
@@ -121,19 +126,21 @@ export default function PurchasesPage() {
                 ))}
               </TableBody>
             </Table>
+            <div className="flex items-center justify-end border-t border-border px-4 py-3 text-sm font-medium">
+              Page total: {formatCurrency(total)}
+            </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>
         )}
       </div>
 
-      <AlertDialog open={!!deletingPurchase} onOpenChange={(open) => !open && setDeletingPurchase(null)}>
+      <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} expense={editingExpense} />
+
+      <AlertDialog open={!!deletingExpense} onOpenChange={(open) => !open && setDeletingExpense(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this purchase?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This reverses the stock it added (and any returns recorded against it). If that stock has already
-              been sold, deletion will fail rather than go negative.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogDescription>This expense entry will be permanently removed.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
