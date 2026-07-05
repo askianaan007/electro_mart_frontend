@@ -68,7 +68,11 @@ export default function DealerDetailPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Credit Limit" value={formatCurrency(dealer.creditLimit)} icon={Wallet} />
+        <StatCard
+          label="Credit Limit"
+          value={dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}
+          icon={Wallet}
+        />
         <StatCard
           label="Outstanding Balance"
           value={formatCurrency(dealer.outstandingBalance)}

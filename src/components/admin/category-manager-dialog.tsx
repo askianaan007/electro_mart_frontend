@@ -25,9 +25,11 @@ import type { Category } from '@/lib/api/types';
 export function CategoryManagerDialog({
   open,
   onOpenChange,
+  onCategoryCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCategoryCreated?: (category: Category) => void;
 }) {
   const [name, setName] = useState('');
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
@@ -42,9 +44,10 @@ export function CategoryManagerDialog({
     createCategory.mutate(
       { name: trimmed },
       {
-        onSuccess: () => {
+        onSuccess: (category) => {
           toast.success('Category added');
           setName('');
+          onCategoryCreated?.(category);
         },
         onError: (error) => toast.error(getErrorMessage(error)),
       },

@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { OrderStatusBadge } from '@/components/status-badge';
 import { OrderTimeline } from '@/components/order-timeline';
 import { RejectOrderDialog } from '@/components/admin/reject-order-dialog';
-import { useApproveOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
+import { ApproveOrderDialog } from '@/components/admin/approve-order-dialog';
+import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 
@@ -32,24 +33,19 @@ export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
 
   const { data: order, isLoading } = useOrder(id);
-  const approveOrder = useApproveOrder();
   const updateStatus = useUpdateOrderStatus();
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;
   }
 
-  const creditExceeded = Number(order.dealer.outstandingBalance) + Number(order.totalAmount) > Number(order.dealer.creditLimit);
+  const creditExceeded =
+    !order.dealer.unlimitedCredit &&
+    Number(order.dealer.outstandingBalance) + Number(order.totalAmount) > Number(order.dealer.creditLimit);
   const nextStatus = NEXT_STATUS[order.status];
-
-  function handleApprove() {
-    approveOrder.mutate(id, {
-      onSuccess: () => toast.success('Order approved — invoice generated'),
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
-  }
 
   function handleAdvance() {
     if (!nextStatus) return;
@@ -90,7 +86,7 @@ export default function OrderDetailPage() {
                 <XCircle />
                 Reject
               </Button>
-              <Button variant="success" onClick={handleApprove} loading={approveOrder.isPending}>
+              <Button variant="success" onClick={() => setApproveOpen(true)}>
                 <CheckCircle2 />
                 Approve
               </Button>
@@ -129,7 +125,9 @@ export default function OrderDetailPage() {
           <CardContent className="grid gap-4 sm:grid-cols-3">
             <div>
               <p className="text-xs text-muted-foreground">Credit Limit</p>
-              <p className="font-medium">{formatCurrency(order.dealer.creditLimit)}</p>
+              <p className="font-medium">
+                {order.dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(order.dealer.creditLimit)}
+              </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Current Outstanding</p>
@@ -201,6 +199,12 @@ export default function OrderDetailPage() {
       </div>
 
       <RejectOrderDialog open={rejectOpen} onOpenChange={setRejectOpen} orderId={id} />
+      <ApproveOrderDialog
+        open={approveOpen}
+        onOpenChange={setApproveOpen}
+        orderId={id}
+        subtotal={order.subtotal}
+      />
     </div>
   );
 }

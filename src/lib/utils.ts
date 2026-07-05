@@ -6,13 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: string | number): string {
-  const amount = typeof value === 'string' ? Number(value) : value;
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'LKR',
-    maximumFractionDigits: 0,
+  const amount = Number(value);
+
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(amount) ? amount : 0);
 }
+
 
 export function formatDate(value: string | Date): string {
   const date = typeof value === 'string' ? new Date(value) : value;

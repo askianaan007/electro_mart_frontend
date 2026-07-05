@@ -28,7 +28,11 @@ export default function DealerInvoicesPage() {
       {dashboard && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard label="Total Outstanding Balance" value={formatCurrency(dashboard.outstandingBalance)} icon={Wallet} tone="warning" />
-          <StatCard label="Credit Limit" value={formatCurrency(dashboard.creditLimit)} icon={CreditCard} />
+          <StatCard
+            label="Credit Limit"
+            value={dashboard.unlimitedCredit ? 'Unlimited' : formatCurrency(dashboard.creditLimit)}
+            icon={CreditCard}
+          />
         </div>
       )}
 

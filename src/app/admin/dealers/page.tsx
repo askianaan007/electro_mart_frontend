@@ -168,7 +168,7 @@ export default function DealersPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">{dealer.ownerName}</TableCell>
                     <TableCell className="hidden lg:table-cell">{dealer.phone}</TableCell>
-                    <TableCell>{formatCurrency(dealer.creditLimit)}</TableCell>
+                    <TableCell>{dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}</TableCell>
                     <TableCell>{formatCurrency(dealer.outstandingBalance)}</TableCell>
                     <TableCell>
                       <AccountStatusBadge status={dealer.status} />

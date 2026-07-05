@@ -1,19 +1,23 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { useAllCategories } from '@/hooks/use-categories';
 import { useCreateProduct } from '@/hooks/use-products';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
+
+const CREATE_NEW_CATEGORY = '__create_new__';
 
 const schema = z.object({
   productCode: z.string().min(1, 'Product code is required'),
@@ -42,6 +46,7 @@ export function QuickAddProductDialog({
 }) {
   const { data: categories } = useAllCategories();
   const createProduct = useCreateProduct();
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -76,6 +81,7 @@ export function QuickAddProductDialog({
   });
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Add a new product">
         <DialogHeader>
@@ -129,7 +135,16 @@ export function QuickAddProductDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category (optional)</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        if (value === CREATE_NEW_CATEGORY) {
+                          setCategoryManagerOpen(true);
+                          return;
+                        }
+                        field.onChange(value);
+                      }}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -141,6 +156,10 @@ export function QuickAddProductDialog({
                             {category.name}
                           </SelectItem>
                         ))}
+                        <SelectItem value={CREATE_NEW_CATEGORY} className="text-primary">
+                          <Plus className="mr-1 inline size-3.5" />
+                          Add new category
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -173,5 +192,14 @@ export function QuickAddProductDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    <CategoryManagerDialog
+      open={categoryManagerOpen}
+      onOpenChange={setCategoryManagerOpen}
+      onCategoryCreated={(category) => {
+        form.setValue('category', category.name);
+        setCategoryManagerOpen(false);
+      }}
+    />
+    </>
   );
 }

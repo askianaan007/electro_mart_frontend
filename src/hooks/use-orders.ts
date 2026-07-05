@@ -53,8 +53,12 @@ export function useCreateOrder() {
 export function useApproveOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.orders.approve(id),
-    onSuccess: (_data, id) => invalidateOrderRelated(queryClient, id),
+    mutationFn: (vars: { id: string; discountPercentage?: number; discountAmount?: number }) =>
+      api.orders.approve(vars.id, {
+        discountPercentage: vars.discountPercentage,
+        discountAmount: vars.discountAmount,
+      }),
+    onSuccess: (_data, vars) => invalidateOrderRelated(queryClient, vars.id),
   });
 }
 

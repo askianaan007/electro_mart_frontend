@@ -26,8 +26,9 @@ export default function CartPage() {
   const createOrder = useCreateOrder();
 
   const subtotal = rows.reduce((sum, row) => sum + (row.product ? Number(row.product.wholesalePrice) * row.quantity : 0), 0);
+  const unlimitedCredit = dashboard?.unlimitedCredit ?? false;
   const creditRemaining = dashboard ? Number(dashboard.creditRemaining) : undefined;
-  const exceedsCredit = creditRemaining !== undefined && subtotal > creditRemaining;
+  const exceedsCredit = !unlimitedCredit && creditRemaining !== undefined && subtotal > creditRemaining;
 
   function handleSubmit() {
     createOrder.mutate(
@@ -133,10 +134,14 @@ export default function CartPage() {
                 <span>{formatCurrency(subtotal)}</span>
               </div>
 
-              {creditRemaining !== undefined && (
-                <p className="text-xs text-muted-foreground">
-                  Available credit: {formatCurrency(creditRemaining)}
-                </p>
+              {unlimitedCredit ? (
+                <p className="text-xs text-muted-foreground">Available credit: Unlimited</p>
+              ) : (
+                creditRemaining !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    Available credit: {formatCurrency(creditRemaining)}
+                  </p>
+                )
               )}
 
               {exceedsCredit && (

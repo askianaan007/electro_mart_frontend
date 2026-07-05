@@ -67,6 +67,7 @@ export interface Dealer {
   district: string | null;
   username: string;
   creditLimit: string;
+  unlimitedCredit: boolean;
   outstandingBalance: string;
   status: AccountStatus;
   createdAt: string;
@@ -319,15 +320,6 @@ export interface Expense {
   createdAt: string;
 }
 
-export interface ProfitEntry {
-  id: string;
-  periodStart: string;
-  periodEnd: string;
-  amount: string;
-  remarks: string | null;
-  createdAt: string;
-}
-
 export interface EquityEntry {
   investorId: string;
   investorName: string;
@@ -384,6 +376,27 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+export interface SalesAnalysisRow {
+  orderId: string;
+  orderNumber: string;
+  invoiceNumber: string | null;
+  dealerId: string;
+  dealerName: string;
+  date: string | null;
+  sellingPrice: string;
+  buyingPrice: string;
+  profit: string;
+}
+
+export interface SalesAnalysisSummary {
+  orderCount: number;
+  totalSales: string;
+  totalBuying: string;
+  totalProfit: string;
+  totalExpenses: string;
+  netProfit: string;
+}
+
 export interface AdminDashboardSummary {
   todaysSales: string;
   todaysOrders: number;
@@ -414,6 +427,7 @@ export interface AdminDashboardSummary {
 export interface DealerDashboardSummary {
   outstandingBalance: string;
   creditLimit: string;
+  unlimitedCredit: boolean;
   creditRemaining: string;
   pendingOrders: number;
   recentOrders: Order[];

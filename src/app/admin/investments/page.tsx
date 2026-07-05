@@ -36,7 +36,7 @@ import { InvestmentFormDialog } from '@/components/admin/investment-form-dialog'
 import { useAllInvestors, useDeleteInvestor } from '@/hooks/use-investors';
 import { useDeleteInvestment, useInvestments } from '@/hooks/use-investments';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { Investment, Investor } from '@/lib/api/types';
 
 export default function InvestmentsPage() {
@@ -49,6 +49,7 @@ export default function InvestmentsPage() {
   const [deletingInvestment, setDeletingInvestment] = useState<Investment | null>(null);
 
   const [investorFilter, setInvestorFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'DEPOSIT' | 'WITHDRAWAL'>('all');
   const [page, setPage] = useState(1);
 
   const { data: investors, isLoading: investorsLoading } = useAllInvestors();
@@ -56,6 +57,7 @@ export default function InvestmentsPage() {
     page,
     limit: 20,
     investorId: investorFilter === 'all' ? undefined : investorFilter,
+    type: typeFilter === 'all' ? undefined : typeFilter,
   });
 
   const deleteInvestor = useDeleteInvestor();
@@ -191,6 +193,22 @@ export default function InvestmentsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => {
+                setTypeFilter(value as 'all' | 'DEPOSIT' | 'WITHDRAWAL');
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="DEPOSIT">Deposits</SelectItem>
+                <SelectItem value="WITHDRAWAL">Withdrawals</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               size="sm"
               onClick={() => {
@@ -232,7 +250,15 @@ export default function InvestmentsPage() {
                       <TableCell>{formatDate(investment.investmentDate)}</TableCell>
                       <TableCell className="font-medium">{investment.investor?.name ?? '—'}</TableCell>
                       <TableCell>{investment.mode.replace('_', ' ')}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(investment.amount)}</TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-medium',
+                          Number(investment.amount) >= 0 ? 'text-success' : 'text-destructive',
+                        )}
+                      >
+                        {Number(investment.amount) >= 0 ? '+' : ''}
+                        {formatCurrency(investment.amount)}
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">{investment.reason}</TableCell>
                       <TableCell>
                         <DropdownMenu>

@@ -33,7 +33,11 @@ export default function DealerDashboardPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Outstanding Balance" value={formatCurrency(data.outstandingBalance)} icon={Wallet} tone="warning" />
-          <StatCard label="Credit Available" value={formatCurrency(data.creditRemaining)} icon={CreditCard} />
+          <StatCard
+            label="Credit Available"
+            value={data.unlimitedCredit ? 'Unlimited' : formatCurrency(data.creditRemaining)}
+            icon={CreditCard}
+          />
           <StatCard label="Pending Orders" value={data.pendingOrders} icon={ClipboardList} />
         </div>
       )}

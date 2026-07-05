@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, MoreHorizontal, Package, Plus, Search, Tags, Trash2 } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal, Package, Search, Tags, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,11 +92,6 @@ export default function ProductsPage() {
     outOfStockOnly: outOfStockOnly || undefined,
   });
 
-  function openCreate() {
-    setEditingProduct(undefined);
-    setFormOpen(true);
-  }
-
   function openEdit(product: Product) {
     setEditingProduct(product);
     setFormOpen(true);
@@ -127,10 +122,6 @@ export default function ProductsPage() {
           <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>
             <Tags />
             Categories
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus />
-            Add Product
           </Button>
         </div>
       </div>
@@ -184,7 +175,7 @@ export default function ProductsPage() {
             ))}
           </div>
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Package} title="No products found" description="Add your first product to get started" />
+          <EmptyState icon={Package} title="No products found" description="Products are added when you record a purchase from a supplier" />
         ) : (
           <>
             <Table>

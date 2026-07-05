@@ -40,6 +40,7 @@ const schema = z.object({
   creditLimit: z
     .string()
     .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)) && Number(v) >= 0, 'Enter a valid credit limit'),
+  unlimitedCredit: z.boolean(),
   status: z.enum(['ACTIVE', 'INACTIVE']),
   resetPassword: z.boolean(),
   password: z.string(),
@@ -57,6 +58,7 @@ function defaultValuesFor(dealer?: Dealer): FormValues {
     district: dealer?.district ?? '',
     username: dealer?.username ?? '',
     creditLimit: dealer ? String(dealer.creditLimit) : '0',
+    unlimitedCredit: dealer?.unlimitedCredit ?? false,
     status: dealer?.status ?? 'ACTIVE',
     resetPassword: false,
     password: '',
@@ -89,6 +91,7 @@ export function DealerFormDialog({
   }, [open, dealer, form]);
 
   const resetPassword = form.watch('resetPassword');
+  const unlimitedCredit = form.watch('unlimitedCredit');
 
   const onSubmit = form.handleSubmit((values) => {
     const payload: Record<string, unknown> = {
@@ -100,6 +103,7 @@ export function DealerFormDialog({
       district: values.district || undefined,
       username: values.username,
       creditLimit: Number(values.creditLimit),
+      unlimitedCredit: values.unlimitedCredit,
     };
 
     if (isEdit) {
@@ -236,9 +240,24 @@ export function DealerFormDialog({
                   <FormItem>
                     <FormLabel>Credit limit</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step="0.01" {...field} />
+                      <Input type="number" min={0} step="0.01" disabled={unlimitedCredit} {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unlimitedCredit"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3">
+                    <div>
+                      <FormLabel>Unlimited credit</FormLabel>
+                      <FormDescription>Orders are never blocked by credit limit</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
                   </FormItem>
                 )}
               />

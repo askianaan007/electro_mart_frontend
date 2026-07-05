@@ -13,6 +13,7 @@ import {
   CreditCard,
   PieChart,
   HandCoins,
+  LineChart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export interface AdminNavItem {
 export const adminNavItems: AdminNavItem[] = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
   { label: 'Dealers', href: '/admin/dealers', icon: Users },

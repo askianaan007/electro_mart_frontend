@@ -2,14 +2,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import type { PaginationParams } from '@/lib/api/types';
 
+export type InvestmentParams = PaginationParams & {
+  investorId?: string;
+  type?: 'DEPOSIT' | 'WITHDRAWAL';
+};
+
 export const investmentKeys = {
   all: ['investments'] as const,
   lists: () => [...investmentKeys.all, 'list'] as const,
-  list: (params: PaginationParams & { investorId?: string }) => [...investmentKeys.lists(), params] as const,
+  list: (params: InvestmentParams) => [...investmentKeys.lists(), params] as const,
   detail: (id: string) => [...investmentKeys.all, 'detail', id] as const,
 };
 
-export function useInvestments(params: PaginationParams & { investorId?: string }) {
+export function useInvestments(params: InvestmentParams) {
   return useQuery({
     queryKey: investmentKeys.list(params),
     queryFn: () => api.investments.list(params),

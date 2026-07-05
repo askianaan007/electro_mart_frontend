@@ -1,65 +1,57 @@
 'use client';
 
-import { useState } from 'react';
-import { MoreHorizontal, PieChart, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { History, PieChart } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ProfitEntryFormDialog } from '@/components/admin/profit-entry-form-dialog';
 import { useEquitySummary } from '@/hooks/use-equity';
-import { useDeleteProfitEntry, useProfitEntries } from '@/hooks/use-profit-entries';
-import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import type { ProfitEntry } from '@/lib/api/types';
+import { useInvestments } from '@/hooks/use-investments';
+import { useExpenses } from '@/hooks/use-expenses';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+
+type HistoryRow = {
+  id: string;
+  date: string;
+  type: 'Investment' | 'Withdrawal' | 'Expense';
+  description: string;
+  who: string;
+  amount: number;
+};
 
 export default function EquityPage() {
   const { data: equity, isLoading: equityLoading } = useEquitySummary();
-  const { data: profitEntries, isLoading: profitEntriesLoading } = useProfitEntries({ page: 1, limit: 50 });
+  const { data: investments, isLoading: investmentsLoading } = useInvestments({ page: 1, limit: 50 });
+  const { data: expenses, isLoading: expensesLoading } = useExpenses({ page: 1, limit: 50 });
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<ProfitEntry | undefined>(undefined);
-  const [deletingEntry, setDeletingEntry] = useState<ProfitEntry | null>(null);
+  const historyLoading = investmentsLoading || expensesLoading;
 
-  const deleteEntry = useDeleteProfitEntry();
-
-  function confirmDelete() {
-    if (!deletingEntry) return;
-    deleteEntry.mutate(deletingEntry.id, {
-      onSuccess: () => {
-        toast.success('Profit entry deleted');
-        setDeletingEntry(null);
-      },
-      onError: (error) => {
-        toast.error(getErrorMessage(error));
-        setDeletingEntry(null);
-      },
-    });
-  }
+  const history: HistoryRow[] = [
+    ...(investments?.data ?? []).map((investment) => ({
+      id: `investment-${investment.id}`,
+      date: investment.investmentDate,
+      type: (Number(investment.amount) < 0 ? 'Withdrawal' : 'Investment') as HistoryRow['type'],
+      description: investment.reason,
+      who: investment.investor?.name ?? '—',
+      amount: Number(investment.amount),
+    })),
+    ...(expenses?.data ?? []).map((expense) => ({
+      id: `expense-${expense.id}`,
+      date: expense.expenseDate,
+      type: 'Expense' as HistoryRow['type'],
+      description: expense.description,
+      who: '—',
+      amount: -Number(expense.amount),
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Equity</h1>
         <p className="text-sm text-muted-foreground">
-          Investment + equal profit share − equal expense share, per investor
+          Investment + profit share − expense share, per investor. Profit is calculated automatically from every
+          completed sale — no manual entry needed.
         </p>
       </div>
 
@@ -113,71 +105,60 @@ export default function EquityPage() {
             Warning: profit share percentages sum to {Number(equity.totals.percentageTotal)}%, not 100%.
           </p>
         )}
+        <p className="text-xs text-muted-foreground">
+          "Profit share" is each investor's cut of gross profit computed live from{' '}
+          <Link href="/admin/sales-analysis" className="text-primary hover:underline">
+            Sales Analysis
+          </Link>{' '}
+          (all completed orders to date), weighted by their profit share %.
+        </p>
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Profit Entries</h2>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingEntry(undefined);
-              setFormOpen(true);
-            }}
-          >
-            <Plus />
-            Add Entry
-          </Button>
-        </div>
+        <h2 className="text-lg font-medium">History</h2>
+        <p className="-mt-2 text-sm text-muted-foreground">
+          Every investment, withdrawal, and expense affecting equity. Manage them from the{' '}
+          <Link href="/admin/investments" className="text-primary hover:underline">
+            Investments
+          </Link>{' '}
+          and{' '}
+          <Link href="/admin/expenses" className="text-primary hover:underline">
+            Expenses
+          </Link>{' '}
+          pages.
+        </p>
         <div className="rounded-xl border border-border bg-card">
-          {profitEntriesLoading ? (
+          {historyLoading ? (
             <div className="space-y-2 p-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : !profitEntries || profitEntries.data.length === 0 ? (
-            <EmptyState icon={PieChart} title="No profit entries yet" description="Record realized profit for a period" />
+          ) : history.length === 0 ? (
+            <EmptyState icon={History} title="No history yet" description="Investments and expenses will appear here" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Period</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Investor</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="hidden sm:table-cell">Remarks</TableHead>
-                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {profitEntries.data.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>
-                      {formatDate(entry.periodStart)} – {formatDate(entry.periodEnd)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(entry.amount)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{entry.remarks ?? '—'}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingEntry(entry);
-                              setFormOpen(true);
-                            }}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeletingEntry(entry)}>
-                            <Trash2 />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {history.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{formatDate(row.date)}</TableCell>
+                    <TableCell>{row.type}</TableCell>
+                    <TableCell>{row.description}</TableCell>
+                    <TableCell>{row.who}</TableCell>
+                    <TableCell
+                      className={cn('text-right font-medium', row.amount >= 0 ? 'text-success' : 'text-destructive')}
+                    >
+                      {row.amount >= 0 ? '+' : ''}
+                      {formatCurrency(row.amount)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -186,25 +167,6 @@ export default function EquityPage() {
           )}
         </div>
       </section>
-
-      <ProfitEntryFormDialog open={formOpen} onOpenChange={setFormOpen} entry={editingEntry} />
-
-      <AlertDialog open={!!deletingEntry} onOpenChange={(open) => !open && setDeletingEntry(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this profit entry?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will change every investor&apos;s equity, since profit is split equally across all investors.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

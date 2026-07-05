@@ -24,10 +24,11 @@ import type {
   PaymentMode,
   PaymentStatus,
   Product,
-  ProfitEntry,
   Purchase,
   PurchaseReturn,
   Role,
+  SalesAnalysisRow,
+  SalesAnalysisSummary,
   SalesReturn,
   Supplier,
   SupplierCreditDetail,
@@ -148,7 +149,8 @@ export const api = {
     get: (id: string) => apiClient.get<Order>(`/orders/${id}`).then((r) => r.data),
     create: (data: { items: { productId: string; quantity: number }[] }) =>
       apiClient.post<Order>('/orders', data).then((r) => r.data),
-    approve: (id: string) => apiClient.patch<Order>(`/orders/${id}/approve`).then((r) => r.data),
+    approve: (id: string, discount?: { discountPercentage?: number; discountAmount?: number }) =>
+      apiClient.patch<Order>(`/orders/${id}/approve`, discount ?? {}).then((r) => r.data),
     reject: (id: string, reason: string) =>
       apiClient.patch<Order>(`/orders/${id}/reject`, { reason }).then((r) => r.data),
     updateStatus: (id: string, status: 'PACKED' | 'DELIVERED' | 'COMPLETED') =>
@@ -195,7 +197,7 @@ export const api = {
   },
 
   investments: {
-    list: (params: PaginationParams & { investorId?: string }) =>
+    list: (params: PaginationParams & { investorId?: string; type?: 'DEPOSIT' | 'WITHDRAWAL' }) =>
       apiClient.get<Paginated<Investment>>('/investments', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Investment>(`/investments/${id}`).then((r) => r.data),
     create: (data: Record<string, unknown>) => apiClient.post<Investment>('/investments', data).then((r) => r.data),
@@ -212,17 +214,6 @@ export const api = {
     update: (id: string, data: Record<string, unknown>) =>
       apiClient.patch<Expense>(`/expenses/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/expenses/${id}`).then((r) => r.data),
-  },
-
-  profitEntries: {
-    list: (params: PaginationParams) =>
-      apiClient.get<Paginated<ProfitEntry>>('/profit-entries', { params: buildParams(params) }).then((r) => r.data),
-    get: (id: string) => apiClient.get<ProfitEntry>(`/profit-entries/${id}`).then((r) => r.data),
-    create: (data: Record<string, unknown>) =>
-      apiClient.post<ProfitEntry>('/profit-entries', data).then((r) => r.data),
-    update: (id: string, data: Record<string, unknown>) =>
-      apiClient.patch<ProfitEntry>(`/profit-entries/${id}`, data).then((r) => r.data),
-    remove: (id: string) => apiClient.delete<{ message: string }>(`/profit-entries/${id}`).then((r) => r.data),
   },
 
   equity: {
@@ -259,6 +250,17 @@ export const api = {
     updateChequeStatus: (paymentId: string, status: Extract<ChequeStatus, 'CLEARED' | 'RETURNED'>) =>
       apiClient
         .patch<SupplierPayment>(`/credits/settlements/${paymentId}/status`, { status })
+        .then((r) => r.data),
+  },
+
+  salesAnalysis: {
+    list: (params: PaginationParams & { dateFrom?: string; dateTo?: string; dealerId?: string }) =>
+      apiClient
+        .get<Paginated<SalesAnalysisRow>>('/sales-analysis', { params: buildParams(params) })
+        .then((r) => r.data),
+    summary: (params: { dateFrom?: string; dateTo?: string; dealerId?: string }) =>
+      apiClient
+        .get<SalesAnalysisSummary>('/sales-analysis/summary', { params: buildParams(params) })
         .then((r) => r.data),
   },
 };
