@@ -24,10 +24,24 @@ const lineItemSchema = z.object({
   quantity: z.string().refine((v) => Number(v) >= 1, 'Min 1'),
 });
 
-const schema = z.object({
-  dealerId: z.string().min(1, 'Select a dealer'),
-  items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
-});
+const schema = z
+  .object({
+    dealerId: z.string().min(1, 'Select a dealer'),
+    items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
+    discountType: z.enum(['PERCENTAGE', 'FIXED']),
+    discountValue: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.discountValue.trim() === '') return;
+    const num = Number(data.discountValue);
+    if (Number.isNaN(num) || num < 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Enter a valid amount' });
+      return;
+    }
+    if (data.discountType === 'PERCENTAGE' && num > 100) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Percentage cannot exceed 100' });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -61,18 +75,31 @@ export default function NewOrderPage() {
     defaultValues: {
       dealerId: '',
       items: [{ productId: '', quantity: '1' }],
+      discountType: 'PERCENTAGE',
+      discountValue: '',
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const discountType = form.watch('discountType');
+  const discountValue = Number(form.watch('discountValue')) || 0;
 
-  const grandTotal = watchedItems.reduce(
+  const subtotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * unitPrice(products?.data, item.productId),
     0,
   );
+  const discountAmount = discountType === 'PERCENTAGE' ? (subtotal * discountValue) / 100 : discountValue;
+  const grandTotal = Math.max(subtotal - discountAmount, 0);
 
   const onSubmit = form.handleSubmit((values) => {
+    const value = values.discountValue.trim() === '' ? 0 : Number(values.discountValue);
+
+    if (values.discountType === 'FIXED' && value > subtotal) {
+      form.setError('discountValue', { message: 'Cannot exceed the order subtotal' });
+      return;
+    }
+
     createOrder.mutate(
       {
         dealerId: values.dealerId,
@@ -80,10 +107,16 @@ export default function NewOrderPage() {
           productId: item.productId,
           quantity: Number(item.quantity),
         })),
+        discountPercentage: values.discountType === 'PERCENTAGE' ? value : undefined,
+        discountAmount: values.discountType === 'FIXED' ? value : undefined,
       },
       {
         onSuccess: (order) => {
-          toast.success('Order created and approved — stock reserved, invoice generated');
+          toast.success(
+            value > 0
+              ? 'Order created and approved with discount — stock reserved, invoice generated'
+              : 'Order created and approved — stock reserved, invoice generated',
+          );
           router.push(`/admin/orders/${order.id}`);
         },
         onError: (error) => toast.error(getErrorMessage(error)),
@@ -275,10 +308,63 @@ export default function NewOrderPage() {
                 ))}
               </div>
 
-              <div className="flex justify-end border-t border-border pt-4">
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Order Total</p>
-                  <p className="text-xl font-semibold">{formatCurrency(grandTotal)}</p>
+              <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="grid grid-cols-2 gap-3 sm:w-64">
+                  <FormField
+                    control={form.control}
+                    name="discountType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discount type</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                            <SelectItem value="FIXED">Fixed amount</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="discountValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{discountType === 'PERCENTAGE' ? 'Discount %' : 'Discount amount'}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={discountType === 'PERCENTAGE' ? 100 : undefined}
+                            step="0.01"
+                            placeholder="0"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="w-full space-y-1 sm:w-64">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span>−{formatCurrency(discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
+                    <span>Order Total</span>
+                    <span>{formatCurrency(grandTotal)}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>

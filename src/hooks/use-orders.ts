@@ -50,8 +50,12 @@ function invalidateOrderRelated(queryClient: ReturnType<typeof useQueryClient>, 
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { dealerId?: string; items: { productId: string; quantity: number }[] }) =>
-      api.orders.create(data),
+    mutationFn: (data: {
+      dealerId?: string;
+      items: { productId: string; quantity: number }[];
+      discountPercentage?: number;
+      discountAmount?: number;
+    }) => api.orders.create(data),
     onSuccess: () => invalidateOrderRelated(queryClient),
   });
 }

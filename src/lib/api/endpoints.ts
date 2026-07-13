@@ -158,8 +158,12 @@ export const api = {
       },
     ) => apiClient.get<Paginated<Order>>('/orders', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Order>(`/orders/${id}`).then((r) => r.data),
-    create: (data: { dealerId?: string; items: { productId: string; quantity: number }[] }) =>
-      apiClient.post<Order>('/orders', data).then((r) => r.data),
+    create: (data: {
+      dealerId?: string;
+      items: { productId: string; quantity: number }[];
+      discountPercentage?: number;
+      discountAmount?: number;
+    }) => apiClient.post<Order>('/orders', data).then((r) => r.data),
     approve: (id: string, discount?: { discountPercentage?: number; discountAmount?: number }) =>
       apiClient.patch<Order>(`/orders/${id}/approve`, discount ?? {}).then((r) => r.data),
     reject: (id: string, reason: string) =>
