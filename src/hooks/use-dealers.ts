@@ -51,6 +51,12 @@ export function useUpdateDealer(id: string) {
   });
 }
 
+export function useResetDealerPassword() {
+  return useMutation({
+    mutationFn: (id: string) => api.dealers.resetPassword(id),
+  });
+}
+
 export function useSetDealerStatus(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

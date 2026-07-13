@@ -73,6 +73,10 @@ export const api = {
       apiClient.patch<Dealer>(`/dealers/${id}`, data).then((r) => r.data),
     setStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') =>
       apiClient.patch<Dealer>(`/dealers/${id}/status`, { status }).then((r) => r.data),
+    resetPassword: (id: string) =>
+      apiClient
+        .post<{ dealer: Dealer; temporaryPassword: string }>(`/dealers/${id}/reset-password`)
+        .then((r) => r.data),
   },
 
   suppliers: {

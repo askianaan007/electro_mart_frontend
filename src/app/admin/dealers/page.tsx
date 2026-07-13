@@ -29,19 +29,34 @@ import {
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
-import { useDealers, useSetDealerStatus } from '@/hooks/use-dealers';
+import { useDealers, useResetDealerPassword, useSetDealerStatus } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Dealer } from '@/lib/api/types';
 
-function DealerRowActions({ dealer }: { dealer: Dealer }) {
+function DealerRowActions({
+  dealer,
+  onPasswordReset,
+}: {
+  dealer: Dealer;
+  onPasswordReset: (credentials: { username: string; temporaryPassword: string }) => void;
+}) {
   const setStatus = useSetDealerStatus(dealer.id);
+  const resetPassword = useResetDealerPassword();
 
   function toggleStatus() {
     const next = dealer.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     setStatus.mutate(next, {
       onSuccess: () => toast.success(`Dealer ${next === 'ACTIVE' ? 'activated' : 'deactivated'}`),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
+  function handleResetPassword() {
+    resetPassword.mutate(dealer.id, {
+      onSuccess: (result) =>
+        onPasswordReset({ username: dealer.username, temporaryPassword: result.temporaryPassword }),
       onError: (error) => toast.error(getErrorMessage(error)),
     });
   }
@@ -56,6 +71,9 @@ function DealerRowActions({ dealer }: { dealer: Dealer }) {
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
           <Link href={`/admin/dealers/${dealer.id}`}>View profile</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleResetPassword} disabled={resetPassword.isPending}>
+          Reset password
         </DropdownMenuItem>
         <DropdownMenuItem onClick={toggleStatus}>
           {dealer.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
@@ -208,7 +226,7 @@ export default function DealersPage() {
                           <Button variant="ghost" size="sm" onClick={() => openEdit(dealer)}>
                             Edit
                           </Button>
-                          <DealerRowActions dealer={dealer} />
+                          <DealerRowActions dealer={dealer} onPasswordReset={setCredentials} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -231,7 +249,7 @@ export default function DealersPage() {
       <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
         <DialogContent title="Dealer credentials">
           <DialogHeader>
-            <DialogTitle>Dealer account created</DialogTitle>
+            <DialogTitle>Dealer credentials</DialogTitle>
             <DialogDescription>
               Share these credentials with the dealer. This password will not be shown again.
             </DialogDescription>

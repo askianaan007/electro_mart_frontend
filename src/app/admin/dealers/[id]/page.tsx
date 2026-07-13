@@ -3,20 +3,30 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
+import { ArrowLeft, Copy, KeyRound, Loader2, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { AccountStatusBadge, OrderStatusBadge, PaymentStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
-import { useDealer } from '@/hooks/use-dealers';
+import { useDealer, useResetDealerPassword } from '@/hooks/use-dealers';
 import { useOrders } from '@/hooks/use-orders';
 import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments } from '@/hooks/use-payments';
+import { getErrorMessage } from '@/lib/api/error';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 function TabLoader() {
@@ -33,6 +43,8 @@ export default function DealerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
+  const resetPassword = useResetDealerPassword();
 
   const { data: dealer, isLoading } = useDealer(id);
   const {
@@ -64,6 +76,14 @@ export default function DealerDetailPage() {
     );
   }
 
+  function handleResetPassword() {
+    resetPassword.mutate(dealer!.id, {
+      onSuccess: (result) =>
+        setCredentials({ username: dealer!.username, temporaryPassword: result.temporaryPassword }),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
@@ -83,10 +103,16 @@ export default function DealerDetailPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setEditOpen(true)}>
-          <Pencil />
-          Edit dealer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleResetPassword} loading={resetPassword.isPending}>
+            <KeyRound />
+            Reset password
+          </Button>
+          <Button onClick={() => setEditOpen(true)}>
+            <Pencil />
+            Edit dealer
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -238,6 +264,44 @@ export default function DealerDetailPage() {
       </Tabs>
 
       <DealerFormDialog open={editOpen} onOpenChange={setEditOpen} dealer={dealer} />
+
+      <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
+        <DialogContent title="Dealer credentials">
+          <DialogHeader>
+            <DialogTitle>Dealer credentials</DialogTitle>
+            <DialogDescription>
+              Share these credentials with the dealer. This password will not be shown again.
+            </DialogDescription>
+          </DialogHeader>
+          {credentials && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">Username</p>
+                <p className="font-mono text-sm">{credentials.username}</p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">Temporary password</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-mono text-sm">{credentials.temporaryPassword}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(credentials.temporaryPassword);
+                      toast.success('Copied to clipboard');
+                    }}
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setCredentials(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
