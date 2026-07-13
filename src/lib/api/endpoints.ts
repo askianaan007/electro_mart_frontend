@@ -10,6 +10,7 @@ import type {
   Dealer,
   DealerDetail,
   EquitySummary,
+  EquityHistoryEntry,
   Expense,
   Invoice,
   InventoryLog,
@@ -199,8 +200,14 @@ export const api = {
   },
 
   investments: {
-    list: (params: PaginationParams & { investorId?: string; type?: 'DEPOSIT' | 'WITHDRAWAL' }) =>
-      apiClient.get<Paginated<Investment>>('/investments', { params: buildParams(params) }).then((r) => r.data),
+    list: (
+      params: PaginationParams & {
+        investorId?: string;
+        type?: 'DEPOSIT' | 'WITHDRAWAL';
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) => apiClient.get<Paginated<Investment>>('/investments', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Investment>(`/investments/${id}`).then((r) => r.data),
     create: (data: Record<string, unknown>) => apiClient.post<Investment>('/investments', data).then((r) => r.data),
     update: (id: string, data: Record<string, unknown>) =>
@@ -220,6 +227,17 @@ export const api = {
 
   equity: {
     summary: () => apiClient.get<EquitySummary>('/equity').then((r) => r.data),
+    history: (
+      params: PaginationParams & {
+        type?: 'INVESTMENT' | 'WITHDRAWAL' | 'EXPENSE';
+        investorId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) =>
+      apiClient
+        .get<Paginated<EquityHistoryEntry>>('/equity/history', { params: buildParams(params) })
+        .then((r) => r.data),
   },
 
   salesReturns: {

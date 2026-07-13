@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreHorizontal, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
+import { Loader2, MoreHorizontal, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import { ExpenseFormDialog } from '@/components/admin/expense-form-dialog';
 import { useDeleteExpense, useExpenses } from '@/hooks/use-expenses';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { Expense } from '@/lib/api/types';
 
 export default function ExpensesPage() {
@@ -45,7 +45,7 @@ export default function ExpensesPage() {
   const filtersActive = !!search || !!dateFrom || !!dateTo;
 
   const deleteExpense = useDeleteExpense();
-  const { data, isLoading } = useExpenses({
+  const { data, isLoading, isFetching } = useExpenses({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -94,7 +94,10 @@ export default function ExpensesPage() {
             <Receipt className="size-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Expenses</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold">Expenses</h1>
+              {isFetching && !isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Shared business expenses, split equally across investors.
             </p>
@@ -172,7 +175,7 @@ export default function ExpensesPage() {
           )
         ) : (
           <>
-            <div className="hidden sm:block">
+            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -216,7 +219,7 @@ export default function ExpensesPage() {
               </Table>
             </div>
 
-            <div className="space-y-3 p-4 sm:hidden">
+            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((expense) => (
                 <div key={expense.id} className="rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-2">

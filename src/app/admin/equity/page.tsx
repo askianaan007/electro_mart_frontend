@@ -1,20 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  ChevronDown,
   Coins,
   Download,
-  Filter as FilterIcon,
-  History,
-  Info,
   Layers,
+  Loader2,
   MinusCircle,
   PieChart,
   Receipt,
+  Search,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -26,24 +24,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/empty-state';
+import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
-import { useEquitySummary } from '@/hooks/use-equity';
+import { useEquitySummary, useEquityHistory } from '@/hooks/use-equity';
 import { useInvestments } from '@/hooks/use-investments';
-import { useExpenses } from '@/hooks/use-expenses';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { api } from '@/lib/api/endpoints';
 import { cn, formatCurrency, formatDate, initials } from '@/lib/utils';
-import type { Investment } from '@/lib/api/types';
+import type { EquityHistoryEntry, Investment } from '@/lib/api/types';
 
-type HistoryType = 'Investment' | 'Withdrawal' | 'Expense';
-
-type HistoryRow = {
-  id: string;
-  date: string;
-  type: HistoryType;
-  description: string;
-  who: string;
-  investorId: string | null;
-  amount: number;
-};
+type HistoryType = 'INVESTMENT' | 'WITHDRAWAL' | 'EXPENSE';
 
 const AVATAR_TONES = [
   'bg-primary/15 text-primary',
@@ -53,9 +43,9 @@ const AVATAR_TONES = [
 ];
 
 const TYPE_META: Record<HistoryType, { label: string; icon: typeof ArrowDownCircle; className: string }> = {
-  Investment: { label: 'Investment', icon: ArrowDownCircle, className: 'text-success' },
-  Withdrawal: { label: 'Withdrawal', icon: ArrowUpCircle, className: 'text-destructive' },
-  Expense: { label: 'Expense', icon: MinusCircle, className: 'text-destructive' },
+  INVESTMENT: { label: 'Investment', icon: ArrowDownCircle, className: 'text-success' },
+  WITHDRAWAL: { label: 'Withdrawal', icon: ArrowUpCircle, className: 'text-destructive' },
+  EXPENSE: { label: 'Expense', icon: MinusCircle, className: 'text-destructive' },
 };
 
 function toCsvValue(value: string | number) {
@@ -63,12 +53,14 @@ function toCsvValue(value: string | number) {
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-function downloadHistoryCsv(filename: string, rows: HistoryRow[]) {
+function downloadHistoryCsv(filename: string, rows: EquityHistoryEntry[]) {
   const header = ['Date', 'Type', 'Description', 'Investor', 'Amount'];
   const lines = [
     header.join(','),
     ...rows.map((row) =>
-      [formatDate(row.date), row.type, row.description, row.who, row.amount.toFixed(2)].map(toCsvValue).join(','),
+      [formatDate(row.date), TYPE_META[row.type].label, row.description, row.investorName ?? '—', row.amount]
+        .map(toCsvValue)
+        .join(','),
     ),
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -82,104 +74,70 @@ function downloadHistoryCsv(filename: string, rows: HistoryRow[]) {
 
 export default function EquityPage() {
   const { data: equity, isLoading: equityLoading } = useEquitySummary();
-  const { data: investments, isLoading: investmentsLoading } = useInvestments({ page: 1, limit: 50 });
-  const { data: expenses, isLoading: expensesLoading } = useExpenses({ page: 1, limit: 50 });
 
-  const historyLoading = investmentsLoading || expensesLoading;
-
+  const [historyPage, setHistoryPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | HistoryType>('all');
   const [investorFilter, setInvestorFilter] = useState('all');
-  const [quickDate, setQuickDate] = useState('all');
-  const [showRange, setShowRange] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
 
-  const history: HistoryRow[] = useMemo(
-    () =>
-      [
-        ...(investments?.data ?? []).map((investment) => ({
-          id: `investment-${investment.id}`,
-          date: investment.investmentDate,
-          type: (Number(investment.amount) < 0 ? 'Withdrawal' : 'Investment') as HistoryType,
-          description: investment.reason,
-          who: investment.investor?.name ?? '—',
-          investorId: investment.investorId,
-          amount: Number(investment.amount),
-        })),
-        ...(expenses?.data ?? []).map((expense) => ({
-          id: `expense-${expense.id}`,
-          date: expense.expenseDate,
-          type: 'Expense' as HistoryType,
-          description: expense.description,
-          who: '—',
-          investorId: null,
-          amount: -Number(expense.amount),
-        })),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [investments, expenses],
-  );
+  const debouncedSearch = useDebouncedValue(search);
+  const filtersActive = !!search || typeFilter !== 'all' || investorFilter !== 'all' || !!dateFrom || !!dateTo;
 
-  const investmentsByInvestor = useMemo(() => {
-    const map = new Map<string, Investment[]>();
-    for (const investment of investments?.data ?? []) {
-      const list = map.get(investment.investorId) ?? [];
-      list.push(investment);
-      map.set(investment.investorId, list);
-    }
-    return map;
-  }, [investments]);
+  const historyFilters = {
+    search: debouncedSearch || undefined,
+    type: typeFilter === 'all' ? undefined : typeFilter,
+    investorId: investorFilter === 'all' ? undefined : investorFilter,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  };
 
-  const distinctDates = useMemo(() => {
-    const seen = new Set<string>();
-    for (const row of history) seen.add(row.date.slice(0, 10));
-    return Array.from(seen).sort((a, b) => (a < b ? 1 : -1));
-  }, [history]);
+  const {
+    data: historyResult,
+    isLoading: historyLoading,
+    isFetching: historyFetching,
+  } = useEquityHistory({ page: historyPage, limit: 20, ...historyFilters });
 
-  const filteredHistory = useMemo(
-    () =>
-      history.filter((row) => {
-        if (typeFilter !== 'all' && row.type !== typeFilter) return false;
-        if (investorFilter !== 'all' && row.investorId !== investorFilter) return false;
-        const day = row.date.slice(0, 10);
-        if (dateFrom && day < dateFrom) return false;
-        if (dateTo && day > dateTo) return false;
-        return true;
-      }),
-    [history, typeFilter, investorFilter, dateFrom, dateTo],
-  );
+  // Only used for the per-investor ledger breakdown dialog below — a bounded
+  // supplementary view, independent of the paginated History list above.
+  const { data: investmentsForBreakdown } = useInvestments({ page: 1, limit: 100 });
+  const investmentsByInvestor = new Map<string, Investment[]>();
+  for (const investment of investmentsForBreakdown?.data ?? []) {
+    const list = investmentsByInvestor.get(investment.investorId) ?? [];
+    list.push(investment);
+    investmentsByInvestor.set(investment.investorId, list);
+  }
 
-  const visibleHistory = showAllHistory ? filteredHistory : filteredHistory.slice(0, 5);
-  const filtersActive = typeFilter !== 'all' || investorFilter !== 'all' || !!dateFrom || !!dateTo;
   const investorOptions = equity?.entries ?? [];
+  const history = historyResult?.data ?? [];
 
-  function handleQuickDateChange(value: string) {
-    setQuickDate(value);
-    setShowAllHistory(false);
-    if (value === 'all') {
-      setDateFrom('');
-      setDateTo('');
-    } else {
-      setDateFrom(value);
-      setDateTo(value);
-    }
+  function resetPageAnd<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      setter(value);
+      setHistoryPage(1);
+    };
   }
 
-  function clearRange() {
-    setDateFrom('');
-    setDateTo('');
-    setQuickDate('all');
-  }
-
-  function clearAllFilters() {
+  function clearFilters() {
+    setSearch('');
     setTypeFilter('all');
     setInvestorFilter('all');
-    clearRange();
+    setDateFrom('');
+    setDateTo('');
+    setHistoryPage(1);
   }
 
-  function handleExport() {
-    downloadHistoryCsv(`equity-history-${new Date().toISOString().slice(0, 10)}.csv`, filteredHistory);
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      const result = await api.equity.history({ page: 1, limit: 1000, ...historyFilters });
+      downloadHistoryCsv(`equity-history-${new Date().toISOString().slice(0, 10)}.csv`, result.data);
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
@@ -199,25 +157,10 @@ export default function EquityPage() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Select value={quickDate} onValueChange={handleQuickDateChange}>
-            <SelectTrigger className="w-[9.5rem]">
-              <SelectValue placeholder="All dates" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All dates</SelectItem>
-              {distinctDates.map((date) => (
-                <SelectItem key={date} value={date}>
-                  {formatDate(date)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExport} disabled={filteredHistory.length === 0}>
-            <Download />
-            Export
-          </Button>
-        </div>
+        <Button variant="outline" onClick={handleExport} disabled={history.length === 0 || isExporting} className="shrink-0">
+          {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
+          Export
+        </Button>
       </div>
 
       <section className="space-y-3">
@@ -290,22 +233,8 @@ export default function EquityPage() {
                       <TableHead>Investor</TableHead>
                       <TableHead className="text-right">Share %</TableHead>
                       <TableHead className="text-right">Investment</TableHead>
-                      <TableHead className="text-right">
-                        <span className="inline-flex items-center justify-end gap-1">
-                          Profit Share
-                          <span title="Each investor's cut of gross profit computed live from Sales Analysis, weighted by their profit share %.">
-                            <Info className="size-3.5 text-muted-foreground" />
-                          </span>
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <span className="inline-flex items-center justify-end gap-1">
-                          Expense Share
-                          <span title="Each investor's cut of total expenses, weighted by their profit share %.">
-                            <Info className="size-3.5 text-muted-foreground" />
-                          </span>
-                        </span>
-                      </TableHead>
+                      <TableHead className="text-right">Profit Share</TableHead>
+                      <TableHead className="text-right">Expense Share</TableHead>
                       <TableHead className="text-right">Equity</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -464,96 +393,74 @@ export default function EquityPage() {
       <section className="space-y-3 rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 p-4 sm:p-6 sm:pb-0">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-lg font-medium">History</h2>
-              <p className="text-sm text-muted-foreground">
-                Every investment, withdrawal, and expense affecting equity. Manage them from the{' '}
-                <Link href="/admin/investments" className="text-primary hover:underline">
-                  Investments
-                </Link>{' '}
-                and{' '}
-                <Link href="/admin/expenses" className="text-primary hover:underline">
-                  Expenses
-                </Link>{' '}
-                pages.
-              </p>
+              {historyFetching && !historyLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={typeFilter}
-                onValueChange={(value) => {
-                  setTypeFilter(value as 'all' | HistoryType);
-                  setShowAllHistory(false);
-                }}
-              >
-                <SelectTrigger className="w-[9.5rem]">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Investment">Investment</SelectItem>
-                  <SelectItem value="Withdrawal">Withdrawal</SelectItem>
-                  <SelectItem value="Expense">Expense</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={investorFilter}
-                onValueChange={(value) => {
-                  setInvestorFilter(value);
-                  setShowAllHistory(false);
-                }}
-              >
-                <SelectTrigger className="w-[9.5rem]">
-                  <SelectValue placeholder="All Investors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Investors</SelectItem>
-                  {investorOptions.map((entry) => (
-                    <SelectItem key={entry.investorId} value={entry.investorId}>
-                      {entry.investorName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm" onClick={() => setShowRange((v) => !v)}>
-                <FilterIcon />
-                Filter
-                {filtersActive && <span className="size-1.5 rounded-full bg-primary" />}
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground sm:hidden">
+              Every investment, withdrawal, and expense affecting equity.
+            </p>
           </div>
+          <p className="hidden text-sm text-muted-foreground sm:block">
+            Every investment, withdrawal, and expense affecting equity. Manage them from the{' '}
+            <Link href="/admin/investments" className="text-primary hover:underline">
+              Investments
+            </Link>{' '}
+            and{' '}
+            <Link href="/admin/expenses" className="text-primary hover:underline">
+              Expenses
+            </Link>{' '}
+            pages.
+          </p>
 
-          {showRange && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
-              <span className="text-xs font-medium text-muted-foreground">Date range:</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative flex-1 sm:min-w-[12rem]">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setQuickDate('all');
-                  setShowAllHistory(false);
-                }}
-                className="w-auto"
+                placeholder="Search description or investor..."
+                value={search}
+                onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
+                className="pl-9"
               />
-              <span className="text-xs text-muted-foreground">to</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setQuickDate('all');
-                  setShowAllHistory(false);
-                }}
-                className="w-auto"
-              />
-              {(dateFrom || dateTo) && (
-                <Button variant="ghost" size="sm" onClick={clearRange}>
-                  Clear
-                </Button>
-              )}
             </div>
-          )}
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => resetPageAnd(setTypeFilter)(value as 'all' | HistoryType)}
+            >
+              <SelectTrigger className="sm:w-40">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="INVESTMENT">Investment</SelectItem>
+                <SelectItem value="WITHDRAWAL">Withdrawal</SelectItem>
+                <SelectItem value="EXPENSE">Expense</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={investorFilter} onValueChange={resetPageAnd(setInvestorFilter)}>
+              <SelectTrigger className="sm:w-40">
+                <SelectValue placeholder="All Investors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Investors</SelectItem>
+                {investorOptions.map((entry) => (
+                  <SelectItem key={entry.investorId} value={entry.investorId}>
+                    {entry.investorName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+            {filtersActive && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
@@ -564,21 +471,23 @@ export default function EquityPage() {
               ))}
             </div>
           ) : history.length === 0 ? (
-            <EmptyState icon={History} title="No history yet" description="Investments and expenses will appear here" />
-          ) : filteredHistory.length === 0 ? (
-            <EmptyState
-              icon={FilterIcon}
-              title="No matching entries"
-              description="Try adjusting or clearing your filters"
-              action={
-                <Button variant="outline" size="sm" onClick={clearAllFilters}>
-                  Clear filters
-                </Button>
-              }
-            />
+            filtersActive ? (
+              <EmptyState
+                icon={Search}
+                title="No matching entries"
+                description="Try adjusting or clearing your filters"
+                action={
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState icon={PieChart} title="No history yet" description="Investments and expenses will appear here" />
+            )
           ) : (
             <>
-              <div className="hidden sm:block">
+              <div className={cn('hidden sm:block', historyFetching && 'opacity-60 transition-opacity')}>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -590,9 +499,10 @@ export default function EquityPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visibleHistory.map((row) => {
+                    {history.map((row) => {
                       const meta = TYPE_META[row.type];
                       const Icon = meta.icon;
+                      const amount = Number(row.amount);
                       return (
                         <TableRow key={row.id}>
                           <TableCell className="whitespace-normal break-words">{formatDate(row.date)}</TableCell>
@@ -603,15 +513,15 @@ export default function EquityPage() {
                             </span>
                           </TableCell>
                           <TableCell className="whitespace-normal break-words">{row.description}</TableCell>
-                          <TableCell className="whitespace-normal break-words">{row.who}</TableCell>
+                          <TableCell className="whitespace-normal break-words">{row.investorName ?? '—'}</TableCell>
                           <TableCell
                             className={cn(
                               'whitespace-normal break-words text-right font-medium',
-                              row.amount >= 0 ? 'text-success' : 'text-destructive',
+                              amount >= 0 ? 'text-success' : 'text-destructive',
                             )}
                           >
-                            {row.amount >= 0 ? '+' : ''}
-                            {formatCurrency(row.amount)}
+                            {amount >= 0 ? '+' : ''}
+                            {formatCurrency(amount)}
                           </TableCell>
                         </TableRow>
                       );
@@ -620,10 +530,11 @@ export default function EquityPage() {
                 </Table>
               </div>
 
-              <div className="space-y-3 sm:hidden">
-                {visibleHistory.map((row) => {
+              <div className={cn('space-y-3 sm:hidden', historyFetching && 'opacity-60 transition-opacity')}>
+                {history.map((row) => {
                   const meta = TYPE_META[row.type];
                   const Icon = meta.icon;
+                  const amount = Number(row.amount);
                   return (
                     <div key={row.id} className="rounded-lg border border-border p-4">
                       <div className="flex items-center justify-between gap-2">
@@ -634,31 +545,24 @@ export default function EquityPage() {
                         <span
                           className={cn(
                             'shrink-0 break-words font-medium',
-                            row.amount >= 0 ? 'text-success' : 'text-destructive',
+                            amount >= 0 ? 'text-success' : 'text-destructive',
                           )}
                         >
-                          {row.amount >= 0 ? '+' : ''}
-                          {formatCurrency(row.amount)}
+                          {amount >= 0 ? '+' : ''}
+                          {formatCurrency(amount)}
                         </span>
                       </div>
                       <p className="mt-2 break-words text-sm font-medium">{row.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>{formatDate(row.date)}</span>
-                        <span className="break-words text-right">{row.who}</span>
+                        <span className="break-words text-right">{row.investorName ?? '—'}</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {filteredHistory.length > 5 && (
-                <div className="flex justify-center pt-4">
-                  <Button variant="ghost" size="sm" onClick={() => setShowAllHistory((v) => !v)}>
-                    <ChevronDown className={cn('size-4 transition-transform', showAllHistory && 'rotate-180')} />
-                    {showAllHistory ? 'Show Less' : 'View All History'}
-                  </Button>
-                </div>
-              )}
+              <PaginationBar meta={historyResult?.meta} onPageChange={setHistoryPage} />
             </>
           )}
         </div>

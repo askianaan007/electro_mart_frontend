@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Coins, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { StatCard } from '@/components/stat-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   AlertDialog,
@@ -38,6 +40,11 @@ export default function PurchaseDetailPage() {
     return <Skeleton className="h-96 w-full" />;
   }
 
+  const grossValue = Number(purchase.totalValue);
+  const returnedValue = (purchaseReturns ?? []).reduce((sum, r) => sum + Number(r.totalAmount), 0);
+  const netValue = grossValue - returnedValue;
+  const hasReturns = returnedValue > 0;
+
   function confirmDelete() {
     deletePurchase.mutate(id, {
       onSuccess: () => {
@@ -60,7 +67,14 @@ export default function PurchaseDetailPage() {
 
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Purchase from {purchase.supplier.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold">Purchase from {purchase.supplier.name}</h1>
+            {hasReturns && (
+              <Badge variant={netValue <= 0 ? 'destructive' : 'warning'}>
+                {netValue <= 0 ? 'Fully Returned' : 'Partially Returned'}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Invoice {purchase.invoiceNumber} &middot; {formatDate(purchase.purchaseDate)}
           </p>
@@ -77,6 +91,17 @@ export default function PurchaseDetailPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Gross Purchase Value" value={formatCurrency(grossValue)} icon={Wallet} />
+        <StatCard
+          label="Returned"
+          value={`−${formatCurrency(returnedValue)}`}
+          icon={Undo2}
+          tone={hasReturns ? 'warning' : 'default'}
+        />
+        <StatCard label="Net Value" value={formatCurrency(netValue)} icon={Coins} tone="success" />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Line items</CardTitle>
@@ -87,17 +112,19 @@ export default function PurchaseDetailPage() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Quantity</TableHead>
-                <TableHead>Unit Cost</TableHead>
-                <TableHead>Line Total</TableHead>
+                <TableHead className="text-right">Unit Cost</TableHead>
+                <TableHead className="text-right">Line Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {purchase.items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>{item.product?.name ?? item.productId}</TableCell>
+                  <TableCell className="whitespace-normal break-words">
+                    {item.product?.name ?? item.productId}
+                  </TableCell>
                   <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{formatCurrency(item.unitCost)}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.unitCost)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(item.lineTotal)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -105,18 +132,14 @@ export default function PurchaseDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Card className="w-full sm:w-64">
-          <CardContent className="flex items-center justify-between p-4">
-            <span className="text-sm text-muted-foreground">Total Purchase Value</span>
-            <span className="text-lg font-semibold">{formatCurrency(purchase.totalValue)}</span>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Returns</CardTitle>
+          {purchaseReturns && purchaseReturns.length > 0 && (
+            <Badge variant="warning">
+              {purchaseReturns.length} return{purchaseReturns.length === 1 ? '' : 's'}
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="p-0 sm:p-0">
           {returnsLoading ? (
@@ -141,11 +164,21 @@ export default function PurchaseDetailPage() {
                 {purchaseReturns.map((purchaseReturn) => (
                   <TableRow key={purchaseReturn.id}>
                     <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
-                    <TableCell>{formatDate(purchaseReturn.returnDate)}</TableCell>
-                    <TableCell>{purchaseReturn.reason}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(purchaseReturn.totalAmount)}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
+                    <TableCell className="text-right font-medium text-destructive">
+                      −{formatCurrency(purchaseReturn.totalAmount)}
+                    </TableCell>
                   </TableRow>
                 ))}
+                <TableRow className="bg-muted/40">
+                  <TableCell colSpan={3} className="font-semibold">
+                    Total returned
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-destructive">
+                    −{formatCurrency(returnedValue)}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           )}

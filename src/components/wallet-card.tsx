@@ -33,8 +33,8 @@ export function WalletCard({
       <div className="relative flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wider text-primary-foreground/70">{label}</p>
-          <p className="mt-2 truncate text-3xl font-bold tracking-tight">{value}</p>
-          {subtitle && <p className="mt-1 text-xs text-primary-foreground/70">{subtitle}</p>}
+          <p className="mt-2 break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{value}</p>
+          {subtitle && <p className="mt-1 break-words text-xs text-primary-foreground/70">{subtitle}</p>}
         </div>
         <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/15">
           <CornerIcon className="size-5" />

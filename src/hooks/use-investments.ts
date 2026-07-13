@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { equityKeys } from './use-equity';
 import type { PaginationParams } from '@/lib/api/types';
 
 export type InvestmentParams = PaginationParams & {
   investorId?: string;
   type?: 'DEPOSIT' | 'WITHDRAWAL';
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 export const investmentKeys = {
@@ -34,7 +37,10 @@ export function useCreateInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investments.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investmentKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }
 
@@ -42,7 +48,10 @@ export function useUpdateInvestment(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investments.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investmentKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }
 
@@ -50,6 +59,9 @@ export function useDeleteInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.investments.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investmentKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }

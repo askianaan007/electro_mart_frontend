@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Receipt,
   CreditCard,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,9 +37,14 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Snapshot of today&apos;s business</p>
+      <div className="flex items-start gap-3">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <LayoutDashboard className="size-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Snapshot of today&apos;s business</p>
+        </div>
       </div>
 
       {isLoading || !data ? (
@@ -66,13 +72,13 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard label="Today's Sales" value={formatCurrency(data.todaysSales)} icon={IndianRupee} />
           <StatCard label="Today's Orders" value={data.todaysOrders} icon={ShoppingCart} />
           <StatCard
@@ -92,13 +98,13 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Net Sales"
             value={formatCurrency(data.netSales)}
@@ -118,6 +124,13 @@ export default function AdminDashboardPage() {
             value={formatCurrency(data.netPurchase)}
             icon={Truck}
             change={data.netPurchaseChangePct}
+            changeLabel="vs Last Month"
+          />
+          <StatCard
+            label="Total Purchase Return"
+            value={formatCurrency(data.totalPurchaseReturn)}
+            icon={Undo2}
+            change={data.totalPurchaseReturnChangePct}
             changeLabel="vs Last Month"
           />
           <StatCard label="Net Cash Flow" value={formatCurrency(data.netCashFlow)} icon={Landmark} hint="Net" />
@@ -200,32 +213,55 @@ export default function AdminDashboardPage() {
             ) : data.recentOrders.length === 0 ? (
               <EmptyState icon={PackageSearch} title="No orders yet" description="Dealer orders will appear here" />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Dealer</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Dealer</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.recentOrders.map((order) => (
+                        <TableRow key={order.id} className="cursor-pointer">
+                          <TableCell className="whitespace-normal break-words">
+                            <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
+                              {order.orderNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="whitespace-normal break-words">{order.dealer.businessName}</TableCell>
+                          <TableCell className="whitespace-normal break-words text-right">
+                            {formatCurrency(order.totalAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <OrderStatusBadge status={order.status} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="space-y-3 p-4 sm:hidden">
                   {data.recentOrders.map((order) => (
-                    <TableRow key={order.id} className="cursor-pointer">
-                      <TableCell>
-                        <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
-                          {order.orderNumber}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{order.dealer.businessName}</TableCell>
-                      <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
-                      <TableCell>
+                    <Link
+                      key={order.id}
+                      href={`/admin/orders/${order.id}`}
+                      className="block rounded-lg border border-border p-4"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="break-words font-medium text-primary">{order.orderNumber}</span>
                         <OrderStatusBadge status={order.status} />
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <p className="mt-1 break-words text-sm text-muted-foreground">{order.dealer.businessName}</p>
+                      <p className="mt-2 break-words text-sm font-semibold">{formatCurrency(order.totalAmount)}</p>
+                    </Link>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreatePurchaseReturn } from '@/hooks/use-purchase-returns';
+import { useCreatePurchaseReturn, usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Purchase } from '@/lib/api/types';
 
@@ -40,6 +40,22 @@ export function PurchaseReturnFormDialog({
   purchase: Purchase | null;
 }) {
   const createPurchaseReturn = useCreatePurchaseReturn();
+  const { data: existingReturns } = usePurchaseReturnsForPurchase(purchase?.id);
+
+  const remainingByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of purchase?.items ?? []) {
+      map.set(item.productId, item.quantity);
+    }
+    for (const purchaseReturn of existingReturns ?? []) {
+      for (const item of purchaseReturn.items) {
+        map.set(item.productId, (map.get(item.productId) ?? 0) - item.quantity);
+      }
+    }
+    return map;
+  }, [purchase, existingReturns]);
+
+  const returnableItems = (purchase?.items ?? []).filter((item) => (remainingByProduct.get(item.productId) ?? 0) > 0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -51,20 +67,47 @@ export function PurchaseReturnFormDialog({
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+  const watchedItems = useWatch({ control: form.control, name: 'items' });
 
   useEffect(() => {
     if (open) {
       form.reset({
         reason: '',
         returnDate: new Date().toISOString().slice(0, 10),
-        items: [{ productId: purchase?.items[0]?.productId ?? '', quantity: '1' }],
+        items: [{ productId: '', quantity: '1' }],
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, purchase?.id]);
 
+  function remainingForRow(productId: string, rowIndex: number) {
+    if (!productId) return null;
+    const total = remainingByProduct.get(productId) ?? 0;
+    const usedByOtherRows = (watchedItems ?? []).reduce((sum, row, i) => {
+      if (i === rowIndex || row.productId !== productId) return sum;
+      return sum + (Number(row.quantity) || 0);
+    }, 0);
+    return total - usedByOtherRows;
+  }
+
   const onSubmit = form.handleSubmit((values) => {
     if (!purchase) return;
+
+    const usedByProduct = new Map<string, number>();
+    for (let i = 0; i < values.items.length; i++) {
+      const item = values.items[i];
+      const qty = Number(item.quantity);
+      const usedSoFar = usedByProduct.get(item.productId) ?? 0;
+      const remaining = (remainingByProduct.get(item.productId) ?? 0) - usedSoFar;
+      if (qty > remaining) {
+        form.setError(`items.${i}.quantity`, {
+          message: `Only ${Math.max(remaining, 0)} left to return`,
+        });
+        return;
+      }
+      usedByProduct.set(item.productId, usedSoFar + qty);
+    }
+
     createPurchaseReturn.mutate(
       {
         purchaseId: purchase.id,
@@ -90,57 +133,79 @@ export function PurchaseReturnFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-3">
-              {fields.map((rowField, index) => (
-                <div key={rowField.id} className="flex items-end gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.productId`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Product</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select product" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {purchase?.items.map((item) => (
-                              <SelectItem key={item.productId} value={item.productId}>
-                                {item.product?.name ?? item.productId}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.quantity`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantity</FormLabel>
-                        <FormControl>
-                          <Input type="number" min={1} className="w-24" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={fields.length === 1}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
+            {returnableItems.length === 0 ? (
+              <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Every item on this purchase has already been fully returned.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {fields.map((rowField, index) => {
+                  const selectedProductId = watchedItems?.[index]?.productId ?? '';
+                  const remaining = remainingForRow(selectedProductId, index);
+                  return (
+                    <div key={rowField.id} className="flex items-start gap-2">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productId`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Product</FormLabel>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {returnableItems.map((item) => (
+                                  <SelectItem key={item.productId} value={item.productId}>
+                                    {item.product?.name ?? item.productId}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantity</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={remaining ?? undefined}
+                                className="w-24"
+                                {...field}
+                              />
+                            </FormControl>
+                            {remaining !== null && (
+                              <p className="text-xs text-muted-foreground">{remaining} returnable</p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-6"
+                        disabled={fields.length === 1}
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {returnableItems.length > 0 && (
               <Button
                 type="button"
                 variant="outline"
@@ -150,7 +215,7 @@ export function PurchaseReturnFormDialog({
                 <Plus />
                 Add Item
               </Button>
-            </div>
+            )}
 
             <FormField
               control={form.control}
@@ -183,7 +248,11 @@ export function PurchaseReturnFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" loading={createPurchaseReturn.isPending}>
+              <Button
+                type="submit"
+                loading={createPurchaseReturn.isPending}
+                disabled={returnableItems.length === 0}
+              >
                 Record return
               </Button>
             </DialogFooter>

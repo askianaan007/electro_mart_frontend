@@ -159,6 +159,7 @@ export interface Purchase {
   admin?: { id: string; name: string; email: string };
   createdAt: string;
   items: PurchaseItem[];
+  purchaseReturns?: { totalAmount: string }[];
 }
 
 export interface PurchaseReturnItem {
@@ -342,6 +343,17 @@ export interface EquitySummary {
   };
 }
 
+export interface EquityHistoryEntry {
+  id: string;
+  type: 'INVESTMENT' | 'WITHDRAWAL' | 'EXPENSE';
+  date: string;
+  description: string;
+  investorId: string | null;
+  investorName: string | null;
+  amount: string;
+  createdAt: string;
+}
+
 export interface SalesReturnItem {
   id: string;
   salesReturnId: string;
@@ -410,6 +422,8 @@ export interface AdminDashboardSummary {
   netSalesChangePct: number;
   totalSalesReturn: number;
   totalSalesReturnChangePct: number;
+  totalPurchaseReturn: number;
+  totalPurchaseReturnChangePct: number;
   netPurchase: number;
   netPurchaseChangePct: number;
   netCashFlow: number;

@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { purchaseKeys } from './use-purchases';
+import { inventoryKeys } from './use-inventory';
+import { creditKeys } from './use-credits';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const purchaseReturnKeys = {
@@ -36,7 +39,10 @@ export function useCreatePurchaseReturn() {
     }) => api.purchaseReturns.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseReturnKeys.all });
+      queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });

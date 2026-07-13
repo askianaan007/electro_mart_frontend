@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { equityKeys } from './use-equity';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const investorKeys = {
@@ -36,7 +37,10 @@ export function useCreateInvestor() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investors.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investorKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investorKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }
 
@@ -44,7 +48,10 @@ export function useUpdateInvestor(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investors.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investorKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investorKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }
 
@@ -52,6 +59,9 @@ export function useDeleteInvestor() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.investors.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: investorKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: investorKeys.all });
+      queryClient.invalidateQueries({ queryKey: equityKeys.all });
+    },
   });
 }

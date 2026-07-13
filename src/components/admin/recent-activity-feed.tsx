@@ -31,8 +31,8 @@ export function RecentActivityFeed({ items }: { items: ActivityLog[] }) {
               <Icon className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm">{describe(log)}</p>
-              {log.details && <p className="truncate text-xs text-muted-foreground">{log.details}</p>}
+              <p className="break-words text-sm">{describe(log)}</p>
+              {log.details && <p className="break-words text-xs text-muted-foreground">{log.details}</p>}
               <p className="text-xs text-muted-foreground">{formatDateTime(log.createdAt)}</p>
             </div>
           </li>

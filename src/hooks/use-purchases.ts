@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import { productKeys } from './use-products';
 import { inventoryKeys } from './use-inventory';
+import { creditKeys } from './use-credits';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const purchaseKeys = {
@@ -53,6 +54,7 @@ export function useDeletePurchase() {
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['purchase-returns'] });
+      queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
