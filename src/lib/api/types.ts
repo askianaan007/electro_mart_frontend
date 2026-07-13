@@ -211,6 +211,7 @@ export interface CreditSummaryEntry {
 
 export interface CreditsSummary {
   entries: CreditSummaryEntry[];
+  meta: PaginationMeta;
   totals: {
     totalPurchases: string;
     totalReturns: string;

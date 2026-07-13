@@ -5,7 +5,7 @@ import { Zap } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { SidebarNav } from '@/components/shell/sidebar-nav';
 import { Topbar } from '@/components/shell/topbar';
-import { adminNavItems } from '@/components/admin/admin-nav-items';
+import { adminNavGroups } from '@/components/admin/admin-nav-items';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -22,7 +22,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <span className="font-semibold">Electro Mart</span>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <SidebarNav items={adminNavItems} />
+          <SidebarNav groups={adminNavGroups} />
         </div>
       </aside>
 
@@ -34,7 +34,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-semibold">Electro Mart</span>
           </div>
-          <SidebarNav items={adminNavItems} onNavigate={() => setMobileNavOpen(false)} />
+          <SidebarNav groups={adminNavGroups} onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
       </Sheet>
 

@@ -253,7 +253,8 @@ export const api = {
   },
 
   credits: {
-    summary: () => apiClient.get<CreditsSummary>('/credits').then((r) => r.data),
+    summary: (params: PaginationParams & { onlyOutstanding?: boolean }) =>
+      apiClient.get<CreditsSummary>('/credits', { params: buildParams(params) }).then((r) => r.data),
     detail: (supplierId: string) =>
       apiClient.get<SupplierCreditDetail>(`/credits/${supplierId}`).then((r) => r.data),
     createSettlement: (

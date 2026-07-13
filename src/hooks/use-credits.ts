@@ -1,17 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
-import type { ChequeStatus, PaymentMode } from '@/lib/api/types';
+import type { ChequeStatus, PaymentMode, PaginationParams } from '@/lib/api/types';
+
+export type CreditsSummaryParams = PaginationParams & { onlyOutstanding?: boolean };
 
 export const creditKeys = {
   all: ['credits'] as const,
-  summary: () => [...creditKeys.all, 'summary'] as const,
+  summary: (params: CreditsSummaryParams) => [...creditKeys.all, 'summary', params] as const,
   detail: (supplierId: string) => [...creditKeys.all, 'detail', supplierId] as const,
 };
 
-export function useCreditsSummary() {
+export function useCreditsSummary(params: CreditsSummaryParams) {
   return useQuery({
-    queryKey: creditKeys.summary(),
-    queryFn: () => api.credits.summary(),
+    queryKey: creditKeys.summary(params),
+    queryFn: () => api.credits.summary(params),
+    placeholderData: (prev) => prev,
   });
 }
 

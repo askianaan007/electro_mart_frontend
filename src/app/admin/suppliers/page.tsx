@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Factory, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { Factory, Loader2, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import { SupplierFormDialog } from '@/components/admin/supplier-form-dialog';
 import { useDeleteSupplier, useSuppliers } from '@/hooks/use-suppliers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
+import { cn } from '@/lib/utils';
 import type { Supplier } from '@/lib/api/types';
 
 export default function SuppliersPage() {
@@ -41,7 +42,7 @@ export default function SuppliersPage() {
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
 
   const deleteSupplier = useDeleteSupplier();
-  const { data, isLoading } = useSuppliers({ page, limit: 20, search: debouncedSearch || undefined });
+  const { data, isLoading, isFetching } = useSuppliers({ page, limit: 20, search: debouncedSearch || undefined });
 
   function openCreate() {
     setEditingSupplier(undefined);
@@ -67,20 +68,33 @@ export default function SuppliersPage() {
     });
   }
 
+  function clearFilters() {
+    setSearch('');
+    setPage(1);
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Suppliers</h1>
-          <p className="text-sm text-muted-foreground">Manage suppliers used for stock purchases</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Factory className="size-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold">Suppliers</h1>
+              {isFetching && !isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Manage suppliers used for stock purchases</p>
+          </div>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="shrink-0">
           <Plus />
           Add Supplier
         </Button>
       </div>
 
-      <div className="relative max-w-xs">
+      <div className="relative sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search suppliers..."
@@ -101,46 +115,91 @@ export default function SuppliersPage() {
             ))}
           </div>
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Factory} title="No suppliers found" description="Add a supplier to start recording purchases" />
+          search ? (
+            <EmptyState
+              icon={Search}
+              title="No matching suppliers"
+              description="Try a different search term"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear search
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={Factory} title="No suppliers found" description="Add a supplier to start recording purchases" />
+          )
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Contact</TableHead>
-                  <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                  <TableHead className="hidden md:table-cell">Email</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.data.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{supplier.contact ?? '—'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{supplier.phone ?? '—'}</TableCell>
-                    <TableCell className="hidden md:table-cell">{supplier.email ?? '—'}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(supplier)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeletingSupplier(supplier)}>
-                            <Trash2 />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.data.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                      <TableCell className="whitespace-normal break-words font-medium">{supplier.name}</TableCell>
+                      <TableCell className="whitespace-normal break-words">{supplier.contact ?? '—'}</TableCell>
+                      <TableCell className="whitespace-normal break-words">{supplier.phone ?? '—'}</TableCell>
+                      <TableCell className="whitespace-normal break-words">{supplier.email ?? '—'}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(supplier)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => setDeletingSupplier(supplier)}>
+                              <Trash2 />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              {data.data.map((supplier) => (
+                <div key={supplier.id} className="rounded-lg border border-border p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="break-words font-medium">{supplier.name}</p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="-mr-2 -mt-1 shrink-0">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(supplier)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onClick={() => setDeletingSupplier(supplier)}>
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mt-2 flex flex-col gap-0.5 text-xs text-muted-foreground">
+                    <span>{supplier.contact ?? '—'}</span>
+                    <span>{supplier.phone ?? '—'}</span>
+                    <span className="break-words">{supplier.email ?? '—'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>
         )}

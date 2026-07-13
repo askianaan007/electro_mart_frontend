@@ -23,20 +23,55 @@ export interface AdminNavItem {
   icon: LucideIcon;
 }
 
-export const adminNavItems: AdminNavItem[] = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-  { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
-  { label: 'Products', href: '/admin/products', icon: Package },
-  { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
-  { label: 'Dealers', href: '/admin/dealers', icon: Users },
-  { label: 'Purchases', href: '/admin/purchases', icon: Truck },
-  { label: 'Suppliers', href: '/admin/suppliers', icon: Factory },
-  { label: 'Credits', href: '/admin/credits', icon: HandCoins },
-  { label: 'Invoices', href: '/admin/invoices', icon: Receipt },
-  { label: 'Payments', href: '/admin/payments', icon: Wallet },
-  { label: 'Investments', href: '/admin/investments', icon: TrendingUp },
-  { label: 'Expenses', href: '/admin/expenses', icon: CreditCard },
-  { label: 'Equity', href: '/admin/equity', icon: PieChart },
-  { label: 'Activity Log', href: '/admin/activity-log', icon: ClipboardList },
+export interface AdminNavGroup {
+  label?: string;
+  items: AdminNavItem[];
+}
+
+export const adminNavGroups: AdminNavGroup[] = [
+  {
+    items: [{ label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Sales',
+    items: [
+      { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+      { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
+    ],
+  },
+  {
+    label: 'Products',
+    items: [
+      { label: 'Products', href: '/admin/products', icon: Package },
+      { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
+    ],
+  },
+  {
+    label: 'Purchasing',
+    items: [
+      { label: 'Purchases', href: '/admin/purchases', icon: Truck },
+      { label: 'Suppliers', href: '/admin/suppliers', icon: Factory },
+      { label: 'Credits', href: '/admin/credits', icon: HandCoins },
+    ],
+  },
+  {
+    label: 'Customers',
+    items: [
+      { label: 'Dealers', href: '/admin/dealers', icon: Users },
+      { label: 'Payments', href: '/admin/payments', icon: Wallet },
+      { label: 'Invoices', href: '/admin/invoices', icon: Receipt },
+    ],
+  },
+  {
+    label: 'Investments',
+    items: [
+      { label: 'Investments', href: '/admin/investments', icon: TrendingUp },
+      { label: 'Equity', href: '/admin/equity', icon: PieChart },
+      { label: 'Expenses', href: '/admin/expenses', icon: CreditCard },
+    ],
+  },
+  {
+    label: 'System',
+    items: [{ label: 'Activity Log', href: '/admin/activity-log', icon: ClipboardList }],
+  },
 ];

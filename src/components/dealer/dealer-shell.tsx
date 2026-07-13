@@ -20,7 +20,7 @@ export function DealerShell({ children }: { children: React.ReactNode }) {
           <span className="font-semibold">Electro Mart</span>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <SidebarNav items={dealerNavItems} />
+          <SidebarNav groups={[{ items: dealerNavItems }]} />
         </div>
       </aside>
 
