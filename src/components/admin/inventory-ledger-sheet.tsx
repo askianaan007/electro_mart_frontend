@@ -37,7 +37,7 @@ export function InventoryLedgerSheet({
         <SheetHeader>
           <SheetTitle>Stock ledger{productName ? ` — ${productName}` : ''}</SheetTitle>
         </SheetHeader>
-        <div className="mt-4 flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (

@@ -24,7 +24,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Dialo
 }
 
 const sheetVariants = cva(
-  'fixed z-50 gap-4 bg-card p-5 shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:duration-300 data-[state=open]:duration-500',
+  'fixed z-50 flex flex-col gap-4 overflow-hidden bg-card p-5 shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:duration-300 data-[state=open]:duration-500',
   {
     variants: {
       side: {

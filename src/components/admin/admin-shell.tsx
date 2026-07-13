@@ -27,14 +27,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" title="Navigation" className="w-72 p-0">
-          <div className="flex h-14 items-center gap-2 border-b border-border px-4">
+        <SheetContent side="left" title="Navigation" className="w-72 gap-0 p-0">
+          <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Zap className="size-4.5" />
             </div>
             <span className="font-semibold">Electro Mart</span>
           </div>
-          <SidebarNav groups={adminNavGroups} onNavigate={() => setMobileNavOpen(false)} />
+          <div className="flex-1 overflow-y-auto">
+            <SidebarNav groups={adminNavGroups} onNavigate={() => setMobileNavOpen(false)} />
+          </div>
         </SheetContent>
       </Sheet>
 
