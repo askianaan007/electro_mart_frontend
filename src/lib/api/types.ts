@@ -97,6 +97,15 @@ export interface Category {
   createdAt: string;
 }
 
+export interface ProductImage {
+  id: string;
+  productId: string;
+  url: string;
+  publicId: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export interface Product {
   id: string;
   productCode: string;
@@ -108,6 +117,7 @@ export interface Product {
   model: string | null;
   description: string | null;
   imageUrl: string | null;
+  images?: ProductImage[];
   costPrice?: string;
   wholesalePrice: string;
   currentStock: number;

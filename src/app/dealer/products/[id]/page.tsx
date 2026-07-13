@@ -11,12 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StockStatusBadge } from '@/components/status-badge';
 import { useProduct } from '@/hooks/use-products';
 import { useCartStore } from '@/stores/cart-store';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 export default function DealerProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
   const addItem = useCartStore((s) => s.addItem);
 
   const { data: product, isLoading } = useProduct(id);
@@ -24,6 +25,14 @@ export default function DealerProductDetailPage() {
   if (isLoading || !product) {
     return <Skeleton className="h-96 w-full" />;
   }
+
+  const galleryImages =
+    product.images && product.images.length > 0
+      ? product.images.map((image) => image.url)
+      : product.imageUrl
+        ? [product.imageUrl]
+        : [];
+  const mainImage = galleryImages[activeImage] ?? galleryImages[0];
 
   const outOfStock = product.currentStock <= 0;
   const status = outOfStock ? 'OUT_OF_STOCK' : 'IN_STOCK';
@@ -41,13 +50,32 @@ export default function DealerProductDetailPage() {
       </Button>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="flex aspect-square items-center justify-center overflow-hidden bg-muted">
-          {product.imageUrl ? (
-            <Image src={product.imageUrl} alt={product.name} width={480} height={480} className="size-full object-cover" />
-          ) : (
-            <Package className="size-16 text-muted-foreground" />
+        <div className="space-y-3">
+          <Card className="flex aspect-square items-center justify-center overflow-hidden bg-muted">
+            {mainImage ? (
+              <Image src={mainImage} alt={product.name} width={480} height={480} className="size-full object-cover" />
+            ) : (
+              <Package className="size-16 text-muted-foreground" />
+            )}
+          </Card>
+          {galleryImages.length > 1 && (
+            <div className="flex gap-2">
+              {galleryImages.map((url, index) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setActiveImage(index)}
+                  className={cn(
+                    'size-16 shrink-0 overflow-hidden rounded-md border-2 bg-muted',
+                    index === activeImage ? 'border-primary' : 'border-transparent',
+                  )}
+                >
+                  <Image src={url} alt="" width={64} height={64} className="size-full object-cover" />
+                </button>
+              ))}
+            </div>
           )}
-        </Card>
+        </div>
 
         <div className="space-y-4">
           <div>

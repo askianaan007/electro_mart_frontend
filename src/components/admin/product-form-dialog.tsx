@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
-import { useCreateProduct, useUpdateProduct } from '@/hooks/use-products';
+import { ProductImagesField } from '@/components/admin/product-images-field';
+import { useCreateProduct, useUpdateProduct, useUploadProductImages } from '@/hooks/use-products';
 import { useAllCategories } from '@/hooks/use-categories';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
@@ -30,7 +31,6 @@ const schema = z.object({
   category: z.string(),
   model: z.string(),
   description: z.string(),
-  imageUrl: z.string(),
   costPrice: numberField('Cost price'),
   wholesalePrice: numberField('Wholesale price'),
   currentStock: numberField('Current stock'),
@@ -50,7 +50,6 @@ function defaultValuesFor(product?: Product): FormValues {
     category: product?.category ?? '',
     model: product?.model ?? '',
     description: product?.description ?? '',
-    imageUrl: product?.imageUrl ?? '',
     costPrice: product?.costPrice ?? '',
     wholesalePrice: product?.wholesalePrice ?? '',
     currentStock: product ? String(product.currentStock) : '0',
@@ -71,9 +70,11 @@ export function ProductFormDialog({
   const isEdit = !!product;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct(product?.id ?? '');
+  const uploadImages = useUploadProductImages();
   const pending = createProduct.isPending || updateProduct.isPending;
   const { data: categories } = useAllCategories();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [stagedImageFiles, setStagedImageFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -81,7 +82,10 @@ export function ProductFormDialog({
   });
 
   useEffect(() => {
-    if (open) form.reset(defaultValuesFor(product));
+    if (open) {
+      form.reset(defaultValuesFor(product));
+      setStagedImageFiles([]);
+    }
   }, [open, product, form]);
 
   const onSubmit = form.handleSubmit((values) => {
@@ -94,7 +98,6 @@ export function ProductFormDialog({
       category: values.category || undefined,
       model: values.model || undefined,
       description: values.description || undefined,
-      imageUrl: values.imageUrl || undefined,
       costPrice: Number(values.costPrice),
       wholesalePrice: Number(values.wholesalePrice),
       warranty: values.warranty || undefined,
@@ -112,8 +115,14 @@ export function ProductFormDialog({
     } else {
       payload.currentStock = Number(values.currentStock);
       createProduct.mutate(payload, {
-        onSuccess: () => {
+        onSuccess: (created) => {
           toast.success('Product created');
+          if (stagedImageFiles.length > 0) {
+            uploadImages.mutate(
+              { id: created.id, files: stagedImageFiles },
+              { onError: (error) => toast.error(getErrorMessage(error)) },
+            );
+          }
           onOpenChange(false);
         },
         onError: (error) => toast.error(getErrorMessage(error)),
@@ -273,18 +282,11 @@ export function ProductFormDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <ProductImagesField
+              productId={product?.id}
+              images={product?.images ?? []}
+              stagedFiles={stagedImageFiles}
+              onStagedFilesChange={setStagedImageFiles}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

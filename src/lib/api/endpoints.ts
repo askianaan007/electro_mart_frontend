@@ -26,6 +26,7 @@ import type {
   PaymentMode,
   PaymentStatus,
   Product,
+  ProductImage,
   Purchase,
   PurchaseReturn,
   Role,
@@ -94,6 +95,15 @@ export const api = {
     setStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') =>
       apiClient.patch<Product>(`/products/${id}/status`, { status }).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/products/${id}`).then((r) => r.data),
+    uploadImages: (id: string, files: File[]) => {
+      const form = new FormData();
+      files.forEach((file) => form.append('images', file));
+      return apiClient
+        .post<ProductImage[]>(`/products/${id}/images`, form, { headers: { 'Content-Type': undefined } })
+        .then((r) => r.data);
+    },
+    removeImage: (id: string, imageId: string) =>
+      apiClient.delete<{ message: string }>(`/products/${id}/images/${imageId}`).then((r) => r.data),
   },
 
   categories: {
