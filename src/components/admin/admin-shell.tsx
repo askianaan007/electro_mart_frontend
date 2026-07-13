@@ -14,7 +14,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-svh">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card print:hidden lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Zap className="size-4.5" />
@@ -40,13 +40,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar
-          onMenuClick={() => setMobileNavOpen(true)}
-          showLogo
-          notificationCount={data?.pendingApprovals}
-        />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col print:min-w-full">
+        <div className="print:hidden">
+          <Topbar
+            onMenuClick={() => setMobileNavOpen(true)}
+            showLogo
+            notificationCount={data?.pendingApprovals}
+          />
+        </div>
+        <main className="flex-1 p-4 sm:p-6 print:p-0">{children}</main>
       </div>
     </div>
   );
