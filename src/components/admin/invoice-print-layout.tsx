@@ -1,10 +1,6 @@
 import { formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/lib/api/types';
 
-// invoice-header.png / invoice-footer.png are cropped from the company's
-// A4 letterhead template (invoice_template.png) — their heights as a
-// fraction of the full 297mm page, so the banded art lines up exactly the
-// same way it does in the source template regardless of print/screen scale.
 const PAGE_HEIGHT_MM = 297;
 const HEADER_HEIGHT_MM = (291 / 3250) * PAGE_HEIGHT_MM;
 const FOOTER_HEIGHT_MM = (126 / 3250) * PAGE_HEIGHT_MM;

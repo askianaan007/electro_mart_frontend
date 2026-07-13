@@ -227,13 +227,13 @@ export default function AdminDashboardPage() {
                     <TableBody>
                       {data.recentOrders.map((order) => (
                         <TableRow key={order.id} className="cursor-pointer">
-                          <TableCell className="whitespace-normal break-words">
+                          <TableCell className="whitespace-normal wrap-break-word">
                             <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
                               {order.orderNumber}
                             </Link>
                           </TableCell>
-                          <TableCell className="whitespace-normal break-words">{order.dealer.businessName}</TableCell>
-                          <TableCell className="whitespace-normal break-words text-right">
+                          <TableCell className="whitespace-normal wrap-break-word">{order.dealer.businessName}</TableCell>
+                          <TableCell className="whitespace-normal wrap-break-word text-right">
                             {formatCurrency(order.totalAmount)}
                           </TableCell>
                           <TableCell>
@@ -253,11 +253,11 @@ export default function AdminDashboardPage() {
                       className="block rounded-lg border border-border p-4"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="break-words font-medium text-primary">{order.orderNumber}</span>
+                        <span className="wrap-break-word font-medium text-primary">{order.orderNumber}</span>
                         <OrderStatusBadge status={order.status} />
                       </div>
-                      <p className="mt-1 break-words text-sm text-muted-foreground">{order.dealer.businessName}</p>
-                      <p className="mt-2 break-words text-sm font-semibold">{formatCurrency(order.totalAmount)}</p>
+                      <p className="mt-1 wrap-break-word text-sm text-muted-foreground">{order.dealer.businessName}</p>
+                      <p className="mt-2 wrap-break-word text-sm font-semibold">{formatCurrency(order.totalAmount)}</p>
                     </Link>
                   ))}
                 </div>
