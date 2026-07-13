@@ -11,7 +11,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
+            staleTime: 0,
+            refetchOnMount: 'always',
             retry: (failureCount, error) => {
               if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
                 return false;

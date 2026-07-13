@@ -177,8 +177,10 @@ export const api = {
   },
 
   activityLog: {
-    list: (params: PaginationParams) =>
+    list: (params: PaginationParams & { action?: string; adminId?: string; dateFrom?: string; dateTo?: string }) =>
       apiClient.get<Paginated<ActivityLog>>('/activity-logs', { params: buildParams(params) }).then((r) => r.data),
+    admins: () =>
+      apiClient.get<{ id: string; name: string }[]>('/activity-logs/admins').then((r) => r.data),
   },
 
   dashboard: {
@@ -207,7 +209,7 @@ export const api = {
   },
 
   expenses: {
-    list: (params: PaginationParams) =>
+    list: (params: PaginationParams & { dateFrom?: string; dateTo?: string }) =>
       apiClient.get<Paginated<Expense>>('/expenses', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Expense>(`/expenses/${id}`).then((r) => r.data),
     create: (data: Record<string, unknown>) => apiClient.post<Expense>('/expenses', data).then((r) => r.data),

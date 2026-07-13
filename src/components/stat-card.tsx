@@ -40,15 +40,15 @@ export function StatCard({
           <Icon className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="truncate text-xl font-semibold">{value}</p>
+          <p className="break-words text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="break-words text-xl font-semibold leading-tight">{value}</p>
           {typeof change === 'number' && (
-            <p className={cn('truncate text-xs font-medium', change >= 0 ? 'text-success' : 'text-destructive')}>
+            <p className={cn('break-words text-xs font-medium', change >= 0 ? 'text-success' : 'text-destructive')}>
               {change >= 0 ? '+' : ''}
               {change.toFixed(0)}%{changeLabel ? ` ${changeLabel}` : ''}
             </p>
           )}
-          {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
+          {hint && <p className="break-words text-xs text-muted-foreground">{hint}</p>}
           {href && (
             <Link href={href} className="mt-0.5 inline-block text-xs font-medium text-primary hover:underline">
               View All
