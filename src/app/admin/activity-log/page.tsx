@@ -21,6 +21,9 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
   {
     module: 'Orders',
     actions: [
+      { value: 'ADMIN_CREATED_ORDER', label: 'Created order for dealer' },
+      { value: 'UPDATED_ORDER_ITEMS', label: 'Updated order items' },
+      { value: 'DELETED_ORDER', label: 'Deleted order' },
       { value: 'APPROVED_ORDER', label: 'Approved order' },
       { value: 'REJECTED_ORDER', label: 'Rejected order' },
       { value: 'ORDER_PACKED', label: 'Marked order packed' },
@@ -43,6 +46,7 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
     actions: [
       { value: 'RECORDED_SUPPLIER_SETTLEMENT', label: 'Recorded supplier settlement' },
       { value: 'UPDATED_CHEQUE_STATUS', label: 'Updated cheque status' },
+      { value: 'DELETED_SUPPLIER_SETTLEMENT', label: 'Deleted supplier settlement' },
     ],
   },
   {

@@ -195,6 +195,7 @@ export interface SupplierPayment {
   reference: string | null;
   paymentDate: string;
   chequeStatus: ChequeStatus | null;
+  chequeStatusUpdatedAt: string | null;
   chequeDepositDate: string | null;
   remarks: string | null;
   createdAt: string;
@@ -226,9 +227,6 @@ export interface SupplierCreditDetail {
   totalReturns: string;
   totalSettled: string;
   creditBalance: string;
-  purchases: Purchase[];
-  purchaseReturns: PurchaseReturn[];
-  payments: SupplierPayment[];
 }
 
 export interface OrderItem {

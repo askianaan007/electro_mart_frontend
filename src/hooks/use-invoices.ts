@@ -2,7 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import type { PaginationParams, PaymentStatus } from '@/lib/api/types';
 
-type InvoiceParams = PaginationParams & { paymentStatus?: PaymentStatus; dealerId?: string };
+type InvoiceParams = PaginationParams & {
+  paymentStatus?: PaymentStatus;
+  dealerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
 
 export const invoiceKeys = {
   all: ['invoices'] as const,

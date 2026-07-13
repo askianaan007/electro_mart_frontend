@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LineChart, PiggyBank, Receipt, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
+import { LineChart, PiggyBank, Receipt, Search, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,8 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
-import { useDealers } from '@/hooks/use-dealers';
+import { FilterBar } from '@/components/filter-bar';
+import { SectionHeader } from '@/components/section-header';
+import { useAllDealers } from '@/hooks/use-dealers';
 import { useSalesAnalysis, useSalesAnalysisSummary } from '@/hooks/use-sales-analysis';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 function startOfMonthISO(date: Date) {
@@ -27,18 +31,34 @@ export default function SalesAnalysisPage() {
   const [dateFrom, setDateFrom] = useState(startOfMonthISO(now));
   const [dateTo, setDateTo] = useState(startOfNextMonthISO(now));
   const [dealerId, setDealerId] = useState('all');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebouncedValue(search);
 
-  const { data: dealers } = useDealers({ page: 1, limit: 100 });
+  const { data: dealers } = useAllDealers();
 
   const filters = {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     dealerId: dealerId === 'all' ? undefined : dealerId,
+    search: debouncedSearch || undefined,
   };
+  const filtersActive = !!dateFrom || !!dateTo || dealerId !== 'all' || !!search;
 
-  const { data: summary, isLoading: summaryLoading } = useSalesAnalysisSummary(filters);
-  const { data: rows, isLoading: rowsLoading } = useSalesAnalysis({ ...filters, page, limit: 20 });
+  function clearFilters() {
+    setDateFrom('');
+    setDateTo('');
+    setDealerId('all');
+    setSearch('');
+    setPage(1);
+  }
+
+  const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } = useSalesAnalysisSummary(filters);
+  const {
+    data: rows,
+    isLoading: rowsLoading,
+    isFetching: rowsFetching,
+  } = useSalesAnalysis({ ...filters, page, limit: 20 });
 
   return (
     <div className="space-y-6">
@@ -50,69 +70,89 @@ export default function SalesAnalysisPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="sm:w-44"
-        />
-        <span className="text-sm text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="sm:w-44"
-        />
-        <Select
-          value={dealerId}
-          onValueChange={(v) => {
-            setDealerId(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="sm:w-56">
-            <SelectValue placeholder="All dealers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All dealers</SelectItem>
-            {dealers?.data.map((dealer) => (
-              <SelectItem key={dealer.id} value={dealer.id}>
-                {dealer.businessName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {summaryLoading || !summary ? (
+      {summaryLoading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <StatCard label="Total Sales" value={formatCurrency(summary.totalSales)} icon={ShoppingBag} />
-          <StatCard label="Total Buying Price" value={formatCurrency(summary.totalBuying)} icon={TrendingDown} />
-          <StatCard label="Gross Profit" value={formatCurrency(summary.totalProfit)} icon={TrendingUp} tone="success" />
-          <StatCard label="Total Expenses" value={formatCurrency(summary.totalExpenses)} icon={Receipt} />
-          <StatCard
-            label="Net Profit"
-            value={formatCurrency(summary.netProfit)}
-            icon={PiggyBank}
-            tone={Number(summary.netProfit) >= 0 ? 'success' : 'destructive'}
-          />
-        </div>
+        summary && (
+          <div className={cn('grid grid-cols-2 gap-4 lg:grid-cols-5', summaryFetching && 'opacity-60 transition-opacity')}>
+            <StatCard label="Total Sales" value={formatCurrency(summary.totalSales)} icon={ShoppingBag} />
+            <StatCard label="Total Buying Price" value={formatCurrency(summary.totalBuying)} icon={TrendingDown} />
+            <StatCard label="Gross Profit" value={formatCurrency(summary.totalProfit)} icon={TrendingUp} tone="success" />
+            <StatCard label="Total Expenses" value={formatCurrency(summary.totalExpenses)} icon={Receipt} />
+            <StatCard
+              label="Net Profit"
+              value={formatCurrency(summary.netProfit)}
+              icon={PiggyBank}
+              tone={Number(summary.netProfit) >= 0 ? 'success' : 'destructive'}
+            />
+          </div>
+        )
       )}
 
       <div className="rounded-xl border border-border bg-card">
+        <SectionHeader title="Orders" isFetching={rowsFetching && !rowsLoading} />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-[12rem]">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search order # or dealer..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={dealerId}
+            onValueChange={(v) => {
+              setDealerId(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="All dealers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All dealers</SelectItem>
+              {dealers?.data.map((dealer) => (
+                <SelectItem key={dealer.id} value={dealer.id}>
+                  {dealer.businessName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto"
+          />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto"
+          />
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
+
         {rowsLoading ? (
           <div className="space-y-2 p-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -120,46 +160,61 @@ export default function SalesAnalysisPage() {
             ))}
           </div>
         ) : !rows || rows.data.length === 0 ? (
-          <EmptyState icon={LineChart} title="No delivered orders in this range" description="Completed orders will appear here" />
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching orders"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={LineChart} title="No delivered orders in this range" description="Completed orders will appear here" />
+          )
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order #</TableHead>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Dealer</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Selling Price</TableHead>
-                  <TableHead className="text-right">Buying Price</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.data.map((row) => (
-                  <TableRow key={row.orderId}>
-                    <TableCell>
-                      <Link href={`/admin/orders/${row.orderId}`} className="font-medium text-primary">
-                        {row.orderNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{row.invoiceNumber ?? '—'}</TableCell>
-                    <TableCell>{row.dealerName}</TableCell>
-                    <TableCell>{row.date ? formatDate(row.date) : '—'}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.sellingPrice)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.buyingPrice)}</TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-right font-medium',
-                        Number(row.profit) >= 0 ? 'text-success' : 'text-destructive',
-                      )}
-                    >
-                      {formatCurrency(row.profit)}
-                    </TableCell>
+            <div className={cn(rowsFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order #</TableHead>
+                    <TableHead>Invoice #</TableHead>
+                    <TableHead>Dealer</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Selling Price</TableHead>
+                    <TableHead className="text-right">Buying Price</TableHead>
+                    <TableHead className="text-right">Profit</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {rows.data.map((row) => (
+                    <TableRow key={row.orderId}>
+                      <TableCell>
+                        <Link href={`/admin/orders/${row.orderId}`} className="font-medium text-primary">
+                          {row.orderNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{row.invoiceNumber ?? '—'}</TableCell>
+                      <TableCell>{row.dealerName}</TableCell>
+                      <TableCell>{row.date ? formatDate(row.date) : '—'}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.sellingPrice)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.buyingPrice)}</TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-medium',
+                          Number(row.profit) >= 0 ? 'text-success' : 'text-destructive',
+                        )}
+                      >
+                        {formatCurrency(row.profit)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             <PaginationBar meta={rows.meta} onPageChange={setPage} />
           </>
         )}

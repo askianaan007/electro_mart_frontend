@@ -7,7 +7,12 @@ import { invoiceKeys } from './use-invoices';
 import { dashboardKeys } from './use-dashboard';
 import type { OrderStatus, PaginationParams } from '@/lib/api/types';
 
-type OrderParams = PaginationParams & { status?: OrderStatus; dealerId?: string };
+type OrderParams = PaginationParams & {
+  status?: OrderStatus;
+  dealerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
 
 export const orderKeys = {
   all: ['orders'] as const,
@@ -45,7 +50,8 @@ function invalidateOrderRelated(queryClient: ReturnType<typeof useQueryClient>, 
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { items: { productId: string; quantity: number }[] }) => api.orders.create(data),
+    mutationFn: (data: { dealerId?: string; items: { productId: string; quantity: number }[] }) =>
+      api.orders.create(data),
     onSuccess: () => invalidateOrderRelated(queryClient),
   });
 }
@@ -76,5 +82,22 @@ export function useUpdateOrderStatus() {
     mutationFn: (vars: { id: string; status: 'PACKED' | 'DELIVERED' | 'COMPLETED' }) =>
       api.orders.updateStatus(vars.id, vars.status),
     onSuccess: (_data, vars) => invalidateOrderRelated(queryClient, vars.id),
+  });
+}
+
+export function useUpdateOrderItems() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; items: { productId: string; quantity: number }[] }) =>
+      api.orders.updateItems(vars.id, vars.items),
+    onSuccess: (_data, vars) => invalidateOrderRelated(queryClient, vars.id),
+  });
+}
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.orders.remove(id),
+    onSuccess: (_data, id) => invalidateOrderRelated(queryClient, id),
   });
 }

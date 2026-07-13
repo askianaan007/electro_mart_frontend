@@ -3,17 +3,38 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, CheckCircle2, PackageCheck, Receipt, Truck, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Pencil,
+  PackageCheck,
+  Receipt,
+  Trash2,
+  Truck,
+  XCircle,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { OrderStatusBadge } from '@/components/status-badge';
 import { OrderTimeline } from '@/components/order-timeline';
 import { RejectOrderDialog } from '@/components/admin/reject-order-dialog';
 import { ApproveOrderDialog } from '@/components/admin/approve-order-dialog';
-import { useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
+import { EditOrderItemsDialog } from '@/components/admin/edit-order-items-dialog';
+import { useDeleteOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 
@@ -34,9 +55,12 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: order, isLoading } = useOrder(id);
   const updateStatus = useUpdateOrderStatus();
+  const deleteOrder = useDeleteOrder();
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;
@@ -56,6 +80,20 @@ export default function OrderDetailPage() {
         onError: (error) => toast.error(getErrorMessage(error)),
       },
     );
+  }
+
+  function confirmDelete() {
+    const hadInvoice = !!order!.invoice;
+    deleteOrder.mutate(id, {
+      onSuccess: () => {
+        toast.success(hadInvoice ? 'Order deleted — stock and invoice reversed' : 'Order deleted');
+        router.push('/admin/orders');
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setDeleteOpen(false);
+      },
+    });
   }
 
   return (
@@ -82,6 +120,10 @@ export default function OrderDetailPage() {
         <div className="flex flex-wrap gap-2">
           {order.status === 'PENDING_APPROVAL' && (
             <>
+              <Button variant="outline" onClick={() => setEditItemsOpen(true)}>
+                <Pencil />
+                Edit Items
+              </Button>
               <Button variant="outline" onClick={() => setRejectOpen(true)}>
                 <XCircle />
                 Reject
@@ -106,6 +148,12 @@ export default function OrderDetailPage() {
                 <Receipt />
                 View Invoice
               </Link>
+            </Button>
+          )}
+          {order.status !== 'COMPLETED' && (
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 />
+              Delete
             </Button>
           )}
         </div>
@@ -205,6 +253,30 @@ export default function OrderDetailPage() {
         orderId={id}
         subtotal={order.subtotal}
       />
+      <EditOrderItemsDialog open={editItemsOpen} onOpenChange={setEditItemsOpen} order={order} />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {order.invoice
+                ? 'This reverses the stock it reserved and deletes its invoice. Blocked if any payment has already been recorded against it.'
+                : 'This order has no invoice yet, so nothing else needs to be reversed.'}{' '}
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

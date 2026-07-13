@@ -17,6 +17,13 @@ export function useDealers(params: PaginationParams & { status?: string }) {
   });
 }
 
+export function useAllDealers() {
+  return useQuery({
+    queryKey: dealerKeys.list({ limit: 100 }),
+    queryFn: () => api.dealers.list({ limit: 100 }),
+  });
+}
+
 export function useDealer(id: string | undefined) {
   return useQuery({
     queryKey: dealerKeys.detail(id ?? ''),

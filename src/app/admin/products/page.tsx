@@ -30,9 +30,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { SectionHeader } from '@/components/section-header';
 import { useDeleteProduct, useProducts, useSetProductStatus } from '@/hooks/use-products';
+import { useAllCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
 
@@ -74,6 +77,7 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [category, setCategory] = useState('all');
   const [outOfStockOnly, setOutOfStockOnly] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
 
@@ -83,14 +87,26 @@ export default function ProductsPage() {
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const deleteProduct = useDeleteProduct();
+  const { data: categories } = useAllCategories();
 
-  const { data, isLoading } = useProducts({
+  const { data, isLoading, isFetching } = useProducts({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
     status: status === 'all' ? undefined : status,
+    category: category === 'all' ? undefined : category,
     outOfStockOnly: outOfStockOnly || undefined,
   });
+
+  const filtersActive = !!search || status !== 'all' || category !== 'all' || outOfStockOnly;
+
+  function clearFilters() {
+    setSearch('');
+    setStatus('all');
+    setCategory('all');
+    setOutOfStockOnly(false);
+    setPage(1);
+  }
 
   function openEdit(product: Product) {
     setEditingProduct(product);
@@ -126,48 +142,73 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search name, code, SKU, brand..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+      <div className="rounded-xl border border-border bg-card">
+        <SectionHeader title="All products" isFetching={isFetching && !isLoading} />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search name, code, SKU, brand..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v);
               setPage(1);
             }}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="sm:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant={outOfStockOnly ? 'default' : 'outline'}
-          onClick={() => {
-            setOutOfStockOnly((v) => !v);
-            setPage(1);
-          }}
-        >
-          <AlertTriangle />
-          Out of stock only
-        </Button>
-      </div>
+          >
+            <SelectTrigger className="sm:w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={category}
+            onValueChange={(v) => {
+              setCategory(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="sm:w-40">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories?.data.map((c) => (
+                <SelectItem key={c.id} value={c.name}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant={outOfStockOnly ? 'default' : 'outline'}
+            onClick={() => {
+              setOutOfStockOnly((v) => !v);
+              setPage(1);
+            }}
+          >
+            <AlertTriangle />
+            Out of stock only
+          </Button>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
 
-      <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
           <div className="space-y-2 p-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -175,58 +216,73 @@ export default function ProductsPage() {
             ))}
           </div>
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Package} title="No products found" description="Products are added when you record a purchase from a supplier" />
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching products"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={Package} title="No products found" description="Products are added when you record a purchase from a supplier" />
+          )
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead>Wholesale Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.data.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <button
-                        onClick={() => openEdit(product)}
-                        className="flex items-center gap-3 text-left"
-                      >
-                        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                          {product.imageUrl ? (
-                            <Image src={product.imageUrl} alt={product.name} width={36} height={36} className="object-cover" />
-                          ) : (
-                            <Package className="size-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-primary">{product.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{product.productCode}</p>
-                        </div>
-                      </button>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{product.category ?? '—'}</TableCell>
-                    <TableCell>{formatCurrency(product.wholesalePrice)}</TableCell>
-                    <TableCell>
-                      <span className={product.isOutOfStock ? 'font-medium text-destructive' : ''}>
-                        {product.currentStock}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <AccountStatusBadge status={product.status} />
-                    </TableCell>
-                    <TableCell>
-                      <ProductRowActions product={product} onDeleteRequest={() => setDeletingProduct(product)} />
-                    </TableCell>
+            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead>Wholesale Price</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.data.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <button
+                          onClick={() => openEdit(product)}
+                          className="flex items-center gap-3 text-left"
+                        >
+                          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                            {product.imageUrl ? (
+                              <Image src={product.imageUrl} alt={product.name} width={36} height={36} className="object-cover" />
+                            ) : (
+                              <Package className="size-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-primary">{product.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">{product.productCode}</p>
+                          </div>
+                        </button>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{product.category ?? '—'}</TableCell>
+                      <TableCell>{formatCurrency(product.wholesalePrice)}</TableCell>
+                      <TableCell>
+                        <span className={product.isOutOfStock ? 'font-medium text-destructive' : ''}>
+                          {product.currentStock}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <AccountStatusBadge status={product.status} />
+                      </TableCell>
+                      <TableCell>
+                        <ProductRowActions product={product} onDeleteRequest={() => setDeletingProduct(product)} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>
         )}

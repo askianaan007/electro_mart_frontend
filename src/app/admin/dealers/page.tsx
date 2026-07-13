@@ -27,9 +27,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
+import { FilterBar } from '@/components/filter-bar';
+import { SectionHeader } from '@/components/section-header';
 import { useDealers, useSetDealerStatus } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Dealer } from '@/lib/api/types';
 
@@ -73,12 +75,20 @@ export default function DealersPage() {
   const [editingDealer, setEditingDealer] = useState<Dealer | undefined>(undefined);
   const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
 
-  const { data, isLoading } = useDealers({
+  const { data, isLoading, isFetching } = useDealers({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
     status: status === 'all' ? undefined : status,
   });
+
+  const filtersActive = !!search || status !== 'all';
+
+  function clearFilters() {
+    setSearch('');
+    setStatus('all');
+    setPage(1);
+  }
 
   function openCreate() {
     setEditingDealer(undefined);
@@ -103,38 +113,44 @@ export default function DealersPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, phone, username..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+      <div className="rounded-xl border border-border bg-card">
+        <SectionHeader title="All dealers" isFetching={isFetching && !isLoading} />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, phone, username..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v);
               setPage(1);
             }}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="sm:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          >
+            <SelectTrigger className="sm:w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
 
-      <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
           <div className="space-y-2 p-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -142,49 +158,64 @@ export default function DealersPage() {
             ))}
           </div>
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Users} title="No dealers found" description="Add your first dealer to get started" />
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching dealers"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={Users} title="No dealers found" description="Add your first dealer to get started" />
+          )
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Business</TableHead>
-                  <TableHead className="hidden lg:table-cell">Owner</TableHead>
-                  <TableHead className="hidden lg:table-cell">Phone</TableHead>
-                  <TableHead>Credit Limit</TableHead>
-                  <TableHead>Outstanding</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.data.map((dealer) => (
-                  <TableRow key={dealer.id}>
-                    <TableCell>
-                      <Link href={`/admin/dealers/${dealer.id}`} className="font-medium text-primary">
-                        {dealer.businessName}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">@{dealer.username}</p>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{dealer.ownerName}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{dealer.phone}</TableCell>
-                    <TableCell>{dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}</TableCell>
-                    <TableCell>{formatCurrency(dealer.outstandingBalance)}</TableCell>
-                    <TableCell>
-                      <AccountStatusBadge status={dealer.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(dealer)}>
-                          Edit
-                        </Button>
-                        <DealerRowActions dealer={dealer} />
-                      </div>
-                    </TableCell>
+            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Business</TableHead>
+                    <TableHead className="hidden lg:table-cell">Owner</TableHead>
+                    <TableHead className="hidden lg:table-cell">Phone</TableHead>
+                    <TableHead>Credit Limit</TableHead>
+                    <TableHead>Outstanding</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.data.map((dealer) => (
+                    <TableRow key={dealer.id}>
+                      <TableCell>
+                        <Link href={`/admin/dealers/${dealer.id}`} className="font-medium text-primary">
+                          {dealer.businessName}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">@{dealer.username}</p>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{dealer.ownerName}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{dealer.phone}</TableCell>
+                      <TableCell>{dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}</TableCell>
+                      <TableCell>{formatCurrency(dealer.outstandingBalance)}</TableCell>
+                      <TableCell>
+                        <AccountStatusBadge status={dealer.status} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(dealer)}>
+                            Edit
+                          </Button>
+                          <DealerRowActions dealer={dealer} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>
         )}

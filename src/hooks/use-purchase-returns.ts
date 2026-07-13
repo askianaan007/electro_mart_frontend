@@ -5,14 +5,16 @@ import { inventoryKeys } from './use-inventory';
 import { creditKeys } from './use-credits';
 import type { PaginationParams } from '@/lib/api/types';
 
+export type PurchaseReturnParams = PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string };
+
 export const purchaseReturnKeys = {
   all: ['purchase-returns'] as const,
   lists: () => [...purchaseReturnKeys.all, 'list'] as const,
-  list: (params: PaginationParams) => [...purchaseReturnKeys.lists(), params] as const,
+  list: (params: PurchaseReturnParams) => [...purchaseReturnKeys.lists(), params] as const,
   byPurchase: (purchaseId: string) => [...purchaseReturnKeys.all, 'by-purchase', purchaseId] as const,
 };
 
-export function usePurchaseReturns(params: PaginationParams) {
+export function usePurchaseReturns(params: PurchaseReturnParams) {
   return useQuery({
     queryKey: purchaseReturnKeys.list(params),
     queryFn: () => api.purchaseReturns.list(params),

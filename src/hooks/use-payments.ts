@@ -5,7 +5,12 @@ import { dealerKeys } from './use-dealers';
 import { dashboardKeys } from './use-dashboard';
 import type { PaginationParams, PaymentMode } from '@/lib/api/types';
 
-type PaymentParams = PaginationParams & { mode?: PaymentMode; dealerId?: string };
+type PaymentParams = PaginationParams & {
+  mode?: PaymentMode;
+  dealerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
 
 export const paymentKeys = {
   all: ['payments'] as const,

@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import { productKeys } from './use-products';
-import type { PaginationParams } from '@/lib/api/types';
+import type { InventoryLogType, PaginationParams } from '@/lib/api/types';
+
+type InventoryParams = PaginationParams & { status?: 'IN_STOCK' | 'OUT_OF_STOCK' };
+type LedgerParams = PaginationParams & { dateFrom?: string; dateTo?: string; type?: InventoryLogType };
 
 export const inventoryKeys = {
   all: ['inventory'] as const,
-  list: (params: PaginationParams) => [...inventoryKeys.all, 'list', params] as const,
-  ledger: (productId: string, params: PaginationParams) =>
+  list: (params: InventoryParams) => [...inventoryKeys.all, 'list', params] as const,
+  ledger: (productId: string, params: LedgerParams) =>
     [...inventoryKeys.all, 'ledger', productId, params] as const,
 };
 
-export function useInventory(params: PaginationParams) {
+export function useInventory(params: InventoryParams) {
   return useQuery({
     queryKey: inventoryKeys.list(params),
     queryFn: () => api.inventory.list(params),
@@ -18,11 +21,12 @@ export function useInventory(params: PaginationParams) {
   });
 }
 
-export function useInventoryLedger(productId: string | undefined, params: PaginationParams) {
+export function useInventoryLedger(productId: string | undefined, params: LedgerParams) {
   return useQuery({
     queryKey: inventoryKeys.ledger(productId ?? '', params),
     queryFn: () => api.inventory.ledger(productId as string, params),
     enabled: !!productId,
+    placeholderData: (prev) => prev,
   });
 }
 

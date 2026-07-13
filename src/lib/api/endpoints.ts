@@ -14,6 +14,7 @@ import type {
   Expense,
   Invoice,
   InventoryLog,
+  InventoryLogType,
   InventoryStockRow,
   Investment,
   Investor,
@@ -105,9 +106,12 @@ export const api = {
   },
 
   inventory: {
-    list: (params: PaginationParams) =>
+    list: (params: PaginationParams & { status?: 'IN_STOCK' | 'OUT_OF_STOCK' }) =>
       apiClient.get<Paginated<InventoryStockRow>>('/inventory', { params: buildParams(params) }).then((r) => r.data),
-    ledger: (productId: string, params: PaginationParams) =>
+    ledger: (
+      productId: string,
+      params: PaginationParams & { dateFrom?: string; dateTo?: string; type?: InventoryLogType },
+    ) =>
       apiClient
         .get<Paginated<InventoryLog>>(`/inventory/${productId}/ledger`, { params: buildParams(params) })
         .then((r) => r.data),
@@ -116,7 +120,7 @@ export const api = {
   },
 
   purchases: {
-    list: (params: PaginationParams) =>
+    list: (params: PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string }) =>
       apiClient.get<Paginated<Purchase>>('/purchases', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Purchase>(`/purchases/${id}`).then((r) => r.data),
     create: (data: {
@@ -129,7 +133,7 @@ export const api = {
   },
 
   purchaseReturns: {
-    list: (params: PaginationParams) =>
+    list: (params: PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string }) =>
       apiClient
         .get<Paginated<PurchaseReturn>>('/purchase-returns', { params: buildParams(params) })
         .then((r) => r.data),
@@ -145,10 +149,16 @@ export const api = {
   },
 
   orders: {
-    list: (params: PaginationParams & { status?: OrderStatus; dealerId?: string }) =>
-      apiClient.get<Paginated<Order>>('/orders', { params: buildParams(params) }).then((r) => r.data),
+    list: (
+      params: PaginationParams & {
+        status?: OrderStatus;
+        dealerId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) => apiClient.get<Paginated<Order>>('/orders', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Order>(`/orders/${id}`).then((r) => r.data),
-    create: (data: { items: { productId: string; quantity: number }[] }) =>
+    create: (data: { dealerId?: string; items: { productId: string; quantity: number }[] }) =>
       apiClient.post<Order>('/orders', data).then((r) => r.data),
     approve: (id: string, discount?: { discountPercentage?: number; discountAmount?: number }) =>
       apiClient.patch<Order>(`/orders/${id}/approve`, discount ?? {}).then((r) => r.data),
@@ -156,17 +166,28 @@ export const api = {
       apiClient.patch<Order>(`/orders/${id}/reject`, { reason }).then((r) => r.data),
     updateStatus: (id: string, status: 'PACKED' | 'DELIVERED' | 'COMPLETED') =>
       apiClient.patch<Order>(`/orders/${id}/status`, { status }).then((r) => r.data),
+    updateItems: (id: string, items: { productId: string; quantity: number }[]) =>
+      apiClient.patch<Order>(`/orders/${id}/items`, { items }).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete<{ message: string }>(`/orders/${id}`).then((r) => r.data),
   },
 
   invoices: {
-    list: (params: PaginationParams & { paymentStatus?: PaymentStatus; dealerId?: string }) =>
-      apiClient.get<Paginated<Invoice>>('/invoices', { params: buildParams(params) }).then((r) => r.data),
+    list: (
+      params: PaginationParams & {
+        paymentStatus?: PaymentStatus;
+        dealerId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) => apiClient.get<Paginated<Invoice>>('/invoices', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Invoice>(`/invoices/${id}`).then((r) => r.data),
   },
 
   payments: {
-    list: (params: PaginationParams & { mode?: PaymentMode; dealerId?: string }) =>
-      apiClient.get<Paginated<Payment>>('/payments', { params: buildParams(params) }).then((r) => r.data),
+    list: (
+      params: PaginationParams & { mode?: PaymentMode; dealerId?: string; dateFrom?: string; dateTo?: string },
+    ) => apiClient.get<Paginated<Payment>>('/payments', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Payment>(`/payments/${id}`).then((r) => r.data),
     create: (data: {
       invoiceId: string;
@@ -257,6 +278,18 @@ export const api = {
       apiClient.get<CreditsSummary>('/credits', { params: buildParams(params) }).then((r) => r.data),
     detail: (supplierId: string) =>
       apiClient.get<SupplierCreditDetail>(`/credits/${supplierId}`).then((r) => r.data),
+    settlements: (
+      supplierId: string,
+      params: PaginationParams & {
+        mode?: PaymentMode;
+        chequeStatus?: ChequeStatus;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) =>
+      apiClient
+        .get<Paginated<SupplierPayment>>(`/credits/${supplierId}/settlements`, { params: buildParams(params) })
+        .then((r) => r.data),
     createSettlement: (
       supplierId: string,
       data: {
@@ -268,10 +301,12 @@ export const api = {
         remarks?: string;
       },
     ) => apiClient.post<SupplierPayment>(`/credits/${supplierId}/settlements`, data).then((r) => r.data),
-    updateChequeStatus: (paymentId: string, status: Extract<ChequeStatus, 'CLEARED' | 'RETURNED'>) =>
+    updateChequeStatus: (paymentId: string, status: ChequeStatus) =>
       apiClient
         .patch<SupplierPayment>(`/credits/settlements/${paymentId}/status`, { status })
         .then((r) => r.data),
+    deleteSettlement: (paymentId: string) =>
+      apiClient.delete<{ message: string }>(`/credits/settlements/${paymentId}`).then((r) => r.data),
   },
 
   salesAnalysis: {
@@ -279,7 +314,7 @@ export const api = {
       apiClient
         .get<Paginated<SalesAnalysisRow>>('/sales-analysis', { params: buildParams(params) })
         .then((r) => r.data),
-    summary: (params: { dateFrom?: string; dateTo?: string; dealerId?: string }) =>
+    summary: (params: { dateFrom?: string; dateTo?: string; dealerId?: string; search?: string }) =>
       apiClient
         .get<SalesAnalysisSummary>('/sales-analysis/summary', { params: buildParams(params) })
         .then((r) => r.data),

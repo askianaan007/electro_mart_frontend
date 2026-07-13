@@ -17,7 +17,7 @@ import { getErrorMessage } from '@/lib/api/error';
 const schema = z.object({
   productId: z.string().min(1, 'Select a product'),
   direction: z.enum(['IN', 'OUT']),
-  quantity: z.string().refine((v) => Number(v) >= 1, 'Quantity must be at least 1'),
+  quantity: z.string().refine((v) => Number.isInteger(Number(v)) && Number(v) >= 1, 'Enter a whole number of at least 1'),
   reason: z.string(),
 });
 
@@ -85,7 +85,7 @@ export function StockAdjustmentDialog({
                     <SelectContent>
                       {products?.data.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} ({product.productCode})
+                          {product.name} ({product.productCode}) — {product.currentStock} in stock
                         </SelectItem>
                       ))}
                     </SelectContent>

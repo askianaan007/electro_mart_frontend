@@ -24,9 +24,10 @@ export function useSalesAnalysis(params: SalesAnalysisParams) {
   });
 }
 
-export function useSalesAnalysisSummary(params: { dateFrom?: string; dateTo?: string; dealerId?: string }) {
+export function useSalesAnalysisSummary(params: { dateFrom?: string; dateTo?: string; dealerId?: string; search?: string }) {
   return useQuery({
     queryKey: salesAnalysisKeys.summary(params),
     queryFn: () => api.salesAnalysis.summary(params),
+    placeholderData: (prev) => prev,
   });
 }

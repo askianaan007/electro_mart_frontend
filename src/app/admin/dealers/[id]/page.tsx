@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,15 +19,37 @@ import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments } from '@/hooks/use-payments';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+function TabLoader() {
+  return (
+    <div className="space-y-2 p-6">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
+
 export default function DealerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: dealer, isLoading } = useDealer(id);
-  const { data: orders } = useOrders({ dealerId: id, limit: 10 });
-  const { data: invoices } = useInvoices({ dealerId: id, limit: 10 });
-  const { data: payments } = usePayments({ dealerId: id, limit: 10 });
+  const {
+    data: orders,
+    isLoading: ordersLoading,
+    isFetching: ordersFetching,
+  } = useOrders({ dealerId: id, limit: 10 });
+  const {
+    data: invoices,
+    isLoading: invoicesLoading,
+    isFetching: invoicesFetching,
+  } = useInvoices({ dealerId: id, limit: 10 });
+  const {
+    data: payments,
+    isLoading: paymentsLoading,
+    isFetching: paymentsFetching,
+  } = usePayments({ dealerId: id, limit: 10 });
 
   if (isLoading || !dealer) {
     return (
@@ -89,15 +111,26 @@ export default function DealerDetailPage() {
 
       <Tabs defaultValue="orders">
         <TabsList>
-          <TabsTrigger value="orders">Order History</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="payments">Payment History</TabsTrigger>
+          <TabsTrigger value="orders">
+            Order History
+            {ordersFetching && !ordersLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+          </TabsTrigger>
+          <TabsTrigger value="invoices">
+            Invoices
+            {invoicesFetching && !invoicesLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+          </TabsTrigger>
+          <TabsTrigger value="payments">
+            Payment History
+            {paymentsFetching && !paymentsLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders">
           <Card>
             <CardContent className="p-0 sm:p-0">
-              {!orders || orders.data.length === 0 ? (
+              {ordersLoading ? (
+                <TabLoader />
+              ) : !orders || orders.data.length === 0 ? (
                 <EmptyState icon={ShoppingCart} title="No orders yet" />
               ) : (
                 <Table>
@@ -134,7 +167,9 @@ export default function DealerDetailPage() {
         <TabsContent value="invoices">
           <Card>
             <CardContent className="p-0 sm:p-0">
-              {!invoices || invoices.data.length === 0 ? (
+              {invoicesLoading ? (
+                <TabLoader />
+              ) : !invoices || invoices.data.length === 0 ? (
                 <EmptyState icon={Receipt} title="No invoices yet" />
               ) : (
                 <Table>
@@ -171,7 +206,9 @@ export default function DealerDetailPage() {
         <TabsContent value="payments">
           <Card>
             <CardContent className="p-0 sm:p-0">
-              {!payments || payments.data.length === 0 ? (
+              {paymentsLoading ? (
+                <TabLoader />
+              ) : !payments || payments.data.length === 0 ? (
                 <EmptyState icon={Wallet} title="No payments recorded yet" />
               ) : (
                 <Table>
