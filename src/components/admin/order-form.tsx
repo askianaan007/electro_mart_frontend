@@ -9,8 +9,9 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAllDealers } from '@/hooks/use-dealers';
 import { useProducts } from '@/hooks/use-products';
@@ -27,14 +28,19 @@ const lineItemSchema = z.object({
 const schema = z
   .object({
     dealerId: z.string().min(1, 'Select a dealer'),
-    saleDate: z.string().min(1, 'Sale date is required'),
+    recordAsCompleted: z.boolean(),
+    saleDate: z.string(),
     items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
     discountType: z.enum(['PERCENTAGE', 'FIXED']),
     discountValue: z.string(),
   })
   .superRefine((data, ctx) => {
-    if (data.saleDate > new Date().toISOString().slice(0, 10)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date cannot be in the future' });
+    if (data.recordAsCompleted) {
+      if (!data.saleDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date is required' });
+      } else if (data.saleDate > new Date().toISOString().slice(0, 10)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date cannot be in the future' });
+      }
     }
     if (data.discountValue.trim() === '') return;
     const num = Number(data.discountValue);
@@ -72,6 +78,7 @@ function defaultValuesFor(order?: Order): FormValues {
   if (!order) {
     return {
       dealerId: '',
+      recordAsCompleted: false,
       saleDate: new Date().toISOString().slice(0, 10),
       items: [{ productId: '', quantity: '1' }],
       discountType: 'PERCENTAGE',
@@ -80,6 +87,7 @@ function defaultValuesFor(order?: Order): FormValues {
   }
   return {
     dealerId: order.dealerId,
+    recordAsCompleted: true,
     saleDate: (order.completedAt ?? order.approvedAt ?? order.createdAt).slice(0, 10),
     items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
     discountType: 'FIXED',
@@ -105,6 +113,7 @@ export function OrderForm({ order }: { order?: Order }) {
   const watchedItems = useWatch({ control: form.control, name: 'items' });
   const discountType = form.watch('discountType');
   const discountValue = Number(form.watch('discountValue')) || 0;
+  const recordAsCompleted = form.watch('recordAsCompleted');
 
   const subtotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * unitPrice(products?.data, item.productId),
@@ -121,37 +130,47 @@ export function OrderForm({ order }: { order?: Order }) {
       return;
     }
 
-    const payload = {
-      dealerId: values.dealerId,
-      saleDate: values.saleDate,
-      items: values.items.map((item) => ({
-        productId: item.productId,
-        quantity: Number(item.quantity),
-      })),
-      discountPercentage: values.discountType === 'PERCENTAGE' ? value : undefined,
-      discountAmount: values.discountType === 'FIXED' ? value : undefined,
-    };
+    const items = values.items.map((item) => ({
+      productId: item.productId,
+      quantity: Number(item.quantity),
+    }));
+    const discountPercentage = values.discountType === 'PERCENTAGE' ? value : undefined;
+    const discountAmount = values.discountType === 'FIXED' ? value : undefined;
 
     if (isEdit) {
-      updateOrder.mutate(payload, {
-        onSuccess: (updated) => {
-          toast.success('Order updated — stock and dealer balance reconciled');
-          router.push(`/admin/orders/${updated.id}`);
+      updateOrder.mutate(
+        { dealerId: values.dealerId, saleDate: values.saleDate, items, discountPercentage, discountAmount },
+        {
+          onSuccess: (updated) => {
+            toast.success('Order updated — stock and dealer balance reconciled');
+            router.push(`/admin/orders/${updated.id}`);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      });
+      );
     } else {
-      createOrder.mutate(payload, {
-        onSuccess: (created) => {
-          toast.success(
-            value > 0
-              ? 'Order recorded as completed with discount — stock reserved, invoice generated'
-              : 'Order recorded as completed — stock reserved, invoice generated',
-          );
-          router.push(`/admin/orders/${created.id}`);
+      createOrder.mutate(
+        {
+          dealerId: values.dealerId,
+          saleDate: values.recordAsCompleted ? values.saleDate : undefined,
+          items,
+          discountPercentage,
+          discountAmount,
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      });
+        {
+          onSuccess: (created) => {
+            toast.success(
+              values.recordAsCompleted
+                ? value > 0
+                  ? 'Order recorded as completed with discount — stock reserved, invoice generated'
+                  : 'Order recorded as completed — stock reserved, invoice generated'
+                : "Order created and approved — use Mark as Completed on the order when it's fulfilled",
+            );
+            router.push(`/admin/orders/${created.id}`);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
+        },
+      );
     }
   });
 
@@ -167,7 +186,9 @@ export function OrderForm({ order }: { order?: Order }) {
         <p className="text-sm text-muted-foreground">
           {isEdit
             ? "Corrects a mistake in this admin-recorded order — stock and the dealer's balance are reconciled to match the changes."
-            : "Orders created here are recorded as completed sales on the date you choose — stock is reserved, an invoice is generated, and the dealer's balance is updated immediately."}
+            : recordAsCompleted
+              ? "Recorded as a completed sale on the date you choose — stock is reserved, an invoice is generated, and the dealer's balance is updated immediately."
+              : "Created pre-approved for this dealer — stock is reserved and an invoice is generated, but it stays open until you mark it as completed from the order page."}
         </p>
       </div>
 
@@ -202,19 +223,43 @@ export function OrderForm({ order }: { order?: Order }) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="saleDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sale date</FormLabel>
-                    <FormControl>
-                      <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
+              {!isEdit && (
+                <FormField
+                  control={form.control}
+                  name="recordAsCompleted"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3 sm:col-span-2">
+                      <div>
+                        <FormLabel>Record as an already-completed sale</FormLabel>
+                        <FormDescription>
+                          Off: order is created pre-approved and completed manually later. On: instantly completed
+                          on the date you pick.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {(isEdit || recordAsCompleted) && (
+                <FormField
+                  control={form.control}
+                  name="saleDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sale date</FormLabel>
+                      <FormControl>
+                        <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </CardContent>
           </Card>
 
