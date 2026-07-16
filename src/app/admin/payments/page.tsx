@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Receipt, Search, Wallet } from 'lucide-react';
+import { Pencil, Receipt, Search, Trash2, Undo2, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,14 +14,41 @@ import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
-import { PaymentStatusBadge } from '@/components/status-badge';
+import { PaymentStatusBadge, ChequeStatusBadge } from '@/components/status-badge';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useInvoices } from '@/hooks/use-invoices';
-import { usePayments } from '@/hooks/use-payments';
-import { useAllDealers } from '@/hooks/use-dealers';
+import { usePayments, useReturnPayment, useUpdatePaymentChequeStatus } from '@/hooks/use-payments';
+import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { Invoice, PaymentMode, PaymentStatus } from '@/lib/api/types';
+import type { ChequeStatus, Invoice, Payment, PaymentMode, PaymentStatus } from '@/lib/api/types';
+
+const CHEQUE_REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PAYMENT_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function canRevertToPending(payment: Payment) {
+  if (payment.mode !== 'CHEQUE') return false;
+  if (payment.chequeStatus !== 'CLEARED' && payment.chequeStatus !== 'RETURNED') return false;
+  if (!payment.chequeStatusUpdatedAt) return false;
+  return Date.now() - new Date(payment.chequeStatusUpdatedAt).getTime() <= CHEQUE_REVERT_WINDOW_MS;
+}
+
+function canEditPayment(payment: Payment) {
+  if (Date.now() - new Date(payment.createdAt).getTime() > PAYMENT_EDIT_WINDOW_MS) return false;
+  if (payment.mode === 'CHEQUE' && payment.chequeStatus !== 'PENDING') return false;
+  return true;
+}
 
 function OutstandingInvoicesTab() {
   const [page, setPage] = useState(1);
@@ -32,7 +60,7 @@ function OutstandingInvoicesTab() {
   const debouncedSearch = useDebouncedValue(search);
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
 
-  const { data: dealers } = useAllDealers();
+  const { data: dealers } = useAllCustomer();
   const filtersActive = !!search || status !== 'PENDING' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data, isLoading, isFetching } = useInvoices({
@@ -96,10 +124,10 @@ function OutstandingInvoicesTab() {
           }}
         >
           <SelectTrigger className="sm:w-48">
-            <SelectValue placeholder="All dealers" />
+            <SelectValue placeholder="All customer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All dealers</SelectItem>
+            <SelectItem value="all">All customer</SelectItem>
             {dealers?.data.map((dealer) => (
               <SelectItem key={dealer.id} value={dealer.id}>
                 {dealer.businessName}
@@ -214,19 +242,28 @@ function PaymentHistoryTab() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState('all');
+  const [chequeStatusFilter, setChequeStatusFilter] = useState<'all' | ChequeStatus>('all');
   const [dealerFilter, setDealerFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
-  const { data: dealers } = useAllDealers();
-  const filtersActive = !!search || mode !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [revertPayment, setRevertPayment] = useState<Payment | null>(null);
+  const [returnPayment, setReturnPayment] = useState<Payment | null>(null);
+  const updateChequeStatus = useUpdatePaymentChequeStatus();
+  const returnPaymentMutation = useReturnPayment();
+
+  const { data: dealers } = useAllCustomer();
+  const filtersActive =
+    !!search || mode !== 'all' || chequeStatusFilter !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data, isLoading, isFetching } = usePayments({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
     mode: mode === 'all' ? undefined : (mode as PaymentMode),
+    chequeStatus: chequeStatusFilter === 'all' ? undefined : chequeStatusFilter,
     dealerId: dealerFilter === 'all' ? undefined : dealerFilter,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -235,10 +272,96 @@ function PaymentHistoryTab() {
   function clearFilters() {
     setSearch('');
     setMode('all');
+    setChequeStatusFilter('all');
     setDealerFilter('all');
     setDateFrom('');
     setDateTo('');
     setPage(1);
+  }
+
+  function markCheque(paymentId: string, status: ChequeStatus) {
+    updateChequeStatus.mutate(
+      { id: paymentId, status },
+      {
+        onSuccess: () => {
+          if (status === 'CLEARED') toast.success('Cheque marked cleared — now counted in Liquid Cash');
+          else if (status === 'RETURNED') toast.success('Cheque marked returned — dealer balance restored');
+          else toast.success('Cheque reverted to pending');
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
+
+  function confirmRevert() {
+    if (!revertPayment) return;
+    markCheque(revertPayment.id, 'PENDING');
+    setRevertPayment(null);
+  }
+
+  function confirmReturn() {
+    if (!returnPayment) return;
+    returnPaymentMutation.mutate(returnPayment.id, {
+      onSuccess: () => toast.success('Payment returned — dealer balance restored'),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+    setReturnPayment(null);
+  }
+
+  function chequeDetails(payment: Payment) {
+    if (payment.mode !== 'CHEQUE') return null;
+    return (
+      <div className="text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">
+          {payment.bankName ?? '—'} {payment.chequeNumber ? `#${payment.chequeNumber}` : ''}
+        </p>
+        <p>
+          Cheque {payment.chequeDate ? formatDate(payment.chequeDate) : '—'} &middot; Collected{' '}
+          {payment.collectedDate ? formatDate(payment.collectedDate) : '—'}
+        </p>
+      </div>
+    );
+  }
+
+  function rowActions(payment: Payment, layout: 'row' | 'stack') {
+    const wrapClass = layout === 'row' ? 'flex flex-wrap gap-1' : 'mt-3 flex flex-wrap gap-2';
+    return (
+      <div className={wrapClass}>
+        {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
+          <>
+            <Button size="sm" variant="outline" onClick={() => markCheque(payment.id, 'CLEARED')}>
+              Mark Cleared
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              onClick={() => markCheque(payment.id, 'RETURNED')}
+            >
+              Mark Returned
+            </Button>
+          </>
+        )}
+        {payment.mode === 'CHEQUE' && canRevertToPending(payment) && (
+          <Button size="sm" variant="outline" onClick={() => setRevertPayment(payment)}>
+            <Undo2 className="size-3.5" />
+            Revert to Pending
+          </Button>
+        )}
+        {canEditPayment(payment) && (
+          <Button size="sm" variant="outline" onClick={() => setEditingPayment(payment)}>
+            <Pencil className="size-3.5" />
+            Edit
+          </Button>
+        )}
+        {canEditPayment(payment) && (
+          <Button size="sm" variant="outline" className="text-destructive" onClick={() => setReturnPayment(payment)}>
+            <Trash2 className="size-3.5" />
+            Return
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -248,7 +371,7 @@ function PaymentHistoryTab() {
         <div className="relative flex-1 sm:max-w-[12rem]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search reference..."
+            placeholder="Search reference, cheque #..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -275,6 +398,23 @@ function PaymentHistoryTab() {
           </SelectContent>
         </Select>
         <Select
+          value={chequeStatusFilter}
+          onValueChange={(v) => {
+            setChequeStatusFilter(v as 'all' | ChequeStatus);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="sm:w-40">
+            <SelectValue placeholder="Cheque status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All cheque status</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="CLEARED">Cleared</SelectItem>
+            <SelectItem value="RETURNED">Returned</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
           value={dealerFilter}
           onValueChange={(v) => {
             setDealerFilter(v);
@@ -282,10 +422,10 @@ function PaymentHistoryTab() {
           }}
         >
           <SelectTrigger className="sm:w-48">
-            <SelectValue placeholder="All dealers" />
+            <SelectValue placeholder="All customer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All dealers</SelectItem>
+            <SelectItem value="all">All customer</SelectItem>
             {dealers?.data.map((dealer) => (
               <SelectItem key={dealer.id} value={dealer.id}>
                 {dealer.businessName}
@@ -342,7 +482,7 @@ function PaymentHistoryTab() {
         )
       ) : (
         <>
-          <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+          <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -350,15 +490,17 @@ function PaymentHistoryTab() {
                   <TableHead>Dealer</TableHead>
                   <TableHead>Invoice</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead className="hidden sm:table-cell">Mode</TableHead>
-                  <TableHead className="hidden sm:table-cell">Reference</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Cheque Status</TableHead>
+                  <TableHead>Cheque Details</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.data.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell>{formatDate(payment.paymentDate)}</TableCell>
-                    <TableCell>{payment.dealer?.businessName ?? '—'}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{formatDate(payment.paymentDate)}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{payment.dealer?.businessName ?? '—'}</TableCell>
                     <TableCell>
                       {payment.invoice ? (
                         <Link href={`/admin/invoices/${payment.invoice.id}`} className="text-primary hover:underline">
@@ -369,16 +511,93 @@ function PaymentHistoryTab() {
                       )}
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{payment.mode.replace('_', ' ')}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{payment.reference ?? '—'}</TableCell>
+                    <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
+                    <TableCell>
+                      {payment.chequeStatus ? <ChequeStatusBadge status={payment.chequeStatus} /> : '—'}
+                    </TableCell>
+                    <TableCell>{chequeDetails(payment) ?? '—'}</TableCell>
+                    <TableCell>{rowActions(payment, 'row')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+
+          <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            {data.data.map((payment) => (
+              <div key={payment.id} className="rounded-lg border border-border p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="break-words font-medium">{payment.dealer?.businessName ?? '—'}</span>
+                  <span className="shrink-0 break-words font-semibold">{formatCurrency(payment.amount)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {formatDate(payment.paymentDate)} &middot; {payment.mode.replace('_', ' ')}
+                  </span>
+                  {payment.invoice && (
+                    <Link href={`/admin/invoices/${payment.invoice.id}`} className="text-primary hover:underline">
+                      {payment.invoice.invoiceNumber}
+                    </Link>
+                  )}
+                </div>
+                {payment.chequeStatus && (
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <ChequeStatusBadge status={payment.chequeStatus} />
+                  </div>
+                )}
+                {chequeDetails(payment) && <div className="mt-2">{chequeDetails(payment)}</div>}
+                {rowActions(payment, 'stack')}
+              </div>
+            ))}
+          </div>
           <PaginationBar meta={data.meta} onPageChange={setPage} />
         </>
       )}
+
+      <RecordPaymentDialog
+        open={!!editingPayment}
+        onOpenChange={(open) => !open && setEditingPayment(null)}
+        payment={editingPayment}
+      />
+
+      <AlertDialog open={!!revertPayment} onOpenChange={(open) => !open && setRevertPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert cheque to pending?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cheque{revertPayment?.reference ? ` (${revertPayment.reference})` : ''} was marked{' '}
+              {revertPayment?.chequeStatus?.toLowerCase()}. Reverting sets it back to pending so it can be marked
+              cleared or returned again. Available only within 1 day of the last status change.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRevert}>Revert to Pending</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!returnPayment} onOpenChange={(open) => !open && setReturnPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Return this payment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently reverses the {returnPayment?.mode.replace('_', ' ').toLowerCase()} payment of{' '}
+              {returnPayment ? formatCurrency(returnPayment.amount) : ''} and restores the dealer&apos;s outstanding
+              balance. Only available within 1 day of recording it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReturn}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Return payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

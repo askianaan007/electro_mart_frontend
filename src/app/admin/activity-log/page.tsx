@@ -75,7 +75,7 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
     ],
   },
   {
-    module: 'Dealers',
+    module: 'Customer',
     actions: [
       { value: 'CREATED_DEALER', label: 'Created dealer' },
       { value: 'UPDATED_DEALER', label: 'Updated dealer' },

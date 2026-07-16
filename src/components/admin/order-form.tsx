@@ -13,7 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAllDealers } from '@/hooks/use-dealers';
+import { useAllCustomer } from '@/hooks/use-dealers';
 import { useProducts } from '@/hooks/use-products';
 import { useCreateOrder, useUpdateOrder } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/error';
@@ -98,7 +98,7 @@ function defaultValuesFor(order?: Order): FormValues {
 export function OrderForm({ order }: { order?: Order }) {
   const isEdit = !!order;
   const router = useRouter();
-  const { data: dealers } = useAllDealers();
+  const { data: dealers } = useAllCustomer();
   const { data: products } = useProducts({ limit: 100, status: 'ACTIVE' });
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder(order?.id ?? '');

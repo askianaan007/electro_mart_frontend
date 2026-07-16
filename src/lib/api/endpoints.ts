@@ -227,7 +227,13 @@ export const api = {
 
   payments: {
     list: (
-      params: PaginationParams & { mode?: PaymentMode; dealerId?: string; dateFrom?: string; dateTo?: string },
+      params: PaginationParams & {
+        mode?: PaymentMode;
+        chequeStatus?: ChequeStatus;
+        dealerId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+      },
     ) => apiClient.get<Paginated<Payment>>('/payments', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Payment>(`/payments/${id}`).then((r) => r.data),
     create: (data: {
@@ -236,7 +242,29 @@ export const api = {
       mode: PaymentMode;
       reference?: string;
       paymentDate: string;
+      bankName?: string;
+      chequeNumber?: string;
+      chequeDate?: string;
+      collectedDate?: string;
+      remarks?: string;
     }) => apiClient.post<Payment>('/payments', data).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        amount: number;
+        mode: PaymentMode;
+        reference?: string;
+        paymentDate: string;
+        bankName?: string;
+        chequeNumber?: string;
+        chequeDate?: string;
+        collectedDate?: string;
+        remarks?: string;
+      },
+    ) => apiClient.patch<Payment>(`/payments/${id}`, data).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/payments/${id}`).then((r) => r.data),
+    updateChequeStatus: (id: string, status: ChequeStatus) =>
+      apiClient.patch<Payment>(`/payments/${id}/cheque-status`, { status }).then((r) => r.data),
   },
 
   activityLog: {

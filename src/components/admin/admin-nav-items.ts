@@ -57,7 +57,7 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Customers',
     items: [
-      { label: 'Dealers', href: '/admin/dealers', icon: Users },
+      { label: 'Customer', href: '/admin/dealers', icon: Users },
       { label: 'Payments', href: '/admin/payments', icon: Wallet },
       { label: 'Invoices', href: '/admin/invoices', icon: Receipt },
     ],

@@ -205,7 +205,7 @@ See §3.3.
 
 ### 5.6 Deletion safety
 
-- Dealers and Products are never hard-deleted from the UI's perspective — use the `PATCH .../status` toggle (`ACTIVE`/`INACTIVE`) instead.
+- Customer and Products are never hard-deleted from the UI's perspective — use the `PATCH .../status` toggle (`ACTIVE`/`INACTIVE`) instead.
 - `DELETE /products/:id` and `DELETE /suppliers/:id` do attempt a real delete, but are blocked with `409 Conflict` if the row is referenced elsewhere (order history, purchase history, inventory logs) — this is detected robustly regardless of which underlying Postgres/Prisma error shape the foreign-key violation surfaces as.
 
 ---
@@ -308,7 +308,7 @@ Failures: `401` if no/invalid/expired token.
 
 ---
 
-### 7.2 Dealers (`/dealers`) — 👑 all routes
+### 7.2 Customer (`/dealers`) — 👑 all routes
 
 #### `POST /dealers`
 Body:

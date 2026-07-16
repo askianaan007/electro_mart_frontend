@@ -39,7 +39,7 @@ import {
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
-import { useDealers, useDeleteDealer, useResetDealerPassword, useSetDealerStatus } from '@/hooks/use-dealers';
+import { useCustomer, useDeleteDealer, useResetDealerPassword, useSetDealerStatus } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
@@ -99,7 +99,7 @@ function DealerRowActions({
   );
 }
 
-export default function DealersPage() {
+export default function CustomerPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('all');
@@ -111,7 +111,7 @@ export default function DealersPage() {
   const [deletingDealer, setDeletingDealer] = useState<Dealer | null>(null);
   const deleteDealer = useDeleteDealer();
 
-  const { data, isLoading, isFetching } = useDealers({
+  const { data, isLoading, isFetching } = useCustomer({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -154,7 +154,7 @@ export default function DealersPage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Dealers</h1>
+          <h1 className="text-2xl font-semibold">Customer</h1>
           <p className="text-sm text-muted-foreground">Manage dealer accounts and credit terms</p>
         </div>
         <Button onClick={openCreate}>
@@ -164,7 +164,7 @@ export default function DealersPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="All dealers" isFetching={isFetching && !isLoading} />
+        <SectionHeader title="All customer" isFetching={isFetching && !isLoading} />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

@@ -299,6 +299,13 @@ export interface Payment {
   reference: string | null;
   paymentDate: string;
   createdAt: string;
+  chequeStatus: ChequeStatus | null;
+  chequeStatusUpdatedAt: string | null;
+  bankName: string | null;
+  chequeNumber: string | null;
+  chequeDate: string | null;
+  collectedDate: string | null;
+  remarks: string | null;
 }
 
 export interface Investor {

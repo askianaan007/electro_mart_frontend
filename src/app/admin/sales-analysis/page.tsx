@@ -13,7 +13,7 @@ import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
-import { useAllDealers } from '@/hooks/use-dealers';
+import { useAllCustomer } from '@/hooks/use-dealers';
 import { useSalesAnalysis, useSalesAnalysisSummary } from '@/hooks/use-sales-analysis';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -35,7 +35,7 @@ export default function SalesAnalysisPage() {
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
 
-  const { data: dealers } = useAllDealers();
+  const { data: dealers } = useAllCustomer();
 
   const filters = {
     dateFrom: dateFrom || undefined,
@@ -116,10 +116,10 @@ export default function SalesAnalysisPage() {
             }}
           >
             <SelectTrigger className="sm:w-48">
-              <SelectValue placeholder="All dealers" />
+              <SelectValue placeholder="All customer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All dealers</SelectItem>
+              <SelectItem value="all">All customer</SelectItem>
               {dealers?.data.map((dealer) => (
                 <SelectItem key={dealer.id} value={dealer.id}>
                   {dealer.businessName}

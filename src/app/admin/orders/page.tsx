@@ -15,7 +15,7 @@ import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { OrderStatusBadge } from '@/components/status-badge';
 import { useOrders } from '@/hooks/use-orders';
-import { useAllDealers } from '@/hooks/use-dealers';
+import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { OrderStatus } from '@/lib/api/types';
@@ -40,7 +40,7 @@ export default function OrdersPage() {
   const debouncedSearch = useDebouncedValue(search);
   const filtersActive = !!search || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
-  const { data: dealers } = useAllDealers();
+  const { data: dealers } = useAllCustomer();
 
   const { data, isLoading, isFetching } = useOrders({
     page,
@@ -114,10 +114,10 @@ export default function OrdersPage() {
             }}
           >
             <SelectTrigger className="sm:w-48">
-              <SelectValue placeholder="All dealers" />
+              <SelectValue placeholder="All customer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All dealers</SelectItem>
+              <SelectItem value="all">All customer</SelectItem>
               {dealers?.data.map((dealer) => (
                 <SelectItem key={dealer.id} value={dealer.id}>
                   {dealer.businessName}

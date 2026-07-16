@@ -14,7 +14,7 @@ import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import { useInvoices } from '@/hooks/use-invoices';
-import { useAllDealers } from '@/hooks/use-dealers';
+import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PaymentStatus } from '@/lib/api/types';
@@ -28,7 +28,7 @@ export default function InvoicesPage() {
   const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebouncedValue(search);
 
-  const { data: dealers } = useAllDealers();
+  const { data: dealers } = useAllCustomer();
   const filtersActive = !!search || status !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data, isLoading, isFetching } = useInvoices({
@@ -98,10 +98,10 @@ export default function InvoicesPage() {
             }}
           >
             <SelectTrigger className="sm:w-48">
-              <SelectValue placeholder="All dealers" />
+              <SelectValue placeholder="All customer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All dealers</SelectItem>
+              <SelectItem value="all">All customer</SelectItem>
               {dealers?.data.map((dealer) => (
                 <SelectItem key={dealer.id} value={dealer.id}>
                   {dealer.businessName}

@@ -9,7 +9,7 @@ export const dealerKeys = {
   detail: (id: string) => [...dealerKeys.all, 'detail', id] as const,
 };
 
-export function useDealers(params: PaginationParams & { status?: string }) {
+export function useCustomer(params: PaginationParams & { status?: string }) {
   return useQuery({
     queryKey: dealerKeys.list(params),
     queryFn: () => api.dealers.list(params),
@@ -17,7 +17,7 @@ export function useDealers(params: PaginationParams & { status?: string }) {
   });
 }
 
-export function useAllDealers() {
+export function useAllCustomer() {
   return useQuery({
     queryKey: dealerKeys.list({ limit: 100 }),
     queryFn: () => api.dealers.list({ limit: 100 }),
