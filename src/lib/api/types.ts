@@ -185,8 +185,8 @@ export interface PurchaseReturnItem {
 export interface PurchaseReturn {
   id: string;
   returnNumber: string;
-  purchaseId: string;
-  purchase?: Purchase;
+  purchaseId: string | null;
+  purchase?: Purchase | null;
   supplierId: string;
   supplier?: Supplier;
   reason: string;
@@ -265,6 +265,7 @@ export interface Order {
   packedAt: string | null;
   deliveredAt: string | null;
   completedAt: string | null;
+  createdByAdminId: string | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -445,6 +446,21 @@ export interface AdminDashboardSummary {
   invoiceDue: string;
   liquidCash: number;
   creditBalance: string;
+  upcomingCheques: UpcomingCheque[];
+  chequesDueCount: number;
+  chequesDueTotal: number;
+  chequesUpcomingCount: number;
+}
+
+export interface UpcomingCheque {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  amount: string;
+  reference: string | null;
+  chequeDepositDate: string;
+  daysUntilDue: number;
+  isDue: boolean;
 }
 
 export interface DealerDashboardSummary {

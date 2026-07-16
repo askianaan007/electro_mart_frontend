@@ -72,6 +72,10 @@ export function SettlementFormDialog({
       form.setError('chequeDepositDate', { message: 'Deposit date is required for cheque settlements' });
       return;
     }
+    if (values.mode === 'CHEQUE' && values.chequeDepositDate < new Date().toISOString().slice(0, 10)) {
+      form.setError('chequeDepositDate', { message: 'Deposit date cannot be in the past' });
+      return;
+    }
 
     createSettlement.mutate(
       {
@@ -177,7 +181,7 @@ export function SettlementFormDialog({
                   <FormItem>
                     <FormLabel>Cheque deposit date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" min={new Date().toISOString().slice(0, 10)} {...field} />
                     </FormControl>
                     <FormDescription>
                       The credit balance drops immediately; it only reverses if this cheque later bounces.

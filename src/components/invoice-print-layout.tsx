@@ -45,6 +45,11 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
             <p>
               <span className="font-bold">Address:</span> {invoice.dealer?.address ?? '—'}
             </p>
+            {invoice.dealer?.phone && (
+              <p>
+                <span className="font-bold">Phone:</span> {invoice.dealer.phone}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="font-bold">

@@ -79,7 +79,8 @@ function AdminLoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="admin@electromart.com" autoComplete="username" {...field} />
+                <Input placeholder="
+                " autoComplete="username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

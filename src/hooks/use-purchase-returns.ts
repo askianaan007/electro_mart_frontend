@@ -34,10 +34,11 @@ export function useCreatePurchaseReturn() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: {
-      purchaseId: string;
+      purchaseId?: string;
+      supplierId?: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number }[];
+      items: { productId: string; quantity: number; unitCost?: number }[];
     }) => api.purchaseReturns.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseReturnKeys.all });

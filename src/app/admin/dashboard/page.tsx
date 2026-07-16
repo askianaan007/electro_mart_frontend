@@ -15,7 +15,9 @@ import {
   Receipt,
   CreditCard,
   LayoutDashboard,
+  Banknote,
 } from 'lucide-react';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,20 @@ import { RecentActivityFeed } from '@/components/admin/recent-activity-feed';
 import { WalletCard } from '@/components/wallet-card';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 import { useActivityLog } from '@/hooks/use-activity-log';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import type { UpcomingCheque } from '@/lib/api/types';
+
+function chequeDueLabel(daysUntilDue: number): { label: string; variant: BadgeProps['variant'] } {
+  if (daysUntilDue < 0) return { label: `Overdue by ${Math.abs(daysUntilDue)}d`, variant: 'destructive' };
+  if (daysUntilDue === 0) return { label: 'Due today', variant: 'destructive' };
+  if (daysUntilDue === 1) return { label: 'Due tomorrow', variant: 'warning' };
+  return { label: `in ${daysUntilDue}d`, variant: 'outline' };
+}
+
+function ChequeDueBadge({ cheque }: { cheque: UpcomingCheque }) {
+  const { label, variant } = chequeDueLabel(cheque.daysUntilDue);
+  return <Badge variant={variant}>{label}</Badge>;
+}
 
 export default function AdminDashboardPage() {
   const { data, isLoading } = useAdminDashboard();
@@ -72,13 +87,13 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard label="Today's Sales" value={formatCurrency(data.todaysSales)} icon={IndianRupee} />
           <StatCard label="Today's Orders" value={data.todaysOrders} icon={ShoppingCart} />
           <StatCard
@@ -94,6 +109,14 @@ export default function AdminDashboardPage() {
             tone={data.outOfStockItems > 0 ? 'destructive' : 'default'}
           />
           <StatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} />
+          <StatCard
+            label="Cheques Due"
+            value={data.chequesDueCount}
+            icon={Banknote}
+            tone={data.chequesDueCount > 0 ? 'destructive' : 'default'}
+            hint={data.chequesDueCount > 0 ? formatCurrency(data.chequesDueTotal) : undefined}
+            href="/admin/credits"
+          />
         </div>
       )}
 
@@ -194,6 +217,84 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>Upcoming Cheques</CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/admin/credits">View all</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0 sm:p-0">
+          {isLoading || !data ? (
+            <div className="space-y-2 p-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : data.upcomingCheques.length === 0 ? (
+            <EmptyState
+              icon={Banknote}
+              title="No cheques due"
+              description="Pending supplier cheques due for bank deposit will appear here"
+            />
+          ) : (
+            <>
+              <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Deposit Date</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.upcomingCheques.map((cheque) => (
+                      <TableRow key={cheque.id}>
+                        <TableCell className="whitespace-normal wrap-break-word">
+                          <Link href={`/admin/credits/${cheque.supplierId}`} className="font-medium text-primary">
+                            {cheque.supplierName}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="whitespace-normal wrap-break-word">{cheque.reference ?? '—'}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(cheque.amount)}</TableCell>
+                        <TableCell className="whitespace-normal wrap-break-word">
+                          {formatDate(cheque.chequeDepositDate)}
+                        </TableCell>
+                        <TableCell>
+                          <ChequeDueBadge cheque={cheque} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="space-y-3 p-4 sm:hidden">
+                {data.upcomingCheques.map((cheque) => (
+                  <Link
+                    key={cheque.id}
+                    href={`/admin/credits/${cheque.supplierId}`}
+                    className="block rounded-lg border border-border p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="wrap-break-word font-medium text-primary">{cheque.supplierName}</span>
+                      <ChequeDueBadge cheque={cheque} />
+                    </div>
+                    <p className="mt-1 wrap-break-word text-sm text-muted-foreground">
+                      {cheque.reference ?? '—'} &middot; {formatDate(cheque.chequeDepositDate)}
+                    </p>
+                    <p className="mt-2 wrap-break-word text-sm font-semibold">{formatCurrency(cheque.amount)}</p>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">

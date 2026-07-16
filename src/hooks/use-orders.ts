@@ -55,6 +55,7 @@ export function useCreateOrder() {
       items: { productId: string; quantity: number }[];
       discountPercentage?: number;
       discountAmount?: number;
+      saleDate?: string;
     }) => api.orders.create(data),
     onSuccess: () => invalidateOrderRelated(queryClient),
   });
@@ -94,6 +95,20 @@ export function useCompleteOrderDirectly() {
   return useMutation({
     mutationFn: (id: string) => api.orders.completeDirectly(id),
     onSuccess: (_data, id) => invalidateOrderRelated(queryClient, id),
+  });
+}
+
+export function useUpdateOrder(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      dealerId: string;
+      items: { productId: string; quantity: number }[];
+      discountPercentage?: number;
+      discountAmount?: number;
+      saleDate: string;
+    }) => api.orders.update(id, data),
+    onSuccess: () => invalidateOrderRelated(queryClient, id),
   });
 }
 

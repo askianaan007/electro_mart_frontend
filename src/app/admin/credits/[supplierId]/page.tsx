@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Coins,
   HandCoins,
+  Loader2,
   Plus,
   Search,
   Trash2,
@@ -27,6 +28,7 @@ import { SectionHeader } from '@/components/section-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChequeStatusBadge } from '@/components/status-badge';
 import { SettlementFormDialog } from '@/components/admin/settlement-form-dialog';
+import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
 import {
   useDeleteSettlement,
   useSupplierCreditDetail,
@@ -69,6 +71,7 @@ export default function SupplierCreditDetailPage() {
   const router = useRouter();
   const { data, isLoading } = useSupplierCreditDetail(supplierId);
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [revertPayment, setRevertPayment] = useState<SupplierPayment | null>(null);
   const [deletePayment, setDeletePayment] = useState<SupplierPayment | null>(null);
   const updateChequeStatus = useUpdateChequeStatus();
@@ -573,7 +576,16 @@ export default function SupplierCreditDetailPage() {
 
       {/* Returns */}
       <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="Returns" isFetching={returnsFetching && !returnsLoading} />
+        <div className="flex items-center justify-between gap-2 p-4 pb-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-medium">Returns</h2>
+            {returnsFetching && !returnsLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setReturnFormOpen(true)}>
+            <Undo2 />
+            Record Return
+          </Button>
+        </div>
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -680,6 +692,12 @@ export default function SupplierCreditDetailPage() {
           </>
         )}
       </div>
+
+      <StandalonePurchaseReturnFormDialog
+        open={returnFormOpen}
+        onOpenChange={setReturnFormOpen}
+        supplierId={data.supplier.id}
+      />
 
       <SettlementFormDialog
         open={settlementOpen}

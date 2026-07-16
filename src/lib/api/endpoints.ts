@@ -165,10 +165,11 @@ export const api = {
       apiClient.get<PurchaseReturn[]>(`/purchase-returns/by-purchase/${purchaseId}`).then((r) => r.data),
     get: (id: string) => apiClient.get<PurchaseReturn>(`/purchase-returns/${id}`).then((r) => r.data),
     create: (data: {
-      purchaseId: string;
+      purchaseId?: string;
+      supplierId?: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number }[];
+      items: { productId: string; quantity: number; unitCost?: number }[];
     }) => apiClient.post<PurchaseReturn>('/purchase-returns', data).then((r) => r.data),
   },
 
@@ -187,6 +188,7 @@ export const api = {
       items: { productId: string; quantity: number }[];
       discountPercentage?: number;
       discountAmount?: number;
+      saleDate?: string;
     }) => apiClient.post<Order>('/orders', data).then((r) => r.data),
     approve: (id: string, discount?: { discountPercentage?: number; discountAmount?: number }) =>
       apiClient.patch<Order>(`/orders/${id}/approve`, discount ?? {}).then((r) => r.data),
@@ -197,6 +199,16 @@ export const api = {
     completeDirectly: (id: string) => apiClient.patch<Order>(`/orders/${id}/complete`).then((r) => r.data),
     updateItems: (id: string, items: { productId: string; quantity: number }[]) =>
       apiClient.patch<Order>(`/orders/${id}/items`, { items }).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        dealerId: string;
+        items: { productId: string; quantity: number }[];
+        discountPercentage?: number;
+        discountAmount?: number;
+        saleDate: string;
+      },
+    ) => apiClient.patch<Order>(`/orders/${id}`, data).then((r) => r.data),
     remove: (id: string) =>
       apiClient.delete<{ message: string }>(`/orders/${id}`).then((r) => r.data),
   },

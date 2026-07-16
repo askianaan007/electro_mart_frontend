@@ -172,6 +172,14 @@ export default function OrderDetailPage() {
               </Link>
             </Button>
           )}
+          {order.createdByAdminId && order.status === 'COMPLETED' && (
+            <Button variant="outline" asChild>
+              <Link href={`/admin/orders/${id}/edit`}>
+                <Pencil />
+                Edit Order
+              </Link>
+            </Button>
+          )}
           {order.status !== 'COMPLETED' && (
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
               <Trash2 />

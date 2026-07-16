@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
-import { InvoicePrintLayout } from '@/components/admin/invoice-print-layout';
+import { InvoicePrintLayout } from '@/components/invoice-print-layout';
 import { useInvoice } from '@/hooks/use-invoices';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
