@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #F6F8FC;
   --foreground: #111827;
@@ -30,29 +32,31 @@
 }
 
 .dark {
-  --background: oklch(0.17 0.015 260);
-  --foreground: oklch(0.95 0.005 260);
-  --card: oklch(0.21 0.015 260);
-  --card-foreground: oklch(0.95 0.005 260);
-  --popover: oklch(0.21 0.015 260);
-  --popover-foreground: oklch(0.95 0.005 260);
-  --primary: oklch(0.68 0.16 260);
-  --primary-foreground: oklch(0.15 0.02 260);
-  --secondary: oklch(0.27 0.015 260);
-  --secondary-foreground: oklch(0.95 0.005 260);
-  --muted: oklch(0.27 0.015 260);
-  --muted-foreground: oklch(0.65 0.02 260);
-  --accent: oklch(0.3 0.03 260);
-  --accent-foreground: oklch(0.95 0.005 260);
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.15 0.02 25);
-  --success: oklch(0.65 0.15 155);
-  --success-foreground: oklch(0.15 0.02 155);
-  --warning: oklch(0.75 0.16 80);
-  --warning-foreground: oklch(0.2 0.04 80);
-  --border: oklch(0.32 0.015 260);
-  --input: oklch(0.32 0.015 260);
-  --ring: oklch(0.68 0.16 260);
+  --background: #0B1220;
+  --foreground: #E5E9F0;
+  --card: #111827;
+  --card-foreground: #E5E9F0;
+  --popover: #111827;
+  --popover-foreground: #E5E9F0;
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1B2436;
+  --secondary-foreground: #E5E9F0;
+  --muted: #1B2436;
+  --muted-foreground: #8A93A6;
+  --accent: #1E2A42;
+  --accent-foreground: #E5E9F0;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #FCD34D;
+  --purple: #8B5CF6;
+  --purple-foreground: #FFFFFF;
+  --border: #1E293B;
+  --input: #1E293B;
+  --ring: #3B82F6;
 }
 
 @theme inline {

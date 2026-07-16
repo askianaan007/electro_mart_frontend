@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,15 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+function suggestUsername(businessName: string): string {
+  return businessName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 20);
+}
+
 function defaultValuesFor(dealer?: Dealer): FormValues {
   return {
     businessName: dealer?.businessName ?? '',
@@ -86,9 +95,23 @@ export function DealerFormDialog({
     defaultValues: defaultValuesFor(dealer),
   });
 
+  const usernameTouched = useRef(isEdit);
+
   useEffect(() => {
-    if (open) form.reset(defaultValuesFor(dealer));
-  }, [open, dealer, form]);
+    if (open) {
+      form.reset(defaultValuesFor(dealer));
+      usernameTouched.current = isEdit;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dealer]);
+
+  const businessName = useWatch({ control: form.control, name: 'businessName' });
+
+  useEffect(() => {
+    if (isEdit || usernameTouched.current) return;
+    form.setValue('username', suggestUsername(businessName), { shouldValidate: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessName, isEdit]);
 
   const resetPassword = form.watch('resetPassword');
   const unlimitedCredit = form.watch('unlimitedCredit');
@@ -227,8 +250,17 @@ export function DealerFormDialog({
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        {...field}
+                        onChange={(e) => {
+                          usernameTouched.current = true;
+                          field.onChange(e);
+                        }}
+                      />
                     </FormControl>
+                    {!isEdit && (
+                      <FormDescription>Auto-suggested from the business name — edit it if you&apos;d like something different.</FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

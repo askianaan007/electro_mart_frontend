@@ -3,6 +3,7 @@
 import { Bell, Menu, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/shell/theme-toggle';
 import { UserMenu } from '@/components/shell/user-menu';
 
 export function Topbar({
@@ -41,6 +42,8 @@ export function Topbar({
       </div>
 
       <div className="flex-1" />
+
+      <ThemeToggle />
 
       <Button variant="ghost" size="icon" className="relative rounded-full">
         <Bell className="size-5" />

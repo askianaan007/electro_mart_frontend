@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
       {isLoading || !data ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-[24px]" />
+            <Skeleton key={i} className="h-[168px] w-full rounded-[22px]" />
           ))}
         </div>
       ) : (
@@ -52,7 +52,8 @@ export default function AdminDashboardPage() {
             value={data.liquidCash}
             formatValue={(n) => formatCurrency(n)}
             icon={Wallet}
-            gradient="primary"
+            gradient="orange"
+            mask="CASH"
             subtitle="Investments + collections − supplier payments − expenses"
           />
           <HeroKpiCard
@@ -60,7 +61,8 @@ export default function AdminDashboardPage() {
             value={creditBalance}
             formatValue={(n) => formatCurrency(n)}
             icon={HandCoins}
-            gradient="purple"
+            gradient="red"
+            mask="DEBT"
             subtitle="Outstanding balance owed to suppliers"
             progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
           />
@@ -69,14 +71,16 @@ export default function AdminDashboardPage() {
             value={Number(data.todaysSales)}
             formatValue={(n) => formatCurrency(n)}
             icon={IndianRupee}
-            gradient="success"
+            gradient="green"
+            mask="SALE"
             subtitle="Sales recorded today"
           />
           <HeroKpiCard
             label="Today's Orders"
             value={data.todaysOrders}
             icon={ShoppingCart}
-            gradient="indigo"
+            gradient="blue"
+            mask="ORD"
             subtitle={`${data.pendingApprovals} pending approval${data.pendingApprovals === 1 ? '' : 's'}`}
           />
         </div>
