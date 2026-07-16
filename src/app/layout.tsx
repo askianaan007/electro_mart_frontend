@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { QueryProvider } from '@/providers/query-provider';
 import './globals.css';
 
-const geistSans = Geist({
+const geistSans = Inter({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });

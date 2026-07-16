@@ -10,15 +10,15 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
+    <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.35} />
-            <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
+            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+        <CartesianGrid strokeDasharray="3 6" vertical={false} stroke="var(--color-border)" />
         <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-xs" stroke="var(--color-muted-foreground)" />
         <YAxis
           tickLine={false}
@@ -30,19 +30,24 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
         />
         <Tooltip
           formatter={(value) => formatCurrency(Number(value))}
+          cursor={{ stroke: 'var(--color-primary)', strokeWidth: 1, strokeDasharray: '4 4' }}
           contentStyle={{
             background: 'var(--color-card)',
             border: '1px solid var(--color-border)',
-            borderRadius: 8,
+            borderRadius: 14,
             fontSize: 12,
+            boxShadow: '0 8px 24px -8px rgb(0 0 0 / 0.15)',
           }}
         />
         <Area
-          type="monotone"
+          type="natural"
           dataKey="revenue"
           stroke="var(--color-primary)"
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill="url(#revenueFill)"
+          activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--color-card)' }}
+          animationDuration={900}
+          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>

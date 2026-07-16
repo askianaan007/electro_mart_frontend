@@ -1,389 +1,192 @@
 'use client';
 
-import Link from 'next/link';
 import {
-  IndianRupee,
-  ShoppingCart,
-  ClipboardCheck,
   AlertTriangle,
-  Wallet,
-  PackageSearch,
-  Undo2,
-  Truck,
-  Landmark,
-  TrendingUp,
-  Receipt,
+  ClipboardCheck,
   CreditCard,
-  LayoutDashboard,
-  Banknote,
+  HandCoins,
+  IndianRupee,
+  Receipt,
+  ShoppingCart,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
-import { Badge, type BadgeProps } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { OrderStatusBadge } from '@/components/status-badge';
-import { StatCard } from '@/components/stat-card';
-import { EmptyState } from '@/components/empty-state';
-import { RevenueChart } from '@/components/admin/revenue-chart';
-import { TopProductsList } from '@/components/admin/top-products-list';
-import { RecentActivityFeed } from '@/components/admin/recent-activity-feed';
-import { WalletCard } from '@/components/wallet-card';
+import { GreetingHeader } from '@/components/admin/dashboard/greeting-header';
+import { HeroKpiCard } from '@/components/admin/dashboard/hero-kpi-card';
+import { MiniStatCard } from '@/components/admin/dashboard/mini-stat-card';
+import { MoreMetricsStrip } from '@/components/admin/dashboard/more-metrics-strip';
+import { BusinessHealth } from '@/components/admin/dashboard/business-health';
+import { RevenueAnalyticsCard } from '@/components/admin/dashboard/revenue-analytics-card';
+import { TopProductsCard } from '@/components/admin/dashboard/top-products-card';
+import { UpcomingChequesCard } from '@/components/admin/dashboard/upcoming-cheques-card';
+import { RecentOrdersCard } from '@/components/admin/dashboard/recent-orders-card';
+import { ActivityTimeline } from '@/components/admin/dashboard/activity-timeline';
+import { QuickActionsPanel } from '@/components/admin/dashboard/quick-actions-panel';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 import { useActivityLog } from '@/hooks/use-activity-log';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import type { UpcomingCheque } from '@/lib/api/types';
-
-function chequeDueLabel(daysUntilDue: number): { label: string; variant: BadgeProps['variant'] } {
-  if (daysUntilDue < 0) return { label: `Overdue by ${Math.abs(daysUntilDue)}d`, variant: 'destructive' };
-  if (daysUntilDue === 0) return { label: 'Due today', variant: 'destructive' };
-  if (daysUntilDue === 1) return { label: 'Due tomorrow', variant: 'warning' };
-  return { label: `in ${daysUntilDue}d`, variant: 'outline' };
-}
-
-function ChequeDueBadge({ cheque }: { cheque: UpcomingCheque }) {
-  const { label, variant } = chequeDueLabel(cheque.daysUntilDue);
-  return <Badge variant={variant}>{label}</Badge>;
-}
+import { formatCurrency } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
   const { data, isLoading } = useAdminDashboard();
   const { data: activity, isLoading: activityLoading } = useActivityLog({ page: 1, limit: 6 });
 
+  const creditBalance = Number(data?.creditBalance ?? 0);
+  const liquidCash = data?.liquidCash ?? 0;
+  const creditSharePct = creditBalance + liquidCash > 0 ? (creditBalance / (creditBalance + liquidCash)) * 100 : 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <LayoutDashboard className="size-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Snapshot of today&apos;s business</p>
-        </div>
-      </div>
+      <GreetingHeader />
 
       {isLoading || !data ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-40 w-full rounded-2xl" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-[24px]" />
+          ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <WalletCard
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <HeroKpiCard
             label="Liquid Cash"
-            value={formatCurrency(data.liquidCash)}
+            value={data.liquidCash}
+            formatValue={(n) => formatCurrency(n)}
+            icon={Wallet}
+            gradient="primary"
             subtitle="Investments + collections − supplier payments − expenses"
-            tone="cash"
-            mask="CASH"
           />
-          <WalletCard
+          <HeroKpiCard
             label="Credit Balance"
-            value={formatCurrency(data.creditBalance)}
-            subtitle="Total owed to suppliers across all purchases"
-            tone="liability"
-            mask="OWED"
+            value={creditBalance}
+            formatValue={(n) => formatCurrency(n)}
+            icon={HandCoins}
+            gradient="purple"
+            subtitle="Outstanding balance owed to suppliers"
+            progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
           />
-        </div>
-      )}
-
-      {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatCard label="Today's Sales" value={formatCurrency(data.todaysSales)} icon={IndianRupee} />
-          <StatCard label="Today's Orders" value={data.todaysOrders} icon={ShoppingCart} />
-          <StatCard
-            label="Pending Approvals"
-            value={data.pendingApprovals}
-            icon={ClipboardCheck}
-            tone={data.pendingApprovals > 0 ? 'warning' : 'default'}
-          />
-          <StatCard
-            label="Out of Stock Items"
-            value={data.outOfStockItems}
-            icon={AlertTriangle}
-            tone={data.outOfStockItems > 0 ? 'destructive' : 'default'}
-          />
-          <StatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} />
-          <StatCard
-            label="Cheques Due"
-            value={data.chequesDueCount}
-            icon={Banknote}
-            tone={data.chequesDueCount > 0 ? 'destructive' : 'default'}
-            hint={data.chequesDueCount > 0 ? formatCurrency(data.chequesDueTotal) : undefined}
-            href="/admin/credits"
-          />
-        </div>
-      )}
-
-      {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Net Sales"
-            value={formatCurrency(data.netSales)}
+          <HeroKpiCard
+            label="Today's Sales"
+            value={Number(data.todaysSales)}
+            formatValue={(n) => formatCurrency(n)}
             icon={IndianRupee}
-            change={data.netSalesChangePct}
-            changeLabel="vs Last Month"
+            gradient="success"
+            subtitle="Sales recorded today"
           />
-          <StatCard
-            label="Total Sales Return"
-            value={formatCurrency(data.totalSalesReturn)}
-            icon={Undo2}
-            change={data.totalSalesReturnChangePct}
-            changeLabel="vs Last Month"
+          <HeroKpiCard
+            label="Today's Orders"
+            value={data.todaysOrders}
+            icon={ShoppingCart}
+            gradient="indigo"
+            subtitle={`${data.pendingApprovals} pending approval${data.pendingApprovals === 1 ? '' : 's'}`}
           />
-          <StatCard
-            label="Net Purchase"
-            value={formatCurrency(data.netPurchase)}
-            icon={Truck}
-            change={data.netPurchaseChangePct}
-            changeLabel="vs Last Month"
-          />
-          <StatCard
-            label="Total Purchase Return"
-            value={formatCurrency(data.totalPurchaseReturn)}
-            icon={Undo2}
-            change={data.totalPurchaseReturnChangePct}
-            changeLabel="vs Last Month"
-          />
-          <StatCard label="Net Cash Flow" value={formatCurrency(data.netCashFlow)} icon={Landmark} hint="Net" />
-          <StatCard
-            label="Profit"
-            value={formatCurrency(data.profit)}
-            icon={TrendingUp}
-            change={data.profitChangePct}
-            changeLabel="vs Last Month"
-            href="/admin/equity"
-          />
-          <StatCard
+        </div>
+      )}
+
+      {isLoading || !data ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <MiniStatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} tone="primary" />
+          <MiniStatCard
             label="Invoice Due"
             value={formatCurrency(data.invoiceDue)}
             icon={Receipt}
+            tone="primary"
             href="/admin/invoices"
           />
-          <StatCard
+          <MiniStatCard
             label="Total Expenses"
             value={formatCurrency(data.totalExpenses)}
             icon={CreditCard}
+            tone="warning"
             change={data.totalExpensesChangePct}
             changeLabel="vs Last Month"
             href="/admin/expenses"
           />
-          <StatCard
-            label="Invoice Due Payments"
-            value={formatCurrency(data.invoiceDuePayments)}
-            icon={Wallet}
-            change={data.invoiceDuePaymentsChangePct}
-            changeLabel="Collected vs Last Month"
-            href="/admin/payments"
+          <MiniStatCard
+            label="Profit"
+            value={formatCurrency(data.profit)}
+            icon={TrendingUp}
+            tone="success"
+            change={data.profitChangePct}
+            changeLabel="vs Last Month"
+            href="/admin/equity"
+          />
+          <MiniStatCard
+            label="Pending Approvals"
+            value={data.pendingApprovals}
+            icon={ClipboardCheck}
+            tone={data.pendingApprovals > 0 ? 'warning' : 'primary'}
+          />
+          <MiniStatCard
+            label="Out of Stock Items"
+            value={data.outOfStockItems}
+            icon={AlertTriangle}
+            tone={data.outOfStockItems > 0 ? 'destructive' : 'primary'}
+            href="/admin/inventory"
           />
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Monthly Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading || !data ? (
-              <Skeleton className="h-64 w-full" />
-            ) : (
-              <RevenueChart data={data.monthlyRevenue} />
-            )}
-          </CardContent>
-        </Card>
+      {isLoading || !data ? (
+        <div className="grid gap-5 lg:grid-cols-5">
+          <Skeleton className="h-72 rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-72 rounded-2xl lg:col-span-3" />
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <BusinessHealth data={data} />
+          </div>
+          <div className="lg:col-span-3">
+            <MoreMetricsStrip data={data} />
+          </div>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading || !data ? (
-              <Skeleton className="h-64 w-full" />
-            ) : (
-              <TopProductsList items={data.topProducts} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {isLoading || !data ? (
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Skeleton className="h-80 rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-80 rounded-2xl" />
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <RevenueAnalyticsCard data={data.monthlyRevenue} />
+          </div>
+          <TopProductsCard items={data.topProducts} />
+        </div>
+      )}
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Upcoming Cheques</CardTitle>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/credits">View all</Link>
-          </Button>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-0">
-          {isLoading || !data ? (
-            <div className="space-y-2 p-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : data.upcomingCheques.length === 0 ? (
-            <EmptyState
-              icon={Banknote}
-              title="No cheques due"
-              description="Pending supplier cheques due for bank deposit will appear here"
-            />
+      {isLoading || !data ? (
+        <Skeleton className="h-56 w-full rounded-2xl" />
+      ) : (
+        <UpcomingChequesCard cheques={data.upcomingCheques} />
+      )}
+
+      {isLoading || !data ? (
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-96 rounded-2xl" />
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <RecentOrdersCard orders={data.recentOrders} />
+          </div>
+          {activityLoading ? (
+            <Skeleton className="h-96 rounded-2xl" />
           ) : (
-            <>
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Deposit Date</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.upcomingCheques.map((cheque) => (
-                      <TableRow key={cheque.id}>
-                        <TableCell className="whitespace-normal wrap-break-word">
-                          <Link href={`/admin/credits/${cheque.supplierId}`} className="font-medium text-primary">
-                            {cheque.supplierName}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="whitespace-normal wrap-break-word">{cheque.reference ?? '—'}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(cheque.amount)}</TableCell>
-                        <TableCell className="whitespace-normal wrap-break-word">
-                          {formatDate(cheque.chequeDepositDate)}
-                        </TableCell>
-                        <TableCell>
-                          <ChequeDueBadge cheque={cheque} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="space-y-3 p-4 sm:hidden">
-                {data.upcomingCheques.map((cheque) => (
-                  <Link
-                    key={cheque.id}
-                    href={`/admin/credits/${cheque.supplierId}`}
-                    className="block rounded-lg border border-border p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="wrap-break-word font-medium text-primary">{cheque.supplierName}</span>
-                      <ChequeDueBadge cheque={cheque} />
-                    </div>
-                    <p className="mt-1 wrap-break-word text-sm text-muted-foreground">
-                      {cheque.reference ?? '—'} &middot; {formatDate(cheque.chequeDepositDate)}
-                    </p>
-                    <p className="mt-2 wrap-break-word text-sm font-semibold">{formatCurrency(cheque.amount)}</p>
-                  </Link>
-                ))}
-              </div>
-            </>
+            <ActivityTimeline items={activity?.data ?? []} />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Recent Orders</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/orders">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-0">
-            {isLoading || !data ? (
-              <div className="space-y-2 p-6">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : data.recentOrders.length === 0 ? (
-              <EmptyState icon={PackageSearch} title="No orders yet" description="Dealer orders will appear here" />
-            ) : (
-              <>
-                <div className="hidden sm:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order #</TableHead>
-                        <TableHead>Dealer</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.recentOrders.map((order) => (
-                        <TableRow key={order.id} className="cursor-pointer">
-                          <TableCell className="whitespace-normal wrap-break-word">
-                            <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
-                              {order.orderNumber}
-                            </Link>
-                          </TableCell>
-                          <TableCell className="whitespace-normal wrap-break-word">{order.dealer.businessName}</TableCell>
-                          <TableCell className="whitespace-normal wrap-break-word text-right">
-                            {formatCurrency(order.totalAmount)}
-                          </TableCell>
-                          <TableCell>
-                            <OrderStatusBadge status={order.status} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <div className="space-y-3 p-4 sm:hidden">
-                  {data.recentOrders.map((order) => (
-                    <Link
-                      key={order.id}
-                      href={`/admin/orders/${order.id}`}
-                      className="block rounded-lg border border-border p-4"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="wrap-break-word font-medium text-primary">{order.orderNumber}</span>
-                        <OrderStatusBadge status={order.status} />
-                      </div>
-                      <p className="mt-1 wrap-break-word text-sm text-muted-foreground">{order.dealer.businessName}</p>
-                      <p className="mt-2 wrap-break-word text-sm font-semibold">{formatCurrency(order.totalAmount)}</p>
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activityLoading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : (
-              <RecentActivityFeed items={activity?.data ?? []} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <QuickActionsPanel />
     </div>
   );
 }
