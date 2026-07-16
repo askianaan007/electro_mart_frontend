@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Copy, MoreHorizontal, Plus, Search, Users } from 'lucide-react';
+import { Copy, MoreHorizontal, Plus, Search, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,7 +39,7 @@ import {
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
-import { useDealers, useResetDealerPassword, useSetDealerStatus } from '@/hooks/use-dealers';
+import { useDealers, useDeleteDealer, useResetDealerPassword, useSetDealerStatus } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
@@ -38,9 +48,11 @@ import type { Dealer } from '@/lib/api/types';
 function DealerRowActions({
   dealer,
   onPasswordReset,
+  onDeleteRequest,
 }: {
   dealer: Dealer;
   onPasswordReset: (credentials: { username: string; temporaryPassword: string }) => void;
+  onDeleteRequest: () => void;
 }) {
   const setStatus = useSetDealerStatus(dealer.id);
   const resetPassword = useResetDealerPassword();
@@ -78,6 +90,10 @@ function DealerRowActions({
         <DropdownMenuItem onClick={toggleStatus}>
           {dealer.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         </DropdownMenuItem>
+        <DropdownMenuItem variant="destructive" onClick={onDeleteRequest}>
+          <Trash2 />
+          Delete
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -92,6 +108,8 @@ export default function DealersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingDealer, setEditingDealer] = useState<Dealer | undefined>(undefined);
   const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
+  const [deletingDealer, setDeletingDealer] = useState<Dealer | null>(null);
+  const deleteDealer = useDeleteDealer();
 
   const { data, isLoading, isFetching } = useDealers({
     page,
@@ -116,6 +134,20 @@ export default function DealersPage() {
   function openEdit(dealer: Dealer) {
     setEditingDealer(dealer);
     setFormOpen(true);
+  }
+
+  function confirmDelete() {
+    if (!deletingDealer) return;
+    deleteDealer.mutate(deletingDealer.id, {
+      onSuccess: () => {
+        toast.success('Dealer deleted');
+        setDeletingDealer(null);
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setDeletingDealer(null);
+      },
+    });
   }
 
   return (
@@ -226,7 +258,11 @@ export default function DealersPage() {
                           <Button variant="ghost" size="sm" onClick={() => openEdit(dealer)}>
                             Edit
                           </Button>
-                          <DealerRowActions dealer={dealer} onPasswordReset={setCredentials} />
+                          <DealerRowActions
+                            dealer={dealer}
+                            onPasswordReset={setCredentials}
+                            onDeleteRequest={() => setDeletingDealer(dealer)}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -283,6 +319,27 @@ export default function DealersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingDealer} onOpenChange={(open) => !open && setDeletingDealer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes {deletingDealer?.businessName}&apos;s account. This only works if the dealer
+              has no orders, invoices, payments, or return records — otherwise deactivate the account instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

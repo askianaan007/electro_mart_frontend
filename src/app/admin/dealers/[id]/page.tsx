@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Copy, KeyRound, Loader2, Pencil, Receipt, ShoppingCart, Wallet } from 'lucide-react';
+import { ArrowLeft, Copy, KeyRound, Loader2, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,11 +18,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AccountStatusBadge, OrderStatusBadge, PaymentStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
-import { useDealer, useResetDealerPassword } from '@/hooks/use-dealers';
+import { useDealer, useDeleteDealer, useResetDealerPassword } from '@/hooks/use-dealers';
 import { useOrders } from '@/hooks/use-orders';
 import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments } from '@/hooks/use-payments';
@@ -44,7 +54,9 @@ export default function DealerDetailPage() {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const resetPassword = useResetDealerPassword();
+  const deleteDealer = useDeleteDealer();
 
   const { data: dealer, isLoading } = useDealer(id);
   const {
@@ -84,6 +96,19 @@ export default function DealerDetailPage() {
     });
   }
 
+  function confirmDelete() {
+    deleteDealer.mutate(dealer!.id, {
+      onSuccess: () => {
+        toast.success('Dealer deleted');
+        router.push('/admin/dealers');
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setDeleteOpen(false);
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
@@ -107,6 +132,10 @@ export default function DealerDetailPage() {
           <Button variant="outline" onClick={handleResetPassword} loading={resetPassword.isPending}>
             <KeyRound />
             Reset password
+          </Button>
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
           </Button>
           <Button onClick={() => setEditOpen(true)}>
             <Pencil />
@@ -302,6 +331,27 @@ export default function DealerDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes {dealer.businessName}&apos;s account. This only works if the dealer has no
+              orders, invoices, payments, or return records — otherwise deactivate the account instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

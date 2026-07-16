@@ -77,6 +77,7 @@ export const api = {
       apiClient
         .post<{ dealer: Dealer; temporaryPassword: string }>(`/dealers/${id}/reset-password`)
         .then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/dealers/${id}`).then((r) => r.data),
   },
 
   suppliers: {
@@ -143,6 +144,15 @@ export const api = {
       purchaseDate: string;
       items: { productId: string; quantity: number; unitCost: number }[];
     }) => apiClient.post<Purchase>('/purchases', data).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        supplierId: string;
+        invoiceNumber: string;
+        purchaseDate: string;
+        items: { productId: string; quantity: number; unitCost: number }[];
+      },
+    ) => apiClient.patch<Purchase>(`/purchases/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchases/${id}`).then((r) => r.data),
   },
 
@@ -184,6 +194,7 @@ export const api = {
       apiClient.patch<Order>(`/orders/${id}/reject`, { reason }).then((r) => r.data),
     updateStatus: (id: string, status: 'PACKED' | 'DELIVERED' | 'COMPLETED') =>
       apiClient.patch<Order>(`/orders/${id}/status`, { status }).then((r) => r.data),
+    completeDirectly: (id: string) => apiClient.patch<Order>(`/orders/${id}/complete`).then((r) => r.data),
     updateItems: (id: string, items: { productId: string; quantity: number }[]) =>
       apiClient.patch<Order>(`/orders/${id}/items`, { items }).then((r) => r.data),
     remove: (id: string) =>

@@ -89,6 +89,14 @@ export function useUpdateOrderStatus() {
   });
 }
 
+export function useCompleteOrderDirectly() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.orders.completeDirectly(id),
+    onSuccess: (_data, id) => invalidateOrderRelated(queryClient, id),
+  });
+}
+
 export function useUpdateOrderItems() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  FastForward,
   Pencil,
   PackageCheck,
   Receipt,
@@ -34,7 +35,7 @@ import { OrderTimeline } from '@/components/order-timeline';
 import { RejectOrderDialog } from '@/components/admin/reject-order-dialog';
 import { ApproveOrderDialog } from '@/components/admin/approve-order-dialog';
 import { EditOrderItemsDialog } from '@/components/admin/edit-order-items-dialog';
-import { useDeleteOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
+import { useCompleteOrderDirectly, useDeleteOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 
@@ -57,10 +58,12 @@ export default function OrderDetailPage() {
   const [approveOpen, setApproveOpen] = useState(false);
   const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
 
   const { data: order, isLoading } = useOrder(id);
   const updateStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
+  const completeDirectly = useCompleteOrderDirectly();
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;
@@ -80,6 +83,19 @@ export default function OrderDetailPage() {
         onError: (error) => toast.error(getErrorMessage(error)),
       },
     );
+  }
+
+  function confirmComplete() {
+    completeDirectly.mutate(id, {
+      onSuccess: () => {
+        toast.success('Order marked as completed');
+        setCompleteOpen(false);
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setCompleteOpen(false);
+      },
+    });
   }
 
   function confirmDelete() {
@@ -140,6 +156,12 @@ export default function OrderDetailPage() {
               {nextStatus === 'DELIVERED' && <Truck />}
               {nextStatus === 'COMPLETED' && <CheckCircle2 />}
               {NEXT_STATUS_LABEL[nextStatus]}
+            </Button>
+          )}
+          {nextStatus && nextStatus !== 'COMPLETED' && (
+            <Button variant="success" onClick={() => setCompleteOpen(true)}>
+              <FastForward />
+              Directly Completed
             </Button>
           )}
           {order.invoice && (
@@ -254,6 +276,24 @@ export default function OrderDetailPage() {
         subtotal={order.subtotal}
       />
       <EditOrderItemsDialog open={editItemsOpen} onOpenChange={setEditItemsOpen} order={order} />
+
+      <AlertDialog open={completeOpen} onOpenChange={setCompleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark this order as completed directly?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This skips the remaining Packed/Delivered steps and marks the order Completed right away — applying
+              the same stock, invoice, and dealer balance updates as completing it normally.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmComplete} disabled={completeDirectly.isPending}>
+              Complete order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

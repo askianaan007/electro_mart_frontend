@@ -67,3 +67,11 @@ export function useSetDealerStatus(id: string) {
     },
   });
 }
+
+export function useDeleteDealer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.dealers.remove(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dealerKeys.lists() }),
+  });
+}

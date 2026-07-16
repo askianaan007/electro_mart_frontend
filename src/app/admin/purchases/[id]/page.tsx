@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Coins, Trash2, Undo2, Wallet } from 'lucide-react';
+import { ArrowLeft, Coins, Pencil, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,12 @@ export default function PurchaseDetailPage() {
           <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
             <Undo2 />
             Record Return
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/admin/purchases/${id}/edit`}>
+              <Pencil />
+              Edit
+            </Link>
           </Button>
           <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 />
