@@ -143,6 +143,7 @@ export const api = {
       invoiceNumber: string;
       purchaseDate: string;
       items: { productId: string; quantity: number; unitCost: number }[];
+      transportCharges?: number;
     }) => apiClient.post<Purchase>('/purchases', data).then((r) => r.data),
     update: (
       id: string,
@@ -151,6 +152,7 @@ export const api = {
         invoiceNumber: string;
         purchaseDate: string;
         items: { productId: string; quantity: number; unitCost: number }[];
+        transportCharges?: number;
       },
     ) => apiClient.patch<Purchase>(`/purchases/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchases/${id}`).then((r) => r.data),

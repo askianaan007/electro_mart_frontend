@@ -10,7 +10,7 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { QuickAddProductDialog } from '@/components/admin/quick-add-product-dialog';
@@ -32,6 +32,9 @@ const schema = z.object({
   invoiceNumber: z.string().min(1, "Supplier's invoice number is required"),
   purchaseDate: z.string().min(1, 'Purchase date is required'),
   items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
+  transportCharges: z
+    .string()
+    .refine((v) => v.trim() === '' || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'Invalid amount'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,6 +53,7 @@ function defaultValuesFor(purchase?: Purchase): FormValues {
       invoiceNumber: '',
       purchaseDate: new Date().toISOString().slice(0, 10),
       items: [{ productId: '', quantity: '1', unitCost: '0' }],
+      transportCharges: '',
     };
   }
   return {
@@ -61,6 +65,7 @@ function defaultValuesFor(purchase?: Purchase): FormValues {
       quantity: String(item.quantity),
       unitCost: String(item.unitCost),
     })),
+    transportCharges: Number(purchase.transportCharges) > 0 ? String(purchase.transportCharges) : '',
   };
 }
 
@@ -80,6 +85,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const transportChargesValue = Number(form.watch('transportCharges')) || 0;
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
@@ -118,6 +124,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         quantity: Number(item.quantity),
         unitCost: Number(item.unitCost),
       })),
+      transportCharges: values.transportCharges.trim() === '' ? undefined : Number(values.transportCharges),
     };
 
     if (isEdit) {
@@ -161,7 +168,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
             <CardHeader>
               <CardTitle>Purchase details</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <FormField
                 control={form.control}
                 name="supplierId"
@@ -208,6 +215,22 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="transportCharges"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Transport charges (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" placeholder="0" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Only if the supplier is responsible for shipping this — deducted from their credit balance
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -403,6 +426,11 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Total Purchase Value</p>
                   <p className="text-xl font-semibold">{formatCurrency(grandTotal)}</p>
+                  {transportChargesValue > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      −{formatCurrency(transportChargesValue)} transport charges deducted from supplier credit
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

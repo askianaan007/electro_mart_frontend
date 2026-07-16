@@ -47,8 +47,16 @@ function purchaseTotals(purchase: Purchase) {
     (sum, r) => sum + Number(r.totalAmount),
     0,
   );
-  const netValue = grossValue - returnedValue;
-  return { grossValue, returnedValue, netValue, hasReturns: returnedValue > 0 };
+  const transportCharges = Number(purchase.transportCharges);
+  const netValue = grossValue - returnedValue - transportCharges;
+  return {
+    grossValue,
+    returnedValue,
+    transportCharges,
+    netValue,
+    hasReturns: returnedValue > 0,
+    hasTransportCharges: transportCharges > 0,
+  };
 }
 
 function ReturnedBadge({ netValue }: { netValue: number }) {
@@ -66,10 +74,10 @@ function ValueBreakdown({
   purchase: Purchase;
   className?: string;
 }) {
-  const { grossValue, returnedValue, netValue, hasReturns } =
+  const { grossValue, returnedValue, transportCharges, netValue, hasReturns, hasTransportCharges } =
     purchaseTotals(purchase);
 
-  if (!hasReturns) {
+  if (!hasReturns && !hasTransportCharges) {
     return (
       <span className={cn("font-medium", className)}>
         {formatCurrency(grossValue)}
@@ -82,9 +90,16 @@ function ValueBreakdown({
       <span className="text-xs text-muted-foreground line-through">
         {formatCurrency(grossValue)}
       </span>
-      <span className="text-xs font-medium text-destructive">
-        −{formatCurrency(returnedValue)} returned
-      </span>
+      {hasReturns && (
+        <span className="text-xs font-medium text-destructive">
+          −{formatCurrency(returnedValue)} returned
+        </span>
+      )}
+      {hasTransportCharges && (
+        <span className="text-xs font-medium text-warning-foreground">
+          −{formatCurrency(transportCharges)} transport
+        </span>
+      )}
       <span className="font-semibold">{formatCurrency(netValue)} net</span>
     </div>
   );

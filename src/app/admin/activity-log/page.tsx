@@ -36,6 +36,7 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
     module: 'Purchases',
     actions: [
       { value: 'RECORDED_PURCHASE', label: 'Recorded purchase' },
+      { value: 'UPDATED_PURCHASE', label: 'Updated purchase' },
       { value: 'DELETED_PURCHASE', label: 'Deleted purchase' },
     ],
   },

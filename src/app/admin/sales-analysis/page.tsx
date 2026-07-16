@@ -2,7 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LineChart, PiggyBank, Receipt, Search, ShoppingBag, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  Download,
+  LineChart,
+  Loader2,
+  PiggyBank,
+  Receipt,
+  Search,
+  ShoppingBag,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +26,11 @@ import { SectionHeader } from '@/components/section-header';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useSalesAnalysis, useSalesAnalysisSummary } from '@/hooks/use-sales-analysis';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { api } from '@/lib/api/endpoints';
+import { fetchAllPages } from '@/lib/api/fetch-all-pages';
+import { downloadCsv } from '@/lib/csv';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import type { SalesAnalysisRow } from '@/lib/api/types';
 
 function startOfMonthISO(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
@@ -26,6 +40,23 @@ function startOfNextMonthISO(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString().slice(0, 10);
 }
 
+function downloadSalesAnalysisCsv(filename: string, rows: SalesAnalysisRow[]) {
+  const header = ['Order #', 'Invoice #', 'Dealer', 'Date', 'Selling Price', 'Buying Price', 'Profit'];
+  downloadCsv(
+    filename,
+    header,
+    rows.map((row) => [
+      row.orderNumber,
+      row.invoiceNumber ?? '—',
+      row.dealerName,
+      row.date ? formatDate(row.date) : '—',
+      row.sellingPrice,
+      row.buyingPrice,
+      row.profit,
+    ]),
+  );
+}
+
 export default function SalesAnalysisPage() {
   const now = new Date();
   const [dateFrom, setDateFrom] = useState(startOfMonthISO(now));
@@ -33,6 +64,7 @@ export default function SalesAnalysisPage() {
   const [dealerId, setDealerId] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
 
   const { data: dealers } = useAllCustomer();
@@ -60,14 +92,35 @@ export default function SalesAnalysisPage() {
     isFetching: rowsFetching,
   } = useSalesAnalysis({ ...filters, page, limit: 20 });
 
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      const allRows = await fetchAllPages((page, limit) => api.salesAnalysis.list({ ...filters, page, limit }));
+      downloadSalesAnalysisCsv(`sales-analysis-${new Date().toISOString().slice(0, 10)}.csv`, allRows);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Sales Analysis</h1>
-        <p className="text-sm text-muted-foreground">
-          Net profit per delivered order — selling price minus buying price, minus expenses. Gross profit here feeds
-          Equity&apos;s profit share automatically.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Sales Analysis</h1>
+          <p className="text-sm text-muted-foreground">
+            Net profit per delivered order — selling price minus buying price, minus expenses. Gross profit here
+            feeds Equity&apos;s profit share automatically.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleExport}
+          disabled={!rows || rows.data.length === 0 || isExporting}
+          className="shrink-0"
+        >
+          {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
+          Export
+        </Button>
       </div>
 
       {summaryLoading ? (

@@ -165,6 +165,7 @@ export interface Purchase {
   invoiceNumber: string;
   purchaseDate: string;
   totalValue: string;
+  transportCharges: string;
   adminId: string;
   admin?: { id: string; name: string; email: string };
   createdAt: string;
@@ -215,6 +216,7 @@ export interface CreditSummaryEntry {
   supplierId: string;
   supplierName: string;
   totalPurchases: string;
+  totalTransportCharges: string;
   totalReturns: string;
   totalSettled: string;
   creditBalance: string;
@@ -225,6 +227,7 @@ export interface CreditsSummary {
   meta: PaginationMeta;
   totals: {
     totalPurchases: string;
+    totalTransportCharges: string;
     totalReturns: string;
     totalSettled: string;
     totalCreditBalance: string;
@@ -234,6 +237,7 @@ export interface CreditsSummary {
 export interface SupplierCreditDetail {
   supplier: Supplier;
   totalPurchases: string;
+  totalTransportCharges: string;
   totalReturns: string;
   totalSettled: string;
   creditBalance: string;

@@ -218,9 +218,23 @@ export default function SupplierCreditDetailPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-4 sm:grid-cols-2',
+          Number(data.totalTransportCharges) > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
+        )}
+      >
         <StatCard label="Total Purchases" value={formatCurrency(data.totalPurchases)} icon={Truck} />
         <StatCard label="Returns" value={`−${formatCurrency(data.totalReturns)}`} icon={Undo2} tone="warning" />
+        {Number(data.totalTransportCharges) > 0 && (
+          <StatCard
+            label="Transport Charges"
+            value={`−${formatCurrency(data.totalTransportCharges)}`}
+            icon={Truck}
+            tone="warning"
+            hint="Deducted from credit"
+          />
+        )}
         <StatCard label="Settled" value={`−${formatCurrency(data.totalSettled)}`} icon={Wallet} tone="success" />
         <StatCard
           label="Credit Balance"
@@ -533,6 +547,7 @@ export default function SupplierCreditDetailPage() {
                     <TableHead>Date</TableHead>
                     <TableHead>Invoice #</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Transport</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -546,6 +561,13 @@ export default function SupplierCreditDetailPage() {
                       </TableCell>
                       <TableCell className="whitespace-normal break-words text-right">
                         {formatCurrency(purchase.totalValue)}
+                      </TableCell>
+                      <TableCell className="whitespace-normal break-words text-right">
+                        {Number(purchase.transportCharges) > 0 ? (
+                          <span className="text-warning-foreground">−{formatCurrency(purchase.transportCharges)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -564,7 +586,14 @@ export default function SupplierCreditDetailPage() {
                     <span className="break-words font-medium text-primary">{purchase.invoiceNumber}</span>
                     <span className="shrink-0 break-words font-semibold">{formatCurrency(purchase.totalValue)}</span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatDate(purchase.purchaseDate)}</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{formatDate(purchase.purchaseDate)}</p>
+                    {Number(purchase.transportCharges) > 0 && (
+                      <p className="text-xs text-warning-foreground">
+                        −{formatCurrency(purchase.transportCharges)} transport
+                      </p>
+                    )}
+                  </div>
                 </Link>
               ))}
             </div>

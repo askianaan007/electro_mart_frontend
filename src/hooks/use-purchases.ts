@@ -38,11 +38,14 @@ export function useCreatePurchase() {
       invoiceNumber: string;
       purchaseDate: string;
       items: { productId: string; quantity: number; unitCost: number }[];
+      transportCharges?: number;
     }) => api.purchases.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: creditKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -55,6 +58,7 @@ export function useUpdatePurchase(id: string) {
       invoiceNumber: string;
       purchaseDate: string;
       items: { productId: string; quantity: number; unitCost: number }[];
+      transportCharges?: number;
     }) => api.purchases.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });

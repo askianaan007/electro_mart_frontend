@@ -30,6 +30,8 @@ import { useEquitySummary, useEquityHistory } from '@/hooks/use-equity';
 import { useInvestments } from '@/hooks/use-investments';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { api } from '@/lib/api/endpoints';
+import { fetchAllPages } from '@/lib/api/fetch-all-pages';
+import { downloadCsv } from '@/lib/csv';
 import { cn, formatCurrency, formatDate, initials } from '@/lib/utils';
 import type { EquityHistoryEntry, Investment } from '@/lib/api/types';
 
@@ -48,28 +50,13 @@ const TYPE_META: Record<HistoryType, { label: string; icon: typeof ArrowDownCirc
   EXPENSE: { label: 'Expense', icon: MinusCircle, className: 'text-destructive' },
 };
 
-function toCsvValue(value: string | number) {
-  const str = String(value);
-  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-}
-
 function downloadHistoryCsv(filename: string, rows: EquityHistoryEntry[]) {
   const header = ['Date', 'Type', 'Description', 'Investor', 'Amount'];
-  const lines = [
-    header.join(','),
-    ...rows.map((row) =>
-      [formatDate(row.date), TYPE_META[row.type].label, row.description, row.investorName ?? '—', row.amount]
-        .map(toCsvValue)
-        .join(','),
-    ),
-  ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsv(
+    filename,
+    header,
+    rows.map((row) => [formatDate(row.date), TYPE_META[row.type].label, row.description, row.investorName ?? '—', row.amount]),
+  );
 }
 
 export default function EquityPage() {
@@ -133,8 +120,8 @@ export default function EquityPage() {
   async function handleExport() {
     setIsExporting(true);
     try {
-      const result = await api.equity.history({ page: 1, limit: 1000, ...historyFilters });
-      downloadHistoryCsv(`equity-history-${new Date().toISOString().slice(0, 10)}.csv`, result.data);
+      const allRows = await fetchAllPages((page, limit) => api.equity.history({ ...historyFilters, page, limit }));
+      downloadHistoryCsv(`equity-history-${new Date().toISOString().slice(0, 10)}.csv`, allRows);
     } finally {
       setIsExporting(false);
     }

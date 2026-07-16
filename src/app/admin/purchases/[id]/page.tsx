@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Coins, Pencil, Trash2, Undo2, Wallet } from 'lucide-react';
+import { ArrowLeft, Coins, Pencil, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { PurchaseReturnFormDialog } from '@/components/admin/purchase-return-for
 import { useDeletePurchase, usePurchase } from '@/hooks/use-purchases';
 import { usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,8 +43,10 @@ export default function PurchaseDetailPage() {
 
   const grossValue = Number(purchase.totalValue);
   const returnedValue = (purchaseReturns ?? []).reduce((sum, r) => sum + Number(r.totalAmount), 0);
-  const netValue = grossValue - returnedValue;
+  const transportCharges = Number(purchase.transportCharges);
+  const netValue = grossValue - returnedValue - transportCharges;
   const hasReturns = returnedValue > 0;
+  const hasTransportCharges = transportCharges > 0;
 
   function confirmDelete() {
     deletePurchase.mutate(id, {
@@ -98,7 +100,7 @@ export default function PurchaseDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2', hasTransportCharges ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
         <StatCard label="Gross Purchase Value" value={formatCurrency(grossValue)} icon={Wallet} />
         <StatCard
           label="Returned"
@@ -106,6 +108,15 @@ export default function PurchaseDetailPage() {
           icon={Undo2}
           tone={hasReturns ? 'warning' : 'default'}
         />
+        {hasTransportCharges && (
+          <StatCard
+            label="Transport Charges"
+            value={`−${formatCurrency(transportCharges)}`}
+            icon={Truck}
+            tone="warning"
+            hint="Deducted from supplier credit"
+          />
+        )}
         <StatCard label="Net Value" value={formatCurrency(netValue)} icon={Coins} tone="success" />
       </div>
 

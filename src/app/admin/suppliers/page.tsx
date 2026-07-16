@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Factory, Loader2, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { Factory, FileText, Loader2, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SupplierFormDialog } from '@/components/admin/supplier-form-dialog';
+import { SupplierStatementDialog } from '@/components/admin/supplier-statement-dialog';
 import { useDeleteSupplier, useSuppliers } from '@/hooks/use-suppliers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
@@ -40,6 +41,8 @@ export default function SuppliersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | undefined>(undefined);
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
+  const [statementOpen, setStatementOpen] = useState(false);
+  const [statementSupplier, setStatementSupplier] = useState<Supplier | null>(null);
 
   const deleteSupplier = useDeleteSupplier();
   const { data, isLoading, isFetching } = useSuppliers({ page, limit: 20, search: debouncedSearch || undefined });
@@ -52,6 +55,11 @@ export default function SuppliersPage() {
   function openEdit(supplier: Supplier) {
     setEditingSupplier(supplier);
     setFormOpen(true);
+  }
+
+  function openStatement(supplier: Supplier) {
+    setStatementSupplier(supplier);
+    setStatementOpen(true);
   }
 
   function confirmDelete() {
@@ -158,6 +166,10 @@ export default function SuppliersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(supplier)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openStatement(supplier)}>
+                              <FileText />
+                              Statement
+                            </DropdownMenuItem>
                             <DropdownMenuItem variant="destructive" onClick={() => setDeletingSupplier(supplier)}>
                               <Trash2 />
                               Delete
@@ -184,6 +196,10 @@ export default function SuppliersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openEdit(supplier)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openStatement(supplier)}>
+                          <FileText />
+                          Statement
+                        </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onClick={() => setDeletingSupplier(supplier)}>
                           <Trash2 />
                           Delete
@@ -206,6 +222,7 @@ export default function SuppliersPage() {
       </div>
 
       <SupplierFormDialog open={formOpen} onOpenChange={setFormOpen} supplier={editingSupplier} />
+      <SupplierStatementDialog open={statementOpen} onOpenChange={setStatementOpen} supplier={statementSupplier} />
 
       <AlertDialog open={!!deletingSupplier} onOpenChange={(open) => !open && setDeletingSupplier(null)}>
         <AlertDialogContent>
