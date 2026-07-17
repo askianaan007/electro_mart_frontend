@@ -9,6 +9,8 @@ export type SettlementsParams = PaginationParams & {
   chequeStatus?: ChequeStatus;
   dateFrom?: string;
   dateTo?: string;
+  sortBy?: 'paymentDate' | 'chequeDepositDate';
+  sortOrder?: 'asc' | 'desc';
 };
 
 export const creditKeys = {
