@@ -106,7 +106,7 @@ export function useUpdateOrder(id: string) {
       items: { productId: string; quantity: number }[];
       discountPercentage?: number;
       discountAmount?: number;
-      saleDate: string;
+      saleDate?: string;
     }) => api.orders.update(id, data),
     onSuccess: () => invalidateOrderRelated(queryClient, id),
   });

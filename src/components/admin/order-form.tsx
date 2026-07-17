@@ -35,12 +35,8 @@ const schema = z
     discountValue: z.string(),
   })
   .superRefine((data, ctx) => {
-    if (data.recordAsCompleted) {
-      if (!data.saleDate) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date is required' });
-      } else if (data.saleDate > new Date().toISOString().slice(0, 10)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date cannot be in the future' });
-      }
+    if (data.recordAsCompleted && data.saleDate > new Date().toISOString().slice(0, 10)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date cannot be in the future' });
     }
     if (data.discountValue.trim() === '') return;
     const num = Number(data.discountValue);
@@ -87,7 +83,7 @@ function defaultValuesFor(order?: Order): FormValues {
   }
   return {
     dealerId: order.dealerId,
-    recordAsCompleted: true,
+    recordAsCompleted: order.status === 'COMPLETED',
     saleDate: (order.completedAt ?? order.approvedAt ?? order.createdAt).slice(0, 10),
     items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
     discountType: 'FIXED',
@@ -139,7 +135,13 @@ export function OrderForm({ order }: { order?: Order }) {
 
     if (isEdit) {
       updateOrder.mutate(
-        { dealerId: values.dealerId, saleDate: values.saleDate, items, discountPercentage, discountAmount },
+        {
+          dealerId: values.dealerId,
+          saleDate: values.recordAsCompleted ? values.saleDate : undefined,
+          items,
+          discountPercentage,
+          discountAmount,
+        },
         {
           onSuccess: (updated) => {
             toast.success('Order updated — stock and dealer balance reconciled');
@@ -185,7 +187,9 @@ export function OrderForm({ order }: { order?: Order }) {
         <h1 className="text-2xl font-semibold">{isEdit ? `Edit ${order.orderNumber}` : 'New order'}</h1>
         <p className="text-sm text-muted-foreground">
           {isEdit
-            ? "Corrects a mistake in this admin-recorded order — stock and the dealer's balance are reconciled to match the changes."
+            ? recordAsCompleted
+              ? "Corrects a mistake in this order — stock and the dealer's balance are reconciled to match the changes."
+              : "Corrects a mistake in this order's dealer/items/discount — stock is reconciled to match the changes. This order isn't completed yet, so the dealer's balance is untouched."
             : recordAsCompleted
               ? "Recorded as a completed sale on the date you choose — stock is reserved, an invoice is generated, and the dealer's balance is updated immediately."
               : "Created pre-approved for this dealer — stock is reserved and an invoice is generated, but it stays open until you mark it as completed from the order page."}
@@ -245,7 +249,7 @@ export function OrderForm({ order }: { order?: Order }) {
                 />
               )}
 
-              {(isEdit || recordAsCompleted) && (
+              {recordAsCompleted && (
                 <FormField
                   control={form.control}
                   name="saleDate"

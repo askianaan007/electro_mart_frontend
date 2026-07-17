@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { orderKeys } from './use-orders';
+import { invoiceKeys } from './use-invoices';
+import { paymentKeys } from './use-payments';
+import { productKeys } from './use-products';
+import { inventoryKeys } from './use-inventory';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const dealerKeys = {
@@ -73,5 +78,22 @@ export function useDeleteDealer() {
   return useMutation({
     mutationFn: (id: string) => api.dealers.remove(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dealerKeys.lists() }),
+  });
+}
+
+export function useClearDealerData(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) => api.dealers.clearData(id, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dealerKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: dealerKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+      queryClient.invalidateQueries({ queryKey: paymentKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 }

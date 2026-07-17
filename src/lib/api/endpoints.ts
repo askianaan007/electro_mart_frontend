@@ -78,6 +78,13 @@ export const api = {
         .post<{ dealer: Dealer; temporaryPassword: string }>(`/dealers/${id}/reset-password`)
         .then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/dealers/${id}`).then((r) => r.data),
+    clearData: (id: string, password: string) =>
+      apiClient
+        .post<{ message: string; orders: number; invoices: number; payments: number; salesReturns: number }>(
+          `/dealers/${id}/clear-data`,
+          { password },
+        )
+        .then((r) => r.data),
   },
 
   suppliers: {
@@ -208,7 +215,7 @@ export const api = {
         items: { productId: string; quantity: number }[];
         discountPercentage?: number;
         discountAmount?: number;
-        saleDate: string;
+        saleDate?: string;
       },
     ) => apiClient.patch<Order>(`/orders/${id}`, data).then((r) => r.data),
     remove: (id: string) =>
@@ -274,6 +281,8 @@ export const api = {
       apiClient.get<Paginated<ActivityLog>>('/activity-logs', { params: buildParams(params) }).then((r) => r.data),
     admins: () =>
       apiClient.get<{ id: string; name: string }[]>('/activity-logs/admins').then((r) => r.data),
+    clearAll: () =>
+      apiClient.delete<{ message: string; count: number }>('/activity-logs').then((r) => r.data),
   },
 
   dashboard: {

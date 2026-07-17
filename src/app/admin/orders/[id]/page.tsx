@@ -172,7 +172,7 @@ export default function OrderDetailPage() {
               </Link>
             </Button>
           )}
-          {order.createdByAdminId && order.status === 'COMPLETED' && (
+          {order.invoice && (
             <Button variant="outline" asChild>
               <Link href={`/admin/orders/${id}/edit`}>
                 <Pencil />
@@ -180,12 +180,10 @@ export default function OrderDetailPage() {
               </Link>
             </Button>
           )}
-          {order.status !== 'COMPLETED' && (
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          )}
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -309,7 +307,7 @@ export default function OrderDetailPage() {
             <AlertDialogTitle>Delete this order?</AlertDialogTitle>
             <AlertDialogDescription>
               {order.invoice
-                ? 'This reverses the stock it reserved and deletes its invoice. Blocked if any payment has already been recorded against it.'
+                ? `This reverses the stock it reserved${order.status === 'COMPLETED' ? ", the dealer's balance, " : ' '}and deletes its invoice (${order.invoice.invoiceNumber}) — freeing that number for reuse only if it's still the most recently issued one. Blocked if a payment has already been recorded, or if a newer invoice has since been issued.`
                 : 'This order has no invoice yet, so nothing else needs to be reversed.'}{' '}
               This cannot be undone.
             </AlertDialogDescription>

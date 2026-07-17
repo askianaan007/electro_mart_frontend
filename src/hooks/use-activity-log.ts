@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import type { PaginationParams } from '@/lib/api/types';
 
@@ -22,5 +22,13 @@ export function useActivityLogAdmins() {
     queryKey: ['activity-log', 'admins'],
     queryFn: () => api.activityLog.admins(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useClearActivityLog() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.activityLog.clearAll(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-log'] }),
   });
 }

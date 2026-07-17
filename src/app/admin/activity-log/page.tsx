@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ClipboardList, Search, User, X } from 'lucide-react';
+import { ClipboardList, Search, Trash2, User, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,10 +11,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
-import { useActivityLog, useActivityLogAdmins } from '@/hooks/use-activity-log';
+import { useActivityLog, useActivityLogAdmins, useClearActivityLog } from '@/hooks/use-activity-log';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { getErrorMessage } from '@/lib/api/error';
 import { formatDateTime } from '@/lib/utils';
 import type { ActivityLog } from '@/lib/api/types';
 
@@ -151,6 +163,8 @@ export default function ActivityLogPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const clearActivityLog = useClearActivityLog();
 
   const debouncedSearch = useDebouncedValue(search);
   const filtersActive =
@@ -191,16 +205,36 @@ export default function ActivityLogPage() {
     setPage(1);
   }
 
+  function confirmClearAll() {
+    clearActivityLog.mutate(undefined, {
+      onSuccess: (result) => {
+        toast.success(`Cleared ${result.count} activity log entr${result.count === 1 ? 'y' : 'ies'}`);
+        setClearOpen(false);
+        setPage(1);
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setClearOpen(false);
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <ClipboardList className="size-5" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <ClipboardList className="size-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold">Activity Log</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Audit trail of every admin action.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold">Activity Log</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Audit trail of every admin action.</p>
-        </div>
+        <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setClearOpen(true)}>
+          <Trash2 />
+          Clear all
+        </Button>
       </div>
 
       <div className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -416,6 +450,29 @@ export default function ActivityLogPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear the entire activity log?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes every audit log entry — across all admins, actions, and dates, regardless of
+              the filters above. A single new entry recording this clear will be added afterward. This cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClearAll}
+              disabled={clearActivityLog.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -3,10 +3,24 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Copy, KeyRound, Loader2, Pencil, Receipt, ShoppingCart, Trash2, Wallet } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Copy,
+  Eraser,
+  KeyRound,
+  Loader2,
+  Pencil,
+  Receipt,
+  ShoppingCart,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,7 +46,7 @@ import { AccountStatusBadge, OrderStatusBadge, PaymentStatusBadge } from '@/comp
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
-import { useDealer, useDeleteDealer, useResetDealerPassword } from '@/hooks/use-dealers';
+import { useClearDealerData, useDealer, useDeleteDealer, useResetDealerPassword } from '@/hooks/use-dealers';
 import { useOrders } from '@/hooks/use-orders';
 import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments } from '@/hooks/use-payments';
@@ -55,8 +69,11 @@ export default function DealerDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [clearDataOpen, setClearDataOpen] = useState(false);
+  const [clearPassword, setClearPassword] = useState('');
   const resetPassword = useResetDealerPassword();
   const deleteDealer = useDeleteDealer();
+  const clearDealerData = useClearDealerData(id);
 
   const { data: dealer, isLoading } = useDealer(id);
   const {
@@ -109,6 +126,19 @@ export default function DealerDetailPage() {
     });
   }
 
+  function confirmClearData() {
+    clearDealerData.mutate(clearPassword, {
+      onSuccess: (result) => {
+        toast.success(
+          `Cleared ${result.orders} order(s), ${result.invoices} invoice(s), ${result.payments} payment(s), ${result.salesReturns} return(s)`,
+        );
+        setClearDataOpen(false);
+        setClearPassword('');
+      },
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
@@ -132,6 +162,14 @@ export default function DealerDetailPage() {
           <Button variant="outline" onClick={handleResetPassword} loading={resetPassword.isPending}>
             <KeyRound />
             Reset password
+          </Button>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setClearDataOpen(true)}
+          >
+            <Eraser />
+            Clear all data
           </Button>
           <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 />
@@ -352,6 +390,56 @@ export default function DealerDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={clearDataOpen}
+        onOpenChange={(open) => {
+          setClearDataOpen(open);
+          if (!open) setClearPassword('');
+        }}
+      >
+        <DialogContent title="Clear dealer data">
+          <DialogHeader>
+            <DialogTitle>Clear all data for {dealer.businessName}?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes every order, invoice, payment, and sales return for this dealer, and reverses
+              the stock those orders reserved back to what purchases established. The dealer&apos;s profile,
+              username, and credit terms are kept — only their transaction history is wiped. Suppliers, purchases,
+              investments, and expenses are never touched.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertTriangle className="size-4 shrink-0" />
+            This cannot be undone. Enter your admin password to confirm.
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="clear-data-password">Your password</Label>
+            <Input
+              id="clear-data-password"
+              type="password"
+              autoComplete="current-password"
+              value={clearPassword}
+              onChange={(e) => setClearPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && clearPassword) confirmClearData();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClearDataOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmClearData}
+              disabled={!clearPassword}
+              loading={clearDealerData.isPending}
+            >
+              Clear all data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
