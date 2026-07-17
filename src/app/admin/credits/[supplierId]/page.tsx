@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
   Coins,
   HandCoins,
   Loader2,
@@ -87,8 +85,6 @@ export default function SupplierCreditDetailPage() {
   const [chequeStatusFilter, setChequeStatusFilter] = useState<'all' | ChequeStatus>('all');
   const [settlementsDateFrom, setSettlementsDateFrom] = useState('');
   const [settlementsDateTo, setSettlementsDateTo] = useState('');
-  const [sortBy, setSortBy] = useState<'paymentDate' | 'chequeDepositDate'>('paymentDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const settlementsFiltersActive =
     !!settlementsSearch || modeFilter !== 'all' || chequeStatusFilter !== 'all' || !!settlementsDateFrom || !!settlementsDateTo;
 
@@ -104,8 +100,6 @@ export default function SupplierCreditDetailPage() {
     chequeStatus: chequeStatusFilter === 'all' ? undefined : chequeStatusFilter,
     dateFrom: settlementsDateFrom || undefined,
     dateTo: settlementsDateTo || undefined,
-    sortBy,
-    sortOrder,
   });
 
   // Purchases filters
@@ -319,32 +313,6 @@ export default function SupplierCreditDetailPage() {
             }}
             className="w-auto"
           />
-          <Select
-            value={sortBy}
-            onValueChange={(v) => {
-              setSortBy(v as 'paymentDate' | 'chequeDepositDate');
-              setSettlementsPage(1);
-            }}
-          >
-            <SelectTrigger className="sm:w-44">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="paymentDate">Sort by Payment Date</SelectItem>
-              <SelectItem value="chequeDepositDate">Sort by Deposit Date</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="icon"
-            title={sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
-            onClick={() => {
-              setSortOrder((v) => (v === 'desc' ? 'asc' : 'desc'));
-              setSettlementsPage(1);
-            }}
-          >
-            {sortOrder === 'desc' ? <ArrowDown className="size-4" /> : <ArrowUp className="size-4" />}
-          </Button>
           {settlementsFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearSettlementsFilters}>
               Clear filters

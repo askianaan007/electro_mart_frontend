@@ -365,8 +365,6 @@ export const api = {
         chequeStatus?: ChequeStatus;
         dateFrom?: string;
         dateTo?: string;
-        sortBy?: 'paymentDate' | 'chequeDepositDate';
-        sortOrder?: 'asc' | 'desc';
       },
     ) =>
       apiClient
