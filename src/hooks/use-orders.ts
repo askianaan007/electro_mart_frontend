@@ -128,3 +128,11 @@ export function useDeleteOrder() {
     onSuccess: (_data, id) => invalidateOrderRelated(queryClient, id),
   });
 }
+
+export function useResetOrderCounter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.orders.resetCounter(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+  });
+}

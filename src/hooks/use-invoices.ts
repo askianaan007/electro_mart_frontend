@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import type { PaginationParams, PaymentStatus } from '@/lib/api/types';
 
@@ -29,5 +29,13 @@ export function useInvoice(id: string | undefined) {
     queryKey: invoiceKeys.detail(id ?? ''),
     queryFn: () => api.invoices.get(id as string),
     enabled: !!id,
+  });
+}
+
+export function useResetInvoiceCounter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.invoices.resetCounter(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: invoiceKeys.all }),
   });
 }

@@ -91,3 +91,11 @@ export function useDeleteSalesReturn() {
     onSuccess: (_result, variables) => invalidateSalesReturnRelated(queryClient, variables.orderId),
   });
 }
+
+export function useResetSalesReturnCounter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.salesReturns.resetCounter(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: salesReturnKeys.all }),
+  });
+}

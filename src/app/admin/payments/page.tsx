@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Pencil, Receipt, Search, Trash2, Undo2, Wallet } from 'lucide-react';
+import { Pencil, Receipt, RotateCcw, Search, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments, useReturnPayment, useUpdatePaymentChequeStatus } from '@/hooks/use-payments';
+import { useResetSalesReturnCounter } from '@/hooks/use-sales-returns';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
@@ -629,11 +630,35 @@ function PaymentHistoryTab() {
 }
 
 export default function PaymentsPage() {
+  const [resetOpen, setResetOpen] = useState(false);
+  const resetCounter = useResetSalesReturnCounter();
+
+  function confirmResetCounter() {
+    resetCounter.mutate(undefined, {
+      onSuccess: (result) => {
+        toast.success(
+          `Sales return counter reset — next return will be #${String(result.nextSerial).padStart(5, '0')}`,
+        );
+        setResetOpen(false);
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setResetOpen(false);
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Payments &amp; Collections</h1>
-        <p className="text-sm text-muted-foreground">Track dues and record payments against invoices</p>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Payments &amp; Collections</h1>
+          <p className="text-sm text-muted-foreground">Track dues and record payments against invoices</p>
+        </div>
+        <Button variant="outline" onClick={() => setResetOpen(true)}>
+          <RotateCcw />
+          Reset Return Counter
+        </Button>
       </div>
 
       <Tabs defaultValue="outstanding">
@@ -648,6 +673,25 @@ export default function PaymentsPage() {
           <PaymentHistoryTab />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset the sales-return-number counter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realigns the next return number with what&apos;s actually in the table — one past the highest return
+              number still on record, or #00001 if there are no returns left (e.g. after clearing a dealer&apos;s
+              data). Existing return numbers are never changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetCounter} disabled={resetCounter.isPending}>
+              Reset counter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

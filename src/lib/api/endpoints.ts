@@ -220,6 +220,8 @@ export const api = {
     ) => apiClient.patch<Order>(`/orders/${id}`, data).then((r) => r.data),
     remove: (id: string) =>
       apiClient.delete<{ message: string }>(`/orders/${id}`).then((r) => r.data),
+    resetCounter: () =>
+      apiClient.post<{ message: string; nextSerial: number }>('/orders/reset-counter').then((r) => r.data),
   },
 
   invoices: {
@@ -232,6 +234,8 @@ export const api = {
       },
     ) => apiClient.get<Paginated<Invoice>>('/invoices', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Invoice>(`/invoices/${id}`).then((r) => r.data),
+    resetCounter: () =>
+      apiClient.post<{ message: string; nextSerial: number }>('/invoices/reset-counter').then((r) => r.data),
   },
 
   payments: {
@@ -362,6 +366,8 @@ export const api = {
       },
     ) => apiClient.patch<SalesReturn>(`/sales-returns/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/sales-returns/${id}`).then((r) => r.data),
+    resetCounter: () =>
+      apiClient.post<{ message: string; nextSerial: number }>('/sales-returns/reset-counter').then((r) => r.data),
   },
 
   credits: {

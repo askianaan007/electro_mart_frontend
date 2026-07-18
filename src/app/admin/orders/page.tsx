@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, ShoppingCart } from 'lucide-react';
+import { Plus, RotateCcw, Search, ShoppingCart } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,9 +15,20 @@ import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { OrderStatusBadge } from '@/components/status-badge';
-import { useOrders } from '@/hooks/use-orders';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useOrders, useResetOrderCounter } from '@/hooks/use-orders';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { OrderStatus } from '@/lib/api/types';
 
@@ -37,10 +49,12 @@ export default function OrdersPage() {
   const [dealerFilter, setDealerFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
   const filtersActive = !!search || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data: dealers } = useAllCustomer();
+  const resetCounter = useResetOrderCounter();
 
   const { data, isLoading, isFetching } = useOrders({
     page,
@@ -60,6 +74,19 @@ export default function OrdersPage() {
     setPage(1);
   }
 
+  function confirmResetCounter() {
+    resetCounter.mutate(undefined, {
+      onSuccess: (result) => {
+        toast.success(`Order counter reset — next order will be #${String(result.nextSerial).padStart(5, '0')}`);
+        setResetOpen(false);
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error));
+        setResetOpen(false);
+      },
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -67,12 +94,18 @@ export default function OrdersPage() {
           <h1 className="text-2xl font-semibold">Orders</h1>
           <p className="text-sm text-muted-foreground">Review and manage dealer orders</p>
         </div>
-        <Button asChild className="shrink-0">
-          <Link href="/admin/orders/new">
-            <Plus />
-            New Order
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setResetOpen(true)}>
+            <RotateCcw />
+            Reset Counter
+          </Button>
+          <Button asChild className="shrink-0">
+            <Link href="/admin/orders/new">
+              <Plus />
+              New Order
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -208,6 +241,25 @@ export default function OrdersPage() {
           </>
         )}
       </div>
+
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset the order-number counter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realigns the next order number with what&apos;s actually in the table — one past the highest order
+              number still on record, or #00001 if there are no orders left (e.g. after clearing a dealer&apos;s
+              data). Existing order numbers are never changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetCounter} disabled={resetCounter.isPending}>
+              Reset counter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
