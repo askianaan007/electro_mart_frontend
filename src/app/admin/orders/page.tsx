@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, RotateCcw, Search, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +31,7 @@ import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { OrderStatus } from '@/lib/api/types';
+import type { Order, OrderStatus } from '@/lib/api/types';
 
 const TABS: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -41,6 +42,37 @@ const TABS: { value: string; label: string }[] = [
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'REJECTED', label: 'Rejected' },
 ];
+
+function orderTotals(order: Order) {
+  const grossValue = Number(order.totalAmount);
+  const returnedValue = (order.salesReturns ?? []).reduce((sum, r) => sum + Number(r.totalAmount), 0);
+  const netValue = grossValue - returnedValue;
+  return { grossValue, returnedValue, netValue, hasReturns: returnedValue > 0 };
+}
+
+function ReturnedBadge({ netValue }: { netValue: number }) {
+  return (
+    <Badge variant={netValue <= 0 ? 'destructive' : 'warning'}>
+      {netValue <= 0 ? 'Fully Returned' : 'Partially Returned'}
+    </Badge>
+  );
+}
+
+function AmountBreakdown({ order, className }: { order: Order; className?: string }) {
+  const { grossValue, returnedValue, netValue, hasReturns } = orderTotals(order);
+
+  if (!hasReturns) {
+    return <span className={cn('font-medium', className)}>{formatCurrency(grossValue)}</span>;
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-0.5', className)}>
+      <span className="text-xs text-muted-foreground line-through">{formatCurrency(grossValue)}</span>
+      <span className="text-xs font-medium text-destructive">−{formatCurrency(returnedValue)} returned</span>
+      <span className="font-semibold">{formatCurrency(netValue)} net</span>
+    </div>
+  );
+}
 
 export default function OrdersPage() {
   const [page, setPage] = useState(1);
@@ -219,21 +251,29 @@ export default function OrdersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.data.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
-                          {order.orderNumber}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{order.dealer.businessName}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{formatDate(order.createdAt)}</TableCell>
-                      <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
-                      <TableCell>
-                        <OrderStatusBadge status={order.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {data.data.map((order) => {
+                    const { hasReturns, netValue } = orderTotals(order);
+                    return (
+                      <TableRow key={order.id} className={cn(hasReturns && 'border-l-4 border-l-warning bg-warning/5')}>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary">
+                              {order.orderNumber}
+                            </Link>
+                            {hasReturns && <ReturnedBadge netValue={netValue} />}
+                          </div>
+                        </TableCell>
+                        <TableCell>{order.dealer.businessName}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{formatDate(order.createdAt)}</TableCell>
+                        <TableCell>
+                          <AmountBreakdown order={order} />
+                        </TableCell>
+                        <TableCell>
+                          <OrderStatusBadge status={order.status} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

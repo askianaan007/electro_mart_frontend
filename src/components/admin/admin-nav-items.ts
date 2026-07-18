@@ -14,6 +14,7 @@ import {
   PieChart,
   HandCoins,
   LineChart,
+  Undo2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'Sales',
     items: [
       { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+      { label: 'Sales Returns', href: '/admin/sales-returns', icon: Undo2 },
       { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
     ],
   },

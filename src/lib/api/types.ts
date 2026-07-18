@@ -250,6 +250,9 @@ export interface OrderItem {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+  allocatedDiscount: string;
+  netLineTotal: string;
+  netUnitPrice: string;
   product: Product;
 }
 
@@ -274,6 +277,7 @@ export interface Order {
   updatedAt: string;
   items: OrderItem[];
   invoice: Invoice | null;
+  salesReturns?: { totalAmount: string }[];
 }
 
 export interface Invoice {
@@ -386,6 +390,7 @@ export interface SalesReturnItem {
   product?: Product;
   quantity: number;
   unitPrice: string;
+  allocatedDiscount: string;
   lineTotal: string;
 }
 

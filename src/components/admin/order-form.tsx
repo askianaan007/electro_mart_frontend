@@ -1,11 +1,12 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +18,8 @@ import { useAllCustomer } from '@/hooks/use-dealers';
 import { useProducts } from '@/hooks/use-products';
 import { useCreateOrder, useUpdateOrder } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency } from '@/lib/utils';
-import type { Order, Product } from '@/lib/api/types';
+import { cn, formatCurrency } from '@/lib/utils';
+import type { Dealer, Order, Product } from '@/lib/api/types';
 
 const lineItemSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
@@ -89,6 +90,101 @@ function defaultValuesFor(order?: Order): FormValues {
     discountType: 'FIXED',
     discountValue: Number(order.discount) > 0 ? String(order.discount) : '',
   };
+}
+
+// A plain Radix Select can't host a working search box — Select manages
+// roving focus/typeahead across its items aggressively and steals focus
+// back from any input placed inside it. This is a fully self-contained
+// dropdown instead, so search input focus is never contested.
+function DealerCombobox({
+  value,
+  onChange,
+  dealers,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  dealers: Dealer[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      const id = requestAnimationFrame(() => inputRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [open]);
+
+  const filtered = dealers.filter((dealer) =>
+    dealer.businessName.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const selected = dealers.find((dealer) => dealer.id === value);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setSearch('');
+          setOpen((o) => !o);
+        }}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <span className={cn('truncate', !selected && 'text-muted-foreground')}>
+          {selected ? selected.businessName : 'Select dealer'}
+        </span>
+        <ChevronDown className="size-4 shrink-0 opacity-50" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+          <div className="p-1.5">
+            <Input
+              ref={inputRef}
+              placeholder="Search dealer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <p className="p-2 text-sm text-muted-foreground">No dealers found</p>
+            ) : (
+              filtered.map((dealer) => (
+                <button
+                  key={dealer.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(dealer.id);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    'flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground',
+                    dealer.id === value && 'bg-accent/60',
+                  )}
+                >
+                  {dealer.businessName}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function OrderForm({ order }: { order?: Order }) {
@@ -209,20 +305,9 @@ export function OrderForm({ order }: { order?: Order }) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Dealer</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select dealer" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {dealers?.data.map((dealer) => (
-                          <SelectItem key={dealer.id} value={dealer.id}>
-                            {dealer.businessName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <DealerCombobox value={field.value} onChange={field.onChange} dealers={dealers?.data ?? []} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

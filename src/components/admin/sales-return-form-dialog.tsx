@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useOrder } from '@/hooks/use-orders';
 import { useCreateSalesReturn, useSalesReturnsForOrder, useUpdateSalesReturn } from '@/hooks/use-sales-returns';
 import { getErrorMessage } from '@/lib/api/error';
-import type { SalesReturn } from '@/lib/api/types';
+import { formatCurrency } from '@/lib/utils';
+import type { Order, SalesReturn } from '@/lib/api/types';
 
 const schema = z.object({
   reason: z.string().min(1, 'Reason is required'),
@@ -30,6 +31,36 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+/**
+ * The refund is never the original unit price — if the order had a
+ * discount, the customer already paid less than that. This spells out the
+ * math (original price, this line's share of the discount, and the actual
+ * refund) so it's clear why the number is lower than the sale price.
+ */
+function RefundBreakdown({ order, productId, quantity }: { order: Order; productId: string; quantity: number }) {
+  const orderItem = order.items.find((item) => item.productId === productId);
+  if (!orderItem || !quantity) return null;
+
+  const originalPrice = Number(orderItem.unitPrice);
+  const netUnitPrice = Number(orderItem.netUnitPrice);
+  const allocatedDiscount = (originalPrice - netUnitPrice) * quantity;
+  const refundAmount = netUnitPrice * quantity;
+
+  if (allocatedDiscount <= 0) {
+    return (
+      <p className="text-xs text-muted-foreground">Refund: {formatCurrency(refundAmount)} (no discount on this order)</p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+      <span>Original: {formatCurrency(originalPrice)} &times; {quantity}</span>
+      <span className="text-destructive">−{formatCurrency(allocatedDiscount)} discount</span>
+      <span className="font-medium text-foreground">= {formatCurrency(refundAmount)} refund</span>
+    </div>
+  );
+}
 
 export function SalesReturnFormDialog({
   open,
@@ -180,67 +211,87 @@ export function SalesReturnFormDialog({
                 {fields.map((rowField, index) => {
                   const selectedProductId = watchedItems?.[index]?.productId ?? '';
                   const remaining = remainingForRow(selectedProductId, index);
+                  const enteredQuantity = Number(watchedItems?.[index]?.quantity) || 0;
                   return (
-                    <div key={rowField.id} className="flex items-start gap-2">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.productId`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Product</FormLabel>
-                            <Select value={field.value} onValueChange={field.onChange}>
+                    <div key={rowField.id} className="space-y-1.5 rounded-lg border border-border p-2.5">
+                      <div className="flex items-start gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.productId`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>Product</FormLabel>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select product" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {returnableItems.map((item) => (
+                                    <SelectItem key={item.productId} value={item.productId}>
+                                      {item.product?.name ?? item.productId}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Quantity</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={remaining ?? undefined}
+                                  className="w-24"
+                                  {...field}
+                                />
                               </FormControl>
-                              <SelectContent>
-                                {returnableItems.map((item) => (
-                                  <SelectItem key={item.productId} value={item.productId}>
-                                    {item.product?.name ?? item.productId}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Quantity</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={remaining ?? undefined}
-                                className="w-24"
-                                {...field}
-                              />
-                            </FormControl>
-                            {remaining !== null && (
-                              <p className="text-xs text-muted-foreground">{remaining} returnable</p>
-                            )}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="mt-6"
-                        disabled={fields.length === 1}
-                        onClick={() => remove(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                              {remaining !== null && (
+                                <p className="text-xs text-muted-foreground">{remaining} returnable</p>
+                              )}
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mt-6"
+                          disabled={fields.length === 1}
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                      {order && selectedProductId && (
+                        <RefundBreakdown order={order} productId={selectedProductId} quantity={enteredQuantity} />
+                      )}
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {order && (watchedItems ?? []).some((row) => row.productId && Number(row.quantity) > 0) && (
+              <div className="flex justify-between rounded-lg bg-muted/40 p-3 text-sm font-semibold">
+                <span>Total refund</span>
+                <span>
+                  {formatCurrency(
+                    (watchedItems ?? []).reduce((sum, row) => {
+                      const orderItem = order.items.find((item) => item.productId === row.productId);
+                      const qty = Number(row.quantity) || 0;
+                      return orderItem ? sum + Number(orderItem.netUnitPrice) * qty : sum;
+                    }, 0),
+                  )}
+                </span>
               </div>
             )}
             {order?.status === 'COMPLETED' && returnableItems.length > 0 && (

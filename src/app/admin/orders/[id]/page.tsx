@@ -280,8 +280,10 @@ export default function OrderDetailPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Qty Requested</TableHead>
                 <TableHead>Unit Price</TableHead>
+                <TableHead>Discount Allocated</TableHead>
+                <TableHead>Net Unit Price</TableHead>
                 <TableHead className="hidden sm:table-cell">Available Stock</TableHead>
-                <TableHead>Line Total</TableHead>
+                <TableHead>Net Line Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,8 +292,12 @@ export default function OrderDetailPage() {
                   <TableCell>{item.product.name}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                  <TableCell className={Number(item.allocatedDiscount) > 0 ? 'text-destructive' : undefined}>
+                    {Number(item.allocatedDiscount) > 0 ? `−${formatCurrency(item.allocatedDiscount)}` : '—'}
+                  </TableCell>
+                  <TableCell>{formatCurrency(item.netUnitPrice)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{item.product.currentStock}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(item.netLineTotal)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

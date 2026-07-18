@@ -32,14 +32,6 @@ import { downloadCsv } from '@/lib/csv';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { SalesAnalysisRow } from '@/lib/api/types';
 
-function startOfMonthISO(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
-}
-
-function startOfNextMonthISO(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString().slice(0, 10);
-}
-
 function downloadSalesAnalysisCsv(filename: string, rows: SalesAnalysisRow[]) {
   const header = ['Order #', 'Invoice #', 'Dealer', 'Date', 'Selling Price', 'Buying Price', 'Profit'];
   downloadCsv(
@@ -58,9 +50,8 @@ function downloadSalesAnalysisCsv(filename: string, rows: SalesAnalysisRow[]) {
 }
 
 export default function SalesAnalysisPage() {
-  const now = new Date();
-  const [dateFrom, setDateFrom] = useState(startOfMonthISO(now));
-  const [dateTo, setDateTo] = useState(startOfNextMonthISO(now));
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [dealerId, setDealerId] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
