@@ -1,27 +1,26 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ClipboardList, Search, Trash2, User, X } from 'lucide-react';
+import { AlertTriangle, ClipboardList, Search, Trash2, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { useActivityLog, useActivityLogAdmins, useClearActivityLog } from '@/hooks/use-activity-log';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -164,6 +163,7 @@ export default function ActivityLogPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
+  const [clearPassword, setClearPassword] = useState('');
   const clearActivityLog = useClearActivityLog();
 
   const debouncedSearch = useDebouncedValue(search);
@@ -179,7 +179,7 @@ export default function ActivityLogPage() {
     actionFilter !== 'all' ? actionFilter : moduleFilter !== 'all' ? actionsForModule.map((a) => a.value).join(',') : undefined;
 
   const { data: admins } = useActivityLogAdmins();
-  const { data, isLoading } = useActivityLog({
+  const { data, isLoading, isError, error, refetch } = useActivityLog({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -206,15 +206,15 @@ export default function ActivityLogPage() {
   }
 
   function confirmClearAll() {
-    clearActivityLog.mutate(undefined, {
+    clearActivityLog.mutate(clearPassword, {
       onSuccess: (result) => {
         toast.success(`Cleared ${result.count} activity log entr${result.count === 1 ? 'y' : 'ies'}`);
         setClearOpen(false);
+        setClearPassword('');
         setPage(1);
       },
       onError: (error) => {
         toast.error(getErrorMessage(error));
-        setClearOpen(false);
       },
     });
   }
@@ -339,6 +339,8 @@ export default function ActivityLogPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState
@@ -451,28 +453,53 @@ export default function ActivityLogPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear the entire activity log?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog
+        open={clearOpen}
+        onOpenChange={(open) => {
+          setClearOpen(open);
+          if (!open) setClearPassword('');
+        }}
+      >
+        <DialogContent title="Clear activity log">
+          <DialogHeader>
+            <DialogTitle>Clear the entire activity log?</DialogTitle>
+            <DialogDescription>
               This permanently deletes every audit log entry — across all admins, actions, and dates, regardless of
-              the filters above. A single new entry recording this clear will be added afterward. This cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+              the filters above. A single new entry recording this clear will be added afterward.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertTriangle className="size-4 shrink-0" />
+            This cannot be undone. Enter your admin password to confirm.
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="clear-log-password">Your password</Label>
+            <Input
+              id="clear-log-password"
+              type="password"
+              autoComplete="current-password"
+              value={clearPassword}
+              onChange={(e) => setClearPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && clearPassword) confirmClearAll();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
               onClick={confirmClearAll}
-              disabled={clearActivityLog.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!clearPassword}
+              loading={clearActivityLog.isPending}
             >
               Clear all
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

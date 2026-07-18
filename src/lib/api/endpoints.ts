@@ -137,7 +137,7 @@ export const api = {
       apiClient
         .get<Paginated<InventoryLog>>(`/inventory/${productId}/ledger`, { params: buildParams(params) })
         .then((r) => r.data),
-    adjust: (data: { productId: string; direction: 'IN' | 'OUT'; quantity: number; reason?: string }) =>
+    adjust: (data: { productId: string; direction: 'IN' | 'OUT'; quantity: number; reason: string }) =>
       apiClient.post<Product>('/inventory/adjustment', data).then((r) => r.data),
   },
 
@@ -180,6 +180,15 @@ export const api = {
       returnDate: string;
       items: { productId: string; quantity: number; unitCost?: number }[];
     }) => apiClient.post<PurchaseReturn>('/purchase-returns', data).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        reason: string;
+        returnDate: string;
+        items: { productId: string; quantity: number; unitCost?: number }[];
+      },
+    ) => apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}`, data).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/purchase-returns/${id}`).then((r) => r.data),
   },
 
   orders: {
@@ -285,8 +294,10 @@ export const api = {
       apiClient.get<Paginated<ActivityLog>>('/activity-logs', { params: buildParams(params) }).then((r) => r.data),
     admins: () =>
       apiClient.get<{ id: string; name: string }[]>('/activity-logs/admins').then((r) => r.data),
-    clearAll: () =>
-      apiClient.delete<{ message: string; count: number }>('/activity-logs').then((r) => r.data),
+    clearAll: (password: string) =>
+      apiClient
+        .delete<{ message: string; count: number }>('/activity-logs', { data: { password } })
+        .then((r) => r.data),
   },
 
   dashboard: {

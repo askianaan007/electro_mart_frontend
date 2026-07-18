@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { AccountStatusBadge } from '@/components/status-badge';
 import {
@@ -87,7 +88,7 @@ function DealerRowActions({
         <DropdownMenuItem onClick={handleResetPassword} disabled={resetPassword.isPending}>
           Reset password
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={toggleStatus}>
+        <DropdownMenuItem onClick={toggleStatus} disabled={setStatus.isPending}>
           {dealer.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onClick={onDeleteRequest}>
@@ -111,7 +112,7 @@ export default function CustomerPage() {
   const [deletingDealer, setDeletingDealer] = useState<Dealer | null>(null);
   const deleteDealer = useDeleteDealer();
 
-  const { data, isLoading, isFetching } = useCustomer({
+  const { data, isLoading, isFetching, isError, error, refetch } = useCustomer({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -207,6 +208,8 @@ export default function CustomerPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

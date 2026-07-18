@@ -45,6 +45,7 @@ import {
 import { AccountStatusBadge, OrderStatusBadge, PaymentStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
 import { useClearDealerData, useDealer, useDeleteDealer, useResetDealerPassword } from '@/hooks/use-dealers';
 import { useOrders } from '@/hooks/use-orders';
@@ -75,7 +76,7 @@ export default function DealerDetailPage() {
   const deleteDealer = useDeleteDealer();
   const clearDealerData = useClearDealerData(id);
 
-  const { data: dealer, isLoading } = useDealer(id);
+  const { data: dealer, isLoading, isError, error, refetch } = useDealer(id);
   const {
     data: orders,
     isLoading: ordersLoading,
@@ -91,6 +92,10 @@ export default function DealerDetailPage() {
     isLoading: paymentsLoading,
     isFetching: paymentsFetching,
   } = usePayments({ dealerId: id, limit: 10 });
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !dealer) {
     return (
@@ -390,6 +395,7 @@ export default function DealerDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleteDealer.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

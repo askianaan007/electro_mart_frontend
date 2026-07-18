@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -88,7 +89,7 @@ export default function OrdersPage() {
   const { data: dealers } = useAllCustomer();
   const resetCounter = useResetOrderCounter();
 
-  const { data, isLoading, isFetching } = useOrders({
+  const { data, isLoading, isFetching, isError, error, refetch } = useOrders({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -222,6 +223,8 @@ export default function OrdersPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

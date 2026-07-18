@@ -6,12 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import { InvoicePrintLayout } from '@/components/invoice-print-layout';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useInvoice } from '@/hooks/use-invoices';
 
 export default function DealerInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: invoice, isLoading } = useInvoice(id);
+  const { data: invoice, isLoading, isError, error, refetch } = useInvoice(id);
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !invoice) {
     return <Skeleton className="h-96 w-full" />;

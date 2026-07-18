@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
@@ -76,11 +77,21 @@ export default function SalesAnalysisPage() {
     setPage(1);
   }
 
-  const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } = useSalesAnalysisSummary(filters);
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isFetching: summaryFetching,
+    isError: summaryError,
+    error: summaryErrorObj,
+    refetch: refetchSummary,
+  } = useSalesAnalysisSummary(filters);
   const {
     data: rows,
     isLoading: rowsLoading,
     isFetching: rowsFetching,
+    isError: rowsError,
+    error: rowsErrorObj,
+    refetch: refetchRows,
   } = useSalesAnalysis({ ...filters, page, limit: 20 });
 
   async function handleExport() {
@@ -120,6 +131,8 @@ export default function SalesAnalysisPage() {
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
+      ) : summaryError ? (
+        <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} />
       ) : (
         summary && (
           <div className={cn('grid grid-cols-2 gap-4 lg:grid-cols-5', summaryFetching && 'opacity-60 transition-opacity')}>
@@ -140,7 +153,7 @@ export default function SalesAnalysisPage() {
       <div className="rounded-xl border border-border bg-card">
         <SectionHeader title="Orders" isFetching={rowsFetching && !rowsLoading} />
         <FilterBar>
-          <div className="relative flex-1 sm:max-w-[12rem]">
+          <div className="relative flex-1 sm:max-w-48">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search order # or dealer..."
@@ -203,6 +216,8 @@ export default function SalesAnalysisPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : rowsError ? (
+          <QueryErrorState error={rowsErrorObj} onRetry={() => refetchRows()} />
         ) : !rows || rows.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useOrder } from '@/hooks/use-orders';
 import { formatCurrency } from '@/lib/utils';
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: order, isLoading } = useOrder(id);
+  const { data: order, isLoading, isError, error, refetch } = useOrder(id);
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} className="mx-auto max-w-md" />;
+  }
 
   if (isLoading || !order) {
     return <Skeleton className="mx-auto h-72 w-full max-w-md" />;

@@ -13,7 +13,7 @@ function MetricTile({
   label: string;
   value: string;
   icon: LucideIcon;
-  change?: number;
+  change?: number | null;
 }) {
   return (
     <div className="flex items-start gap-2.5">

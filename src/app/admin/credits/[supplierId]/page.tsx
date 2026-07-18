@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
@@ -71,7 +72,7 @@ function canDeleteSettlement(payment: SupplierPayment) {
 export default function SupplierCreditDetailPage() {
   const { supplierId } = useParams<{ supplierId: string }>();
   const router = useRouter();
-  const { data, isLoading } = useSupplierCreditDetail(supplierId);
+  const { data, isLoading, isError, error, refetch } = useSupplierCreditDetail(supplierId);
   const [settlementOpen, setSettlementOpen] = useState(false);
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [revertPayment, setRevertPayment] = useState<SupplierPayment | null>(null);
@@ -149,6 +150,10 @@ export default function SupplierCreditDetailPage() {
     dateFrom: returnsDateFrom || undefined,
     dateTo: returnsDateTo || undefined,
   });
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !data) {
     return <Skeleton className="h-96 w-full" />;
@@ -405,13 +410,19 @@ export default function SupplierCreditDetailPage() {
                         <div className="flex flex-wrap gap-1">
                           {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
                             <>
-                              <Button size="sm" variant="outline" onClick={() => markCheque(payment.id, 'CLEARED')}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
+                                onClick={() => markCheque(payment.id, 'CLEARED')}
+                              >
                                 Mark Cleared
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-destructive"
+                                disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
                                 onClick={() => markCheque(payment.id, 'RETURNED')}
                               >
                                 Mark Returned
@@ -464,13 +475,20 @@ export default function SupplierCreditDetailPage() {
                   )}
                   {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
                     <div className="mt-3 flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => markCheque(payment.id, 'CLEARED')}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
+                        onClick={() => markCheque(payment.id, 'CLEARED')}
+                      >
                         Mark Cleared
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="flex-1 text-destructive"
+                        disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
                         onClick={() => markCheque(payment.id, 'RETURNED')}
                       >
                         Mark Returned
@@ -780,7 +798,9 @@ export default function SupplierCreditDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevert}>Revert to Pending</AlertDialogAction>
+            <AlertDialogAction onClick={confirmRevert} disabled={updateChequeStatus.isPending}>
+              Revert to Pending
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -800,6 +820,7 @@ export default function SupplierCreditDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleteSettlement.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

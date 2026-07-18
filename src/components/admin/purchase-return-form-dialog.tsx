@@ -11,9 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreatePurchaseReturn, usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
+import {
+  useCreatePurchaseReturn,
+  usePurchaseReturnsForPurchase,
+  useUpdatePurchaseReturn,
+} from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
-import type { Purchase } from '@/lib/api/types';
+import type { Purchase, PurchaseReturn } from '@/lib/api/types';
 
 const schema = z.object({
   reason: z.string().min(1, 'Reason is required'),
@@ -34,12 +38,17 @@ export function PurchaseReturnFormDialog({
   open,
   onOpenChange,
   purchase,
+  editingReturn,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchase: Purchase | null;
+  editingReturn?: PurchaseReturn | null;
 }) {
+  const isEdit = !!editingReturn;
   const createPurchaseReturn = useCreatePurchaseReturn();
+  const updatePurchaseReturn = useUpdatePurchaseReturn();
+  const pending = createPurchaseReturn.isPending || updatePurchaseReturn.isPending;
   const { data: existingReturns } = usePurchaseReturnsForPurchase(purchase?.id);
 
   const remainingByProduct = useMemo(() => {
@@ -48,12 +57,13 @@ export function PurchaseReturnFormDialog({
       map.set(item.productId, item.quantity);
     }
     for (const purchaseReturn of existingReturns ?? []) {
+      if (isEdit && purchaseReturn.id === editingReturn!.id) continue;
       for (const item of purchaseReturn.items) {
         map.set(item.productId, (map.get(item.productId) ?? 0) - item.quantity);
       }
     }
     return map;
-  }, [purchase, existingReturns]);
+  }, [purchase, existingReturns, isEdit, editingReturn]);
 
   const returnableItems = (purchase?.items ?? []).filter((item) => (remainingByProduct.get(item.productId) ?? 0) > 0);
 
@@ -71,14 +81,25 @@ export function PurchaseReturnFormDialog({
 
   useEffect(() => {
     if (open) {
-      form.reset({
-        reason: '',
-        returnDate: new Date().toISOString().slice(0, 10),
-        items: [{ productId: '', quantity: '1' }],
-      });
+      form.reset(
+        editingReturn
+          ? {
+              reason: editingReturn.reason,
+              returnDate: editingReturn.returnDate.slice(0, 10),
+              items: editingReturn.items.map((item) => ({
+                productId: item.productId,
+                quantity: String(item.quantity),
+              })),
+            }
+          : {
+              reason: '',
+              returnDate: new Date().toISOString().slice(0, 10),
+              items: [{ productId: '', quantity: '1' }],
+            },
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, purchase?.id]);
+  }, [open, purchase?.id, editingReturn?.id]);
 
   function remainingForRow(productId: string, rowIndex: number) {
     if (!productId) return null;
@@ -108,28 +129,40 @@ export function PurchaseReturnFormDialog({
       usedByProduct.set(item.productId, usedSoFar + qty);
     }
 
-    createPurchaseReturn.mutate(
-      {
-        purchaseId: purchase.id,
-        reason: values.reason,
-        returnDate: values.returnDate,
-        items: values.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) })),
-      },
-      {
-        onSuccess: () => {
-          toast.success('Purchase return recorded — stock updated');
-          onOpenChange(false);
+    const items = values.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) }));
+
+    if (isEdit && editingReturn) {
+      updatePurchaseReturn.mutate(
+        { id: editingReturn.id, reason: values.reason, returnDate: values.returnDate, items },
+        {
+          onSuccess: () => {
+            toast.success('Return updated');
+            onOpenChange(false);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
+      );
+    } else {
+      createPurchaseReturn.mutate(
+        { purchaseId: purchase.id, reason: values.reason, returnDate: values.returnDate, items },
+        {
+          onSuccess: () => {
+            toast.success('Purchase return recorded — stock updated');
+            onOpenChange(false);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
+        },
+      );
+    }
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Record purchase return" className="max-w-xl">
+      <DialogContent title={isEdit ? 'Edit purchase return' : 'Record purchase return'} className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Return items to {purchase?.supplier.name}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Edit return to' : 'Return items to'} {purchase?.supplier.name}
+          </DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -248,12 +281,8 @@ export function PurchaseReturnFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                loading={createPurchaseReturn.isPending}
-                disabled={returnableItems.length === 0}
-              >
-                Record return
+              <Button type="submit" loading={pending} disabled={returnableItems.length === 0}>
+                {isEdit ? 'Save changes' : 'Record return'}
               </Button>
             </DialogFooter>
           </form>

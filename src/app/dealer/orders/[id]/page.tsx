@@ -9,13 +9,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OrderStatusBadge } from '@/components/status-badge';
 import { OrderTimeline } from '@/components/order-timeline';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useOrder } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function DealerOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: order, isLoading } = useOrder(id);
+  const { data: order, isLoading, isError, error, refetch } = useOrder(id);
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;

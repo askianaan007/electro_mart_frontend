@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Minus, Package, Plus, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Minus, Package, Plus, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StockStatusBadge } from '@/components/status-badge';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useProduct } from '@/hooks/use-products';
 import { useCartStore } from '@/stores/cart-store';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -20,7 +21,11 @@ export default function DealerProductDetailPage() {
   const [activeImage, setActiveImage] = useState(0);
   const addItem = useCartStore((s) => s.addItem);
 
-  const { data: product, isLoading } = useProduct(id);
+  const { data: product, isLoading, isError, error, refetch } = useProduct(id);
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !product) {
     return <Skeleton className="h-96 w-full" />;
@@ -35,6 +40,7 @@ export default function DealerProductDetailPage() {
   const mainImage = galleryImages[activeImage] ?? galleryImages[0];
 
   const outOfStock = product.currentStock <= 0;
+  const unavailable = outOfStock || product.status === 'INACTIVE';
   const status = outOfStock ? 'OUT_OF_STOCK' : 'IN_STOCK';
 
   function handleAdd() {
@@ -101,7 +107,14 @@ export default function DealerProductDetailPage() {
 
           <p className="text-sm text-muted-foreground">{product.currentStock} units available</p>
 
-          {!outOfStock && (
+          {product.status === 'INACTIVE' && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertTriangle className="size-4 shrink-0" />
+              This product is no longer available for order.
+            </div>
+          )}
+
+          {!unavailable && (
             <div className="flex items-center gap-3 pt-2">
               <div className="flex items-center rounded-md border border-input">
                 <button

@@ -155,7 +155,7 @@ export function SupplierStatementPrintLayout({
       </table>
       {purchaseLines.length > 0 && (
         <div className="flex justify-end break-inside-avoid">
-          <div className="mt-[-1px] flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
+          <div className="-mt-px flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
             <span>TOTAL AMOUNT</span>
             <span>{formatCurrency(purchaseTotal)}</span>
           </div>
@@ -189,7 +189,7 @@ export function SupplierStatementPrintLayout({
       </table>
       {transportLines.length > 0 && (
         <div className="flex justify-end break-inside-avoid">
-          <div className="mt-[-1px] flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
+          <div className="-mt-px flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
             <span>TOTAL AMOUNT</span>
             <span>{formatCurrency(transportTotal)}</span>
           </div>
@@ -225,7 +225,7 @@ export function SupplierStatementPrintLayout({
       </table>
       {returnLines.length > 0 && (
         <div className="flex justify-end break-inside-avoid">
-          <div className="mt-[-1px] flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
+          <div className="-mt-px flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
             <span>TOTAL AMOUNT</span>
             <span>−{formatCurrency(returnTotal)}</span>
           </div>

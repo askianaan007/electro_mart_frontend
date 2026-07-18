@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -45,7 +46,7 @@ export default function InvoicesPage() {
   const resetCounter = useResetInvoiceCounter();
   const filtersActive = !!search || status !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
-  const { data, isLoading, isFetching } = useInvoices({
+  const { data, isLoading, isFetching, isError, error, refetch } = useInvoices({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -174,6 +175,8 @@ export default function InvoicesPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

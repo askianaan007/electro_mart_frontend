@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -55,7 +56,7 @@ function canEditPayment(payment: Payment) {
 function OutstandingInvoicesTab() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<string>('PENDING');
+  const [status, setStatus] = useState<string>('all');
   const [dealerFilter, setDealerFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -64,9 +65,9 @@ function OutstandingInvoicesTab() {
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
 
   const { data: dealers } = useAllCustomer();
-  const filtersActive = !!search || status !== 'PENDING' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
+  const filtersActive = !!search || status !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
-  const { data, isLoading, isFetching } = useInvoices({
+  const { data, isLoading, isFetching, isError, error, refetch } = useInvoices({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -78,7 +79,7 @@ function OutstandingInvoicesTab() {
 
   function clearFilters() {
     setSearch('');
-    setStatus('PENDING');
+    setStatus('all');
     setDealerFilter('all');
     setDateFrom('');
     setDateTo('');
@@ -170,6 +171,8 @@ function OutstandingInvoicesTab() {
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState error={error} onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
         filtersActive ? (
           <EmptyState
@@ -217,12 +220,13 @@ function OutstandingInvoicesTab() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {invoice.paymentStatus !== 'PAID' && (
-                          <Button size="sm" variant="outline" onClick={() => setPayingInvoice(invoice)}>
-                            <Wallet />
-                            Record
-                          </Button>
-                        )}
+                        {invoice.paymentStatus !== 'PAID' &&
+                          Number(invoice.netGrandTotal ?? invoice.grandTotal) > 0 && (
+                            <Button size="sm" variant="outline" onClick={() => setPayingInvoice(invoice)}>
+                              <Wallet />
+                              Record
+                            </Button>
+                          )}
                         <Button size="sm" variant="outline" onClick={() => setReturnOrderId(invoice.orderId)}>
                           <Undo2 />
                           Return Goods
@@ -273,7 +277,7 @@ function PaymentHistoryTab() {
   const filtersActive =
     !!search || mode !== 'all' || chequeStatusFilter !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
 
-  const { data, isLoading, isFetching } = usePayments({
+  const { data, isLoading, isFetching, isError, error, refetch } = usePayments({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -340,17 +344,26 @@ function PaymentHistoryTab() {
 
   function rowActions(payment: Payment, layout: 'row' | 'stack') {
     const wrapClass = layout === 'row' ? 'flex flex-wrap gap-1' : 'mt-3 flex flex-wrap gap-2';
+    // Only disable the row actually being mutated — other rows should stay
+    // interactive while one cheque's status change is in flight.
+    const thisRowPending = updateChequeStatus.isPending && updateChequeStatus.variables?.id === payment.id;
     return (
       <div className={wrapClass}>
         {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
           <>
-            <Button size="sm" variant="outline" onClick={() => markCheque(payment.id, 'CLEARED')}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={thisRowPending}
+              onClick={() => markCheque(payment.id, 'CLEARED')}
+            >
               Mark Cleared
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="text-destructive"
+              disabled={thisRowPending}
               onClick={() => markCheque(payment.id, 'RETURNED')}
             >
               Mark Returned
@@ -486,6 +499,8 @@ function PaymentHistoryTab() {
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState error={error} onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
         filtersActive ? (
           <EmptyState
@@ -593,7 +608,9 @@ function PaymentHistoryTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevert}>Revert to Pending</AlertDialogAction>
+            <AlertDialogAction onClick={confirmRevert} disabled={updateChequeStatus.isPending}>
+              Revert to Pending
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -612,6 +629,7 @@ function PaymentHistoryTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmReturn}
+              disabled={returnPaymentMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Return payment

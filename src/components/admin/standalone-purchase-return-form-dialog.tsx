@@ -12,8 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useProducts } from '@/hooks/use-products';
-import { useCreatePurchaseReturn } from '@/hooks/use-purchase-returns';
+import { useCreatePurchaseReturn, useUpdatePurchaseReturn } from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
+import type { PurchaseReturn } from '@/lib/api/types';
 
 const schema = z.object({
   supplierId: z.string().min(1, 'Select a supplier'),
@@ -26,14 +27,15 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function defaultValues(supplierId?: string): FormValues {
+function defaultValues(supplierId?: string, editingReturn?: PurchaseReturn | null): FormValues {
+  const firstItem = editingReturn?.items[0];
   return {
-    supplierId: supplierId ?? '',
-    productId: '',
-    quantity: '1',
-    unitCost: '0',
-    reason: '',
-    returnDate: new Date().toISOString().slice(0, 10),
+    supplierId: editingReturn?.supplierId ?? supplierId ?? '',
+    productId: firstItem?.productId ?? '',
+    quantity: firstItem ? String(firstItem.quantity) : '1',
+    unitCost: firstItem ? String(firstItem.unitCost) : '0',
+    reason: editingReturn?.reason ?? '',
+    returnDate: editingReturn ? editingReturn.returnDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
   };
 }
 
@@ -46,26 +48,31 @@ export function StandalonePurchaseReturnFormDialog({
   open,
   onOpenChange,
   supplierId,
+  editingReturn,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   supplierId?: string;
+  editingReturn?: PurchaseReturn | null;
 }) {
+  const isEdit = !!editingReturn;
   const { data: suppliers } = useAllSuppliers();
   const { data: products } = useProducts({ limit: 100, status: 'ACTIVE' });
   const createPurchaseReturn = useCreatePurchaseReturn();
+  const updatePurchaseReturn = useUpdatePurchaseReturn();
+  const pending = createPurchaseReturn.isPending || updatePurchaseReturn.isPending;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(supplierId),
+    defaultValues: defaultValues(supplierId, editingReturn),
   });
 
   useEffect(() => {
     if (open) {
-      form.reset(defaultValues(supplierId));
+      form.reset(defaultValues(supplierId, editingReturn));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, supplierId]);
+  }, [open, supplierId, editingReturn?.id]);
 
   function handleProductSelect(productId: string) {
     form.setValue('productId', productId);
@@ -76,34 +83,44 @@ export function StandalonePurchaseReturnFormDialog({
   }
 
   const onSubmit = form.handleSubmit((values) => {
-    createPurchaseReturn.mutate(
+    const items = [
       {
-        supplierId: values.supplierId,
-        reason: values.reason,
-        returnDate: values.returnDate,
-        items: [
-          {
-            productId: values.productId,
-            quantity: Number(values.quantity),
-            unitCost: Number(values.unitCost),
+        productId: values.productId,
+        quantity: Number(values.quantity),
+        unitCost: Number(values.unitCost),
+      },
+    ];
+
+    if (isEdit && editingReturn) {
+      updatePurchaseReturn.mutate(
+        { id: editingReturn.id, reason: values.reason, returnDate: values.returnDate, items },
+        {
+          onSuccess: () => {
+            toast.success('Return updated');
+            onOpenChange(false);
           },
-        ],
-      },
-      {
-        onSuccess: () => {
-          toast.success('Return recorded — stock and supplier balance updated');
-          onOpenChange(false);
+          onError: (error) => toast.error(getErrorMessage(error)),
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
+      );
+    } else {
+      createPurchaseReturn.mutate(
+        { supplierId: values.supplierId, reason: values.reason, returnDate: values.returnDate, items },
+        {
+          onSuccess: () => {
+            toast.success('Return recorded — stock and supplier balance updated');
+            onOpenChange(false);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
+        },
+      );
+    }
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Record a return" className="max-w-xl">
+      <DialogContent title={isEdit ? 'Edit return' : 'Record a return'} className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Record a return</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit return' : 'Record a return'}</DialogTitle>
         </DialogHeader>
         <p className="-mt-2 text-sm text-muted-foreground">
           For damaged or defective stock that doesn&apos;t need to be matched against a particular purchase bill.
@@ -116,7 +133,7 @@ export function StandalonePurchaseReturnFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Supplier</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange} disabled={!!supplierId}>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={!!supplierId || isEdit}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select supplier" />
@@ -219,8 +236,8 @@ export function StandalonePurchaseReturnFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" loading={createPurchaseReturn.isPending}>
-                Record return
+              <Button type="submit" loading={pending}>
+                {isEdit ? 'Save changes' : 'Record return'}
               </Button>
             </DialogFooter>
           </form>

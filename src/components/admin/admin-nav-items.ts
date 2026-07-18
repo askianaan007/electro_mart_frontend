@@ -33,43 +33,45 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     items: [{ label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard }],
   },
+   {
+    label: 'Products',
+    items: [
+      { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
+      { label: 'Products', href: '/admin/products', icon: Package },
+    ],
+  },
   {
     label: 'Sales',
     items: [
+      { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
       { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
       { label: 'Sales Returns', href: '/admin/sales-returns', icon: Undo2 },
-      { label: 'Sales Analysis', href: '/admin/sales-analysis', icon: LineChart },
     ],
   },
-  {
-    label: 'Products',
-    items: [
-      { label: 'Products', href: '/admin/products', icon: Package },
-      { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
-    ],
-  },
-  {
-    label: 'Purchasing',
-    items: [
-      { label: 'Purchases', href: '/admin/purchases', icon: Truck },
-      { label: 'Suppliers', href: '/admin/suppliers', icon: Factory },
-      { label: 'Credits', href: '/admin/credits', icon: HandCoins },
-    ],
-  },
-  {
+    {
     label: 'Customers',
     items: [
       { label: 'Customer', href: '/admin/dealers', icon: Users },
-      { label: 'Payments', href: '/admin/payments', icon: Wallet },
       { label: 'Invoices', href: '/admin/invoices', icon: Receipt },
+      { label: 'Payments', href: '/admin/payments', icon: Wallet },
     ],
   },
+ 
+  {
+    label: 'Purchasing',
+    items: [
+      { label: 'Suppliers', href: '/admin/suppliers', icon: Factory },
+      { label: 'Purchases', href: '/admin/purchases', icon: Truck },
+      { label: 'Credits', href: '/admin/credits', icon: HandCoins },
+    ],
+  },
+
   {
     label: 'Investments',
     items: [
       { label: 'Investments', href: '/admin/investments', icon: TrendingUp },
-      { label: 'Equity', href: '/admin/equity', icon: PieChart },
       { label: 'Expenses', href: '/admin/expenses', icon: CreditCard },
+      { label: 'Equity', href: '/admin/equity', icon: PieChart },
     ],
   },
   {

@@ -24,9 +24,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PurchaseReturnFormDialog } from '@/components/admin/purchase-return-form-dialog';
 import { useDeletePurchase, usePurchase } from '@/hooks/use-purchases';
-import { usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
+import { useDeletePurchaseReturn, usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import type { PurchaseReturn } from '@/lib/api/types';
+
+const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function canEditPurchaseReturn(purchaseReturn: PurchaseReturn) {
+  return Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+}
 
 export default function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,8 +41,11 @@ export default function PurchaseDetailPage() {
   const { data: purchase, isLoading } = usePurchase(id);
   const { data: purchaseReturns, isLoading: returnsLoading } = usePurchaseReturnsForPurchase(id);
   const [returnFormOpen, setReturnFormOpen] = useState(false);
+  const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(null);
+  const [deletingReturn, setDeletingReturn] = useState<PurchaseReturn | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deletePurchase = useDeletePurchase();
+  const deletePurchaseReturn = useDeletePurchaseReturn();
 
   if (isLoading || !purchase) {
     return <Skeleton className="h-96 w-full" />;
@@ -46,6 +56,10 @@ export default function PurchaseDetailPage() {
   const transportCharges = Number(purchase.transportCharges);
   const netValue = grossValue - returnedValue - transportCharges;
   const hasReturns = returnedValue > 0;
+  // "Fully Returned" must reflect actual returned value vs. gross — netValue
+  // can go negative from transportCharges alone even with only a small
+  // partial return, which would otherwise mislabel it as fully returned.
+  const isFullyReturned = returnedValue >= grossValue && grossValue > 0;
   const hasTransportCharges = transportCharges > 0;
 
   function confirmDelete() {
@@ -61,6 +75,17 @@ export default function PurchaseDetailPage() {
     });
   }
 
+  function confirmDeleteReturn() {
+    if (!deletingReturn) return;
+    deletePurchaseReturn.mutate(deletingReturn.id, {
+      onSuccess: () => {
+        toast.success('Return deleted — stock reversed');
+        setDeletingReturn(null);
+      },
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
@@ -73,8 +98,8 @@ export default function PurchaseDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold">Purchase from {purchase.supplier.name}</h1>
             {hasReturns && (
-              <Badge variant={netValue <= 0 ? 'destructive' : 'warning'}>
-                {netValue <= 0 ? 'Fully Returned' : 'Partially Returned'}
+              <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
+                {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
               </Badge>
             )}
           </div>
@@ -176,6 +201,7 @@ export default function PurchaseDetailPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -187,6 +213,23 @@ export default function PurchaseDetailPage() {
                     <TableCell className="text-right font-medium text-destructive">
                       −{formatCurrency(purchaseReturn.totalAmount)}
                     </TableCell>
+                    <TableCell>
+                      {canEditPurchaseReturn(purchaseReturn) && (
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingReturn(purchaseReturn)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => setDeletingReturn(purchaseReturn)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/40">
@@ -196,6 +239,7 @@ export default function PurchaseDetailPage() {
                   <TableCell className="text-right font-semibold text-destructive">
                     −{formatCurrency(returnedValue)}
                   </TableCell>
+                  <TableCell />
                 </TableRow>
               </TableBody>
             </Table>
@@ -204,6 +248,12 @@ export default function PurchaseDetailPage() {
       </Card>
 
       <PurchaseReturnFormDialog open={returnFormOpen} onOpenChange={setReturnFormOpen} purchase={purchase} />
+      <PurchaseReturnFormDialog
+        open={!!editingReturn}
+        onOpenChange={(open) => !open && setEditingReturn(null)}
+        purchase={purchase}
+        editingReturn={editingReturn}
+      />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
@@ -218,6 +268,30 @@ export default function PurchaseDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deletePurchase.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingReturn} onOpenChange={(open) => !open && setDeletingReturn(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this return?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently reverses return {deletingReturn?.returnNumber} — removes the{' '}
+              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the supplier
+              credit it applied. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteReturn}
+              disabled={deletePurchaseReturn.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

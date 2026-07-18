@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, MoreHorizontal, Package, Search, Tags, Trash2 } from 'lucide-react';
+import { AlertTriangle, MoreHorizontal, Package, Plus, Search, Tags, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { AccountStatusBadge } from '@/components/status-badge';
 import {
@@ -89,7 +90,7 @@ export default function ProductsPage() {
   const deleteProduct = useDeleteProduct();
   const { data: categories } = useAllCategories();
 
-  const { data, isLoading, isFetching } = useProducts({
+  const { data, isLoading, isFetching, isError, error, refetch } = useProducts({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -110,6 +111,11 @@ export default function ProductsPage() {
 
   function openEdit(product: Product) {
     setEditingProduct(product);
+    setFormOpen(true);
+  }
+
+  function openCreate() {
+    setEditingProduct(undefined);
     setFormOpen(true);
   }
 
@@ -138,6 +144,10 @@ export default function ProductsPage() {
           <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>
             <Tags />
             Categories
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Product
           </Button>
         </div>
       </div>
@@ -215,6 +225,8 @@ export default function ProductsPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

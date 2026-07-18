@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,12 +76,16 @@ export default function OrderDetailPage() {
   const [editingReturn, setEditingReturn] = useState<SalesReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<SalesReturn | null>(null);
 
-  const { data: order, isLoading } = useOrder(id);
+  const { data: order, isLoading, isError, error, refetch } = useOrder(id);
   const { data: salesReturns, isLoading: returnsLoading } = useSalesReturnsForOrder(id);
   const updateStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
   const completeDirectly = useCompleteOrderDirectly();
   const deleteSalesReturn = useDeleteSalesReturn();
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;
@@ -453,6 +458,7 @@ export default function OrderDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleteOrder.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -475,6 +481,7 @@ export default function OrderDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteReturn}
+              disabled={deleteSalesReturn.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete return

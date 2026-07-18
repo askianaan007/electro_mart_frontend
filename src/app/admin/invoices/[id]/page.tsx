@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,9 +45,13 @@ export default function InvoiceDetailPage() {
   const [editingReturn, setEditingReturn] = useState<SalesReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<SalesReturn | null>(null);
 
-  const { data: invoice, isLoading } = useInvoice(id);
+  const { data: invoice, isLoading, isError, error, refetch } = useInvoice(id);
   const { data: salesReturns, isLoading: returnsLoading } = useSalesReturnsForOrder(invoice?.orderId);
   const deleteSalesReturn = useDeleteSalesReturn();
+
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !invoice) {
     return <Skeleton className="h-96 w-full" />;
@@ -64,7 +69,8 @@ export default function InvoiceDetailPage() {
     setDeletingReturn(null);
   }
 
-  const isFullyPaid = invoice.paymentStatus === 'PAID';
+  const isFullyPaid =
+    invoice.paymentStatus === 'PAID' || Number(invoice.netGrandTotal ?? invoice.grandTotal) <= 0;
   const returnedAmount = Number(invoice.returnedAmount ?? 0);
   const hasReturns = returnedAmount > 0;
   const netGrandTotal = invoice.netGrandTotal ?? invoice.grandTotal;
@@ -238,6 +244,7 @@ export default function InvoiceDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteReturn}
+              disabled={deleteSalesReturn.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete return

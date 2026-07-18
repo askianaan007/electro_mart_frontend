@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { useEquitySummary, useEquityHistory } from '@/hooks/use-equity';
@@ -60,7 +61,13 @@ function downloadHistoryCsv(filename: string, rows: EquityHistoryEntry[]) {
 }
 
 export default function EquityPage() {
-  const { data: equity, isLoading: equityLoading } = useEquitySummary();
+  const {
+    data: equity,
+    isLoading: equityLoading,
+    isError: equityError,
+    error: equityErrorObj,
+    refetch: refetchEquity,
+  } = useEquitySummary();
 
   const [historyPage, setHistoryPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -86,6 +93,9 @@ export default function EquityPage() {
     data: historyResult,
     isLoading: historyLoading,
     isFetching: historyFetching,
+    isError: historyError,
+    error: historyErrorObj,
+    refetch: refetchHistory,
   } = useEquityHistory({ page: historyPage, limit: 20, ...historyFilters });
 
   // Only used for the per-investor ledger breakdown dialog below — a bounded
@@ -157,6 +167,8 @@ export default function EquityPage() {
               <Skeleton key={i} className="h-24 rounded-xl" />
             ))}
           </div>
+        ) : equityError ? (
+          <QueryErrorState error={equityErrorObj} onRetry={() => refetchEquity()} />
         ) : (
           equity && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -209,6 +221,8 @@ export default function EquityPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : equityError ? (
+            <QueryErrorState error={equityErrorObj} onRetry={() => refetchEquity()} />
           ) : !equity || equity.entries.length === 0 ? (
             <EmptyState icon={PieChart} title="No investors yet" description="Add investors under the Investments page" />
           ) : (
@@ -457,6 +471,8 @@ export default function EquityPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : historyError ? (
+            <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
           ) : history.length === 0 ? (
             filtersActive ? (
               <EmptyState

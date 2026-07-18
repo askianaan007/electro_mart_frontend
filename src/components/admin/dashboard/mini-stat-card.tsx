@@ -23,7 +23,7 @@ export function MiniStatCard({
   value: string | number;
   icon: LucideIcon;
   tone: keyof typeof TONES;
-  change?: number;
+  change?: number | null;
   changeLabel?: string;
   href?: string;
 }) {

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
+import { QueryErrorState } from '@/components/query-error-state';
 import { OrderStatusBadge } from '@/components/status-badge';
 import { useOrders } from '@/hooks/use-orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -27,7 +28,7 @@ export default function DealerOrdersPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('all');
 
-  const { data, isLoading } = useOrders({
+  const { data, isLoading, isError, error, refetch } = useOrders({
     page,
     limit: 20,
     status: status === 'all' ? undefined : (status as OrderStatus),
@@ -63,6 +64,8 @@ export default function DealerOrdersPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           <EmptyState icon={ClipboardList} title="No orders found" />
         ) : (

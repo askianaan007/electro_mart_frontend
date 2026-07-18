@@ -28,7 +28,7 @@ export function useActivityLogAdmins() {
 export function useClearActivityLog() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => api.activityLog.clearAll(),
+    mutationFn: (password: string) => api.activityLog.clearAll(password),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-log'] }),
   });
 }

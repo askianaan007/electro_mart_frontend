@@ -23,17 +23,27 @@ import { UpcomingChequesCard } from '@/components/admin/dashboard/upcoming-chequ
 import { RecentOrdersCard } from '@/components/admin/dashboard/recent-orders-card';
 import { ActivityTimeline } from '@/components/admin/dashboard/activity-timeline';
 import { QuickActionsPanel } from '@/components/admin/dashboard/quick-actions-panel';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 import { useActivityLog } from '@/hooks/use-activity-log';
 import { formatCurrency } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
-  const { data, isLoading } = useAdminDashboard();
+  const { data, isLoading, isError, error, refetch } = useAdminDashboard();
   const { data: activity, isLoading: activityLoading } = useActivityLog({ page: 1, limit: 6 });
 
   const creditBalance = Number(data?.creditBalance ?? 0);
   const liquidCash = data?.liquidCash ?? 0;
   const creditSharePct = creditBalance + liquidCash > 0 ? (creditBalance / (creditBalance + liquidCash)) * 100 : 0;
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <GreetingHeader />
+        <QueryErrorState error={error} onRetry={() => refetch()} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { useCreditsSummary } from '@/hooks/use-credits';
@@ -23,7 +24,7 @@ export default function CreditsPage() {
 
   const filtersActive = !!search || outstandingOnly;
 
-  const { data, isLoading, isFetching } = useCreditsSummary({
+  const { data, isLoading, isFetching, isError, error, refetch } = useCreditsSummary({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -122,6 +123,8 @@ export default function CreditsPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.entries.length === 0 ? (
           filtersActive ? (
             <EmptyState

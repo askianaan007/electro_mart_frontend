@@ -18,6 +18,7 @@ export function useCartProducts() {
     quantity: item.quantity,
     product: results[index]?.data,
     isLoading: results[index]?.isLoading ?? false,
+    isError: results[index]?.isError ?? false,
   }));
 
   return { rows, isLoading: results.some((r) => r.isLoading) };

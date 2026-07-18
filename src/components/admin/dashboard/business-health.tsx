@@ -23,8 +23,9 @@ function computeHealthScore(data: AdminDashboardSummary) {
     data.netSalesChangePct,
     data.profitChangePct,
     data.invoiceDuePaymentsChangePct,
-    -data.totalExpensesChangePct,
-  ];
+    data.totalExpensesChangePct === null ? null : -data.totalExpensesChangePct,
+  ].filter((v): v is number => v !== null);
+  if (signals.length === 0) return 50;
   const avg = signals.reduce((a, b) => a + b, 0) / signals.length;
   return Math.round(clamp(50 + avg, 0, 100));
 }
@@ -35,7 +36,15 @@ function statusForScore(score: number) {
   return { label: 'Needs Attention', tone: 'text-destructive', ring: 'stroke-destructive' };
 }
 
-function TrendRow({ label, pct }: { label: string; pct: number }) {
+function TrendRow({ label, pct }: { label: string; pct: number | null }) {
+  if (pct === null) {
+    return (
+      <div className="flex items-center justify-between py-2">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-sm font-medium text-muted-foreground">N/A</span>
+      </div>
+    );
+  }
   const positive = pct >= 0;
   return (
     <div className="flex items-center justify-between py-2">
@@ -93,7 +102,10 @@ export function BusinessHealth({ data }: { data: AdminDashboardSummary }) {
           <div className="mt-2 divide-y divide-border">
             <TrendRow label="Sales" pct={data.netSalesChangePct} />
             <TrendRow label="Collections" pct={data.invoiceDuePaymentsChangePct} />
-            <TrendRow label="Expenses" pct={-data.totalExpensesChangePct} />
+            <TrendRow
+              label="Expenses"
+              pct={data.totalExpensesChangePct === null ? null : -data.totalExpensesChangePct}
+            />
           </div>
         </div>
       </div>

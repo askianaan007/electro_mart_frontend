@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import {
   AlertDialog,
@@ -45,7 +46,11 @@ export default function SuppliersPage() {
   const [statementSupplier, setStatementSupplier] = useState<Supplier | null>(null);
 
   const deleteSupplier = useDeleteSupplier();
-  const { data, isLoading, isFetching } = useSuppliers({ page, limit: 20, search: debouncedSearch || undefined });
+  const { data, isLoading, isFetching, isError, error, refetch } = useSuppliers({
+    page,
+    limit: 20,
+    search: debouncedSearch || undefined,
+  });
 
   function openCreate() {
     setEditingSupplier(undefined);
@@ -122,6 +127,8 @@ export default function SuppliersPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           search ? (
             <EmptyState
@@ -235,7 +242,11 @@ export default function SuppliersPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteSupplier.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

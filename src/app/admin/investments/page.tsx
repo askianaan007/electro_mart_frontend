@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import {
   Select,
@@ -61,7 +62,17 @@ export default function InvestmentsPage() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data: investors, isLoading: investorsLoading } = useAllInvestors();
+  const {
+    data: investors,
+    isLoading: investorsLoading,
+    isError: investorsError,
+    error: investorsErrorObj,
+    refetch: refetchInvestors,
+  } = useAllInvestors();
+  const totalProfitShare = (investors?.data ?? []).reduce(
+    (sum, investor) => sum + Number(investor.profitSharePercentage),
+    0,
+  );
   const filteredInvestors = (investors?.data ?? []).filter((investor) => {
     if (!debouncedInvestorSearch) return true;
     const term = debouncedInvestorSearch.toLowerCase();
@@ -78,6 +89,9 @@ export default function InvestmentsPage() {
     data: investments,
     isLoading: investmentsLoading,
     isFetching: investmentsFetching,
+    isError: investmentsError,
+    error: investmentsErrorObj,
+    refetch: refetchInvestments,
   } = useInvestments({
     page,
     limit: 20,
@@ -142,7 +156,21 @@ export default function InvestmentsPage() {
 
       <section className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-medium">Investors</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-medium">Investors</h2>
+            {!investorsLoading && investors && investors.data.length > 0 && (
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  totalProfitShare > 100
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-muted text-muted-foreground',
+                )}
+              >
+                Profit share allocated: {totalProfitShare}% of 100%
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative sm:w-56">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -172,6 +200,8 @@ export default function InvestmentsPage() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
+          ) : investorsError ? (
+            <QueryErrorState error={investorsErrorObj} onRetry={() => refetchInvestors()} />
           ) : !investors || investors.data.length === 0 ? (
             <EmptyState icon={TrendingUp} title="No investors yet" description="Add an investor to start tracking equity" />
           ) : filteredInvestors.length === 0 ? (
@@ -377,6 +407,8 @@ export default function InvestmentsPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : investmentsError ? (
+            <QueryErrorState error={investmentsErrorObj} onRetry={() => refetchInvestments()} />
           ) : !investments || investments.data.length === 0 ? (
             ledgerFiltersActive ? (
               <EmptyState
@@ -522,6 +554,7 @@ export default function InvestmentsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteInvestor}
+              disabled={deleteInvestor.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -540,6 +573,7 @@ export default function InvestmentsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteInvestment}
+              disabled={deleteInvestment.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

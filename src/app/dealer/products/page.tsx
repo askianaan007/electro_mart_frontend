@@ -7,9 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
+import { QueryErrorState } from '@/components/query-error-state';
 import { ProductCard } from '@/components/dealer/product-card';
 import { useProducts } from '@/hooks/use-products';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { cn } from '@/lib/utils';
 
 const SORT_OPTIONS = [
   { value: 'name-asc', label: 'Name (A-Z)' },
@@ -24,7 +26,7 @@ export default function DealerProductsPage() {
   const [sort, setSort] = useState('name-asc');
   const debouncedSearch = useDebouncedValue(search);
 
-  const { data, isLoading } = useProducts({
+  const { data, isLoading, isFetching, isError, error, refetch } = useProducts({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -85,11 +87,22 @@ export default function DealerProductsPage() {
             <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState error={error} onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
-        <EmptyState icon={Package} title="No products found" description="Try a different search term" />
+        <EmptyState
+          icon={Package}
+          title={search ? 'No matching products' : 'No products found'}
+          description={search ? 'Try a different search term' : 'Check back later for new products'}
+        />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4',
+              isFetching && 'opacity-60 transition-opacity',
+            )}
+          >
             {sortedData.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

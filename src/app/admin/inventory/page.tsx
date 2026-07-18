@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -30,7 +31,7 @@ export default function InventoryPage() {
 
   const filtersActive = !!search || status !== 'all';
 
-  const { data, isLoading, isFetching } = useInventory({
+  const { data, isLoading, isFetching, isError, error, refetch } = useInventory({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -110,6 +111,8 @@ export default function InventoryPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

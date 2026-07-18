@@ -33,7 +33,7 @@ export function useInventoryLedger(productId: string | undefined, params: Ledger
 export function useAdjustStock() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { productId: string; direction: 'IN' | 'OUT'; quantity: number; reason?: string }) =>
+    mutationFn: (data: { productId: string; direction: 'IN' | 'OUT'; quantity: number; reason: string }) =>
       api.inventory.adjust(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });

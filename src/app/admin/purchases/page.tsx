@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MoreHorizontal, Plus, Trash2, Truck, Undo2 } from "lucide-react";
+import { MoreHorizontal, Plus, Search, Trash2, Truck, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -18,6 +20,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { PaginationBar } from "@/components/pagination-bar";
+import { FilterBar } from "@/components/filter-bar";
+import { SectionHeader } from "@/components/section-header";
+import { QueryErrorState } from "@/components/query-error-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +42,8 @@ import {
 import { StandalonePurchaseReturnFormDialog } from "@/components/admin/standalone-purchase-return-form-dialog";
 import { PurchaseReturnsTab } from "@/components/admin/purchase-returns-tab";
 import { useDeletePurchase, usePurchases } from "@/hooks/use-purchases";
+import { useAllSuppliers } from "@/hooks/use-suppliers";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/api/error";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { Purchase } from "@/lib/api/types";
@@ -55,14 +62,18 @@ function purchaseTotals(purchase: Purchase) {
     transportCharges,
     netValue,
     hasReturns: returnedValue > 0,
+    // "Fully Returned" must reflect actual returned value vs. gross —
+    // netValue can go negative from transportCharges alone even with only
+    // a small partial return, which would otherwise mislabel it.
+    isFullyReturned: returnedValue >= grossValue && grossValue > 0,
     hasTransportCharges: transportCharges > 0,
   };
 }
 
-function ReturnedBadge({ netValue }: { netValue: number }) {
+function ReturnedBadge({ isFullyReturned }: { isFullyReturned: boolean }) {
   return (
-    <Badge variant={netValue <= 0 ? "destructive" : "warning"}>
-      {netValue <= 0 ? "Fully Returned" : "Partially Returned"}
+    <Badge variant={isFullyReturned ? "destructive" : "warning"}>
+      {isFullyReturned ? "Fully Returned" : "Partially Returned"}
     </Badge>
   );
 }
@@ -108,12 +119,35 @@ function ValueBreakdown({
 export default function PurchasesPage() {
   const [tab, setTab] = useState("purchases");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = usePurchases({ page, limit: 20 });
+  const [search, setSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
+  const filtersActive = !!search || supplierFilter !== "all" || !!dateFrom || !!dateTo;
+
+  const { data: suppliers } = useAllSuppliers();
+  const { data, isLoading, isFetching, isError, error, refetch } = usePurchases({
+    page,
+    limit: 20,
+    search: debouncedSearch || undefined,
+    supplierId: supplierFilter === "all" ? undefined : supplierFilter,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  });
   const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(
     null,
   );
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const deletePurchase = useDeletePurchase();
+
+  function clearFilters() {
+    setSearch("");
+    setSupplierFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
 
   function confirmDelete() {
     if (!deletingPurchase) return;
@@ -165,21 +199,94 @@ export default function PurchasesPage() {
 
         <TabsContent value="purchases">
           <div className="rounded-xl border border-border bg-card">
+            <SectionHeader title="All purchases" isFetching={isFetching && !isLoading} />
+            <FilterBar>
+              <div className="relative flex-1 sm:max-w-[12rem]">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search invoice #..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={supplierFilter}
+                onValueChange={(v) => {
+                  setSupplierFilter(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="sm:w-48">
+                  <SelectValue placeholder="All suppliers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All suppliers</SelectItem>
+                  {suppliers?.data.map((supplier) => (
+                    <SelectItem key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="w-auto"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                className="w-auto"
+              />
+              {filtersActive && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </FilterBar>
             {isLoading ? (
               <div className="space-y-2 p-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
+            ) : isError ? (
+              <QueryErrorState error={error} onRetry={() => refetch()} />
             ) : !data || data.data.length === 0 ? (
-              <EmptyState
-                icon={Truck}
-                title="No purchases recorded yet"
-                description="Record your first supplier purchase"
-              />
+              filtersActive ? (
+                <EmptyState
+                  icon={Search}
+                  title="No matching purchases"
+                  description="Try adjusting or clearing your filters"
+                  action={
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={Truck}
+                  title="No purchases recorded yet"
+                  description="Record your first supplier purchase"
+                />
+              )
             ) : (
               <>
-                <div className="hidden sm:block">
+                <div className={cn("hidden sm:block", isFetching && "opacity-60 transition-opacity")}>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -193,7 +300,7 @@ export default function PurchasesPage() {
                     </TableHeader>
                     <TableBody>
                       {data.data.map((purchase) => {
-                        const { hasReturns, netValue } =
+                        const { hasReturns, isFullyReturned } =
                           purchaseTotals(purchase);
                         return (
                           <TableRow
@@ -212,7 +319,7 @@ export default function PurchasesPage() {
                                   {purchase.supplier.name}
                                 </Link>
                                 {hasReturns && (
-                                  <ReturnedBadge netValue={netValue} />
+                                  <ReturnedBadge isFullyReturned={isFullyReturned} />
                                 )}
                               </div>
                             </TableCell>
@@ -263,9 +370,9 @@ export default function PurchasesPage() {
                   </Table>
                 </div>
 
-                <div className="space-y-3 p-4 sm:hidden">
+                <div className={cn("space-y-3 p-4 sm:hidden", isFetching && "opacity-60 transition-opacity")}>
                   {data.data.map((purchase) => {
-                    const { hasReturns, netValue } = purchaseTotals(purchase);
+                    const { hasReturns, isFullyReturned } = purchaseTotals(purchase);
                     return (
                       <div
                         key={purchase.id}
@@ -315,7 +422,7 @@ export default function PurchasesPage() {
                         </div>
                         {hasReturns && (
                           <div className="mt-2">
-                            <ReturnedBadge netValue={netValue} />
+                            <ReturnedBadge isFullyReturned={isFullyReturned} />
                           </div>
                         )}
                         <div className="mt-3 flex items-end justify-between gap-2">
@@ -361,6 +468,7 @@ export default function PurchasesPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deletePurchase.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

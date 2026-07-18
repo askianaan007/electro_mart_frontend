@@ -6,6 +6,7 @@ import { CreditCard, Receipt, Wallet } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
@@ -16,7 +17,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 export default function DealerInvoicesPage() {
   const [page, setPage] = useState(1);
   const { data: dashboard } = useDealerDashboard();
-  const { data, isLoading } = useInvoices({ page, limit: 20 });
+  const { data, isLoading, isError, error, refetch } = useInvoices({ page, limit: 20 });
 
   return (
     <div className="space-y-6">
@@ -43,6 +44,8 @@ export default function DealerInvoicesPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           <EmptyState icon={Receipt} title="No invoices yet" />
         ) : (

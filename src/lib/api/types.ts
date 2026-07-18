@@ -449,20 +449,23 @@ export interface AdminDashboardSummary {
   monthlyRevenue: { month: string; revenue: string }[];
   topProducts: { product: { id: string; name: string; productCode: string } | null; quantitySold: number }[];
   netSales: number;
-  netSalesChangePct: number;
+  // null when the percentage-change calculation wouldn't be meaningful
+  // (previous period negative, or the sign flipped between periods) —
+  // render "N/A" rather than doing arithmetic on it.
+  netSalesChangePct: number | null;
   totalSalesReturn: number;
-  totalSalesReturnChangePct: number;
+  totalSalesReturnChangePct: number | null;
   totalPurchaseReturn: number;
-  totalPurchaseReturnChangePct: number;
+  totalPurchaseReturnChangePct: number | null;
   netPurchase: number;
-  netPurchaseChangePct: number;
+  netPurchaseChangePct: number | null;
   netCashFlow: number;
   profit: number;
-  profitChangePct: number;
+  profitChangePct: number | null;
   totalExpenses: number;
-  totalExpensesChangePct: number;
+  totalExpensesChangePct: number | null;
   invoiceDuePayments: number;
-  invoiceDuePaymentsChangePct: number;
+  invoiceDuePaymentsChangePct: number | null;
   invoiceDue: string;
   liquidCash: number;
   creditBalance: string;

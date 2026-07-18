@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Undo2 } from 'lucide-react';
+import { Pencil, Search, Trash2, Undo2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,33 @@ import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { QueryErrorState } from '@/components/query-error-state';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { usePurchaseReturns } from '@/hooks/use-purchase-returns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { PurchaseReturnFormDialog } from '@/components/admin/purchase-return-form-dialog';
+import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
+import { useDeletePurchaseReturn, usePurchaseReturns } from '@/hooks/use-purchase-returns';
+import { usePurchase } from '@/hooks/use-purchases';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import type { PurchaseReturn } from '@/lib/api/types';
+
+const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function canEditPurchaseReturn(purchaseReturn: PurchaseReturn) {
+  return Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+}
 
 export function PurchaseReturnsTab() {
   const [page, setPage] = useState(1);
@@ -23,12 +46,19 @@ export function PurchaseReturnsTab() {
   const [supplierFilter, setSupplierFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(null);
+  const [deletingReturn, setDeletingReturn] = useState<PurchaseReturn | null>(null);
   const debouncedSearch = useDebouncedValue(search);
   const filtersActive = !!search || supplierFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data: suppliers } = useAllSuppliers();
+  const deletePurchaseReturn = useDeletePurchaseReturn();
+  // The list endpoint only shallow-includes `purchase` (no line items) —
+  // fetch the full purchase on demand so the edit dialog has what it needs
+  // to compute remaining-returnable quantities.
+  const { data: editingPurchase } = usePurchase(editingReturn?.purchase?.id);
 
-  const { data, isLoading, isFetching } = usePurchaseReturns({
+  const { data, isLoading, isFetching, isError, error, refetch } = usePurchaseReturns({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -43,6 +73,17 @@ export function PurchaseReturnsTab() {
     setDateFrom('');
     setDateTo('');
     setPage(1);
+  }
+
+  function confirmDelete() {
+    if (!deletingReturn) return;
+    deletePurchaseReturn.mutate(deletingReturn.id, {
+      onSuccess: () => {
+        toast.success('Return deleted — stock reversed');
+        setDeletingReturn(null);
+      },
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
   }
 
   return (
@@ -112,6 +153,8 @@ export function PurchaseReturnsTab() {
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState error={error} onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
         filtersActive ? (
           <EmptyState
@@ -139,6 +182,7 @@ export function PurchaseReturnsTab() {
                   <TableHead>Purchase</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -167,6 +211,23 @@ export function PurchaseReturnsTab() {
                     <TableCell className="text-right font-medium text-destructive">
                       −{formatCurrency(purchaseReturn.totalAmount)}
                     </TableCell>
+                    <TableCell>
+                      {canEditPurchaseReturn(purchaseReturn) && (
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingReturn(purchaseReturn)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => setDeletingReturn(purchaseReturn)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -194,6 +255,23 @@ export function PurchaseReturnsTab() {
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{formatDate(purchaseReturn.returnDate)}</p>
+                {canEditPurchaseReturn(purchaseReturn) && (
+                  <div className="mt-2 flex justify-end gap-1 border-t border-border pt-2">
+                    <Button size="sm" variant="ghost" onClick={() => setEditingReturn(purchaseReturn)}>
+                      <Pencil className="size-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => setDeletingReturn(purchaseReturn)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -201,6 +279,45 @@ export function PurchaseReturnsTab() {
           <PaginationBar meta={data.meta} onPageChange={setPage} />
         </>
       )}
+
+      {editingReturn?.purchase ? (
+        <PurchaseReturnFormDialog
+          open={!!editingReturn && !!editingPurchase}
+          onOpenChange={(open) => !open && setEditingReturn(null)}
+          purchase={editingPurchase ?? null}
+          editingReturn={editingReturn}
+        />
+      ) : (
+        <StandalonePurchaseReturnFormDialog
+          open={!!editingReturn && !editingReturn?.purchase}
+          onOpenChange={(open) => !open && setEditingReturn(null)}
+          supplierId={editingReturn?.supplierId}
+          editingReturn={editingReturn}
+        />
+      )}
+
+      <AlertDialog open={!!deletingReturn} onOpenChange={(open) => !open && setDeletingReturn(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this return?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently reverses return {deletingReturn?.returnNumber} — removes the{' '}
+              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the supplier
+              credit it applied. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deletePurchaseReturn.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

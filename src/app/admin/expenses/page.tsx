@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import {
   AlertDialog,
@@ -45,7 +46,7 @@ export default function ExpensesPage() {
   const filtersActive = !!search || !!dateFrom || !!dateTo;
 
   const deleteExpense = useDeleteExpense();
-  const { data, isLoading, isFetching } = useExpenses({
+  const { data, isLoading, isFetching, isError, error, refetch } = useExpenses({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -158,6 +159,8 @@ export default function ExpensesPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState
@@ -266,7 +269,11 @@ export default function ExpensesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteExpense.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

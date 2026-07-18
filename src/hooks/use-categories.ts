@@ -31,10 +31,10 @@ export function useCreateCategory() {
   });
 }
 
-export function useUpdateCategory(id: string) {
+export function useUpdateCategory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string }) => api.categories.update(id, data),
+    mutationFn: (vars: { id: string; name: string }) => api.categories.update(vars.id, { name: vars.name }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
   });
 }

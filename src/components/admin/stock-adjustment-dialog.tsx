@@ -18,7 +18,7 @@ const schema = z.object({
   productId: z.string().min(1, 'Select a product'),
   direction: z.enum(['IN', 'OUT']),
   quantity: z.string().refine((v) => Number.isInteger(Number(v)) && Number(v) >= 1, 'Enter a whole number of at least 1'),
-  reason: z.string(),
+  reason: z.string().trim().min(1, 'Reason is required'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,7 +50,7 @@ export function StockAdjustmentDialog({
         productId: values.productId,
         direction: values.direction,
         quantity: Number(values.quantity),
-        reason: values.reason || undefined,
+        reason: values.reason,
       },
       {
         onSuccess: () => {
@@ -134,7 +134,7 @@ export function StockAdjustmentDialog({
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason (optional)</FormLabel>
+                  <FormLabel>Reason</FormLabel>
                   <FormControl>
                     <Input placeholder="Damaged stock, stock count correction..." {...field} />
                   </FormControl>

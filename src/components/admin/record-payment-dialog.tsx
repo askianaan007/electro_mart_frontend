@@ -80,7 +80,12 @@ export function RecordPaymentDialog({
 
   const alreadyPaid = (effectiveInvoice?.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
   const ownAmount = payment ? Number(payment.amount) : 0;
-  const remaining = effectiveInvoice ? Number(effectiveInvoice.grandTotal) - alreadyPaid + ownAmount : 0;
+  // netGrandTotal (grandTotal minus any sales returns) is what's actually
+  // owed — falling back to grandTotal only for the rare case a caller
+  // didn't include it, not because gross is ever the right default.
+  const remaining = effectiveInvoice
+    ? Number(effectiveInvoice.netGrandTotal ?? effectiveInvoice.grandTotal) - alreadyPaid + ownAmount
+    : 0;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),

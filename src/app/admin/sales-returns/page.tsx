@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -75,7 +76,7 @@ export default function SalesReturnsPage() {
   const debouncedSearch = useDebouncedValue(search);
   const filtersActive = !!search;
 
-  const { data, isLoading, isFetching } = useSalesReturns({
+  const { data, isLoading, isFetching, isError, error, refetch } = useSalesReturns({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -137,6 +138,8 @@ export default function SalesReturnsPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
           filtersActive ? (
             <EmptyState

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Tag, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAllCategories, useCreateCategory, useDeleteCategory } from '@/hooks/use-categories';
+import { useAllCategories, useCreateCategory, useDeleteCategory, useUpdateCategory } from '@/hooks/use-categories';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Category } from '@/lib/api/types';
 
@@ -33,10 +33,38 @@ export function CategoryManagerDialog({
 }) {
   const [name, setName] = useState('');
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const { data: categories, isLoading } = useAllCategories();
   const createCategory = useCreateCategory();
   const deleteCategory = useDeleteCategory();
+  const updateCategory = useUpdateCategory();
+
+  function startEdit(category: Category) {
+    setEditingId(category.id);
+    setEditingName(category.name);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingName('');
+  }
+
+  function confirmEdit() {
+    const trimmed = editingName.trim();
+    if (!editingId || !trimmed) return;
+    updateCategory.mutate(
+      { id: editingId, name: trimmed },
+      {
+        onSuccess: () => {
+          toast.success('Category renamed — matching products were updated too');
+          cancelEdit();
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
 
   function handleAdd() {
     const trimmed = name.trim();
@@ -104,17 +132,55 @@ export function CategoryManagerDialog({
             ) : !categories || categories.data.length === 0 ? (
               <EmptyState icon={Tag} title="No categories yet" description="Add your first category above" />
             ) : (
-              categories.data.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between border-b border-border px-4 py-2 last:border-b-0"
-                >
-                  <span className="text-sm">{category.name}</span>
-                  <Button variant="ghost" size="icon" onClick={() => setDeletingCategory(category)}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))
+              categories.data.map((category) =>
+                editingId === category.id ? (
+                  <div
+                    key={category.id}
+                    className="flex items-center gap-2 border-b border-border px-4 py-2 last:border-b-0"
+                  >
+                    <Input
+                      autoFocus
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          confirmEdit();
+                        }
+                        if (e.key === 'Escape') cancelEdit();
+                      }}
+                      className="h-8"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      disabled={updateCategory.isPending}
+                      onClick={confirmEdit}
+                    >
+                      <Check className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="shrink-0" onClick={cancelEdit}>
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    key={category.id}
+                    className="flex items-center justify-between border-b border-border px-4 py-2 last:border-b-0"
+                  >
+                    <span className="text-sm">{category.name}</span>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(category)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeletingCategory(category)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ),
+              )
             )}
           </div>
         </DialogContent>
@@ -125,13 +191,17 @@ export function CategoryManagerDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this category?</AlertDialogTitle>
             <AlertDialogDescription>
-              &quot;{deletingCategory?.name}&quot; will be removed from the list. Products already using it keep
-              their category text.
+              &quot;{deletingCategory?.name}&quot; will be removed. This only works if no product currently uses this
+              category — reassign or update those products first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteCategory.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
