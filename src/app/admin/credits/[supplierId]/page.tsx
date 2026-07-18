@@ -108,7 +108,7 @@ export default function SupplierCreditDetailPage() {
     sortOrder,
   });
 
-  // Purchases filters
+  // Purchases filtersk
   const [purchasesPage, setPurchasesPage] = useState(1);
   const [purchasesSearch, setPurchasesSearch] = useState('');
   const debouncedPurchasesSearch = useDebouncedValue(purchasesSearch);
