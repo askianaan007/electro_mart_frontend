@@ -345,12 +345,23 @@ export const api = {
     list: (params: PaginationParams) =>
       apiClient.get<Paginated<SalesReturn>>('/sales-returns', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<SalesReturn>(`/sales-returns/${id}`).then((r) => r.data),
+    byOrder: (orderId: string) =>
+      apiClient.get<SalesReturn[]>(`/sales-returns/by-order/${orderId}`).then((r) => r.data),
     create: (data: {
       orderId: string;
       reason: string;
       returnDate: string;
       items: { productId: string; quantity: number }[];
     }) => apiClient.post<SalesReturn>('/sales-returns', data).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        reason: string;
+        returnDate: string;
+        items: { productId: string; quantity: number }[];
+      },
+    ) => apiClient.patch<SalesReturn>(`/sales-returns/${id}`, data).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/sales-returns/${id}`).then((r) => r.data),
   },
 
   credits: {

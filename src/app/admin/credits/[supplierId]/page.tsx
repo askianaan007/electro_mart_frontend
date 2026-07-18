@@ -90,7 +90,7 @@ export default function SupplierCreditDetailPage() {
   const [sortBy, setSortBy] = useState<'paymentDate' | 'chequeDepositDate'>('paymentDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const settlementsFiltersActive =
-    !!settlementsSearch || modeFilter !== 'all' || chequeStatusFilter !== 'all' || !!settlementsDateFrom || !!settlementsDateTo;
+    !!settlementsSearch || modeFilter !== 'all' || chequeStatusFilter !== 'all' || !!settlementsDateFrom || !!settlementsDateTo; 
 
   const {
     data: settlements,

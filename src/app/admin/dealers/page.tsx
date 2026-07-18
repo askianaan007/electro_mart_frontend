@@ -249,7 +249,15 @@ export default function CustomerPage() {
                       <TableCell className="hidden lg:table-cell">{dealer.ownerName}</TableCell>
                       <TableCell className="hidden lg:table-cell">{dealer.phone}</TableCell>
                       <TableCell>{dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}</TableCell>
-                      <TableCell>{formatCurrency(dealer.outstandingBalance)}</TableCell>
+                      <TableCell>
+                        {Number(dealer.outstandingBalance) < 0 ? (
+                          <span className="text-success">
+                            {formatCurrency(Math.abs(Number(dealer.outstandingBalance)))} Cr
+                          </span>
+                        ) : (
+                          formatCurrency(dealer.outstandingBalance)
+                        )}
+                      </TableCell>
                       <TableCell>
                         <AccountStatusBadge status={dealer.status} />
                       </TableCell>

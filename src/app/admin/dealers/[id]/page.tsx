@@ -189,10 +189,17 @@ export default function DealerDetailPage() {
           icon={Wallet}
         />
         <StatCard
-          label="Outstanding Balance"
-          value={formatCurrency(dealer.outstandingBalance)}
+          label={Number(dealer.outstandingBalance) < 0 ? 'Credit Balance' : 'Outstanding Balance'}
+          value={formatCurrency(Math.abs(Number(dealer.outstandingBalance)))}
           icon={Wallet}
-          tone={Number(dealer.outstandingBalance) > 0 ? 'warning' : 'default'}
+          tone={
+            Number(dealer.outstandingBalance) < 0
+              ? 'success'
+              : Number(dealer.outstandingBalance) > 0
+                ? 'warning'
+                : 'default'
+          }
+          hint={Number(dealer.outstandingBalance) < 0 ? 'From returned goods — usable on future orders' : undefined}
         />
         <StatCard label="Total Orders" value={dealer.summary.totalOrders} icon={ShoppingCart} />
         <StatCard

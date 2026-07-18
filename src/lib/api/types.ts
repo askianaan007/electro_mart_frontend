@@ -290,6 +290,10 @@ export interface Invoice {
   dueDate: string | null;
   createdAt: string;
   payments?: Payment[];
+  /** Total value of goods returned against this invoice's order. */
+  returnedAmount?: string;
+  /** grandTotal minus returnedAmount — what's actually still owed. */
+  netGrandTotal?: string;
 }
 
 export interface Payment {

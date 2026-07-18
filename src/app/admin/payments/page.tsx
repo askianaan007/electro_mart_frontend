@@ -16,6 +16,7 @@ import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { PaymentStatusBadge, ChequeStatusBadge } from '@/components/status-badge';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
+import { SalesReturnFormDialog } from '@/components/admin/sales-return-form-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +60,7 @@ function OutstandingInvoicesTab() {
   const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
 
   const { data: dealers } = useAllCustomer();
   const filtersActive = !!search || status !== 'PENDING' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
@@ -213,12 +215,18 @@ function OutstandingInvoicesTab() {
                       <PaymentStatusBadge status={invoice.paymentStatus} />
                     </TableCell>
                     <TableCell>
-                      {invoice.paymentStatus !== 'PAID' && (
-                        <Button size="sm" variant="outline" onClick={() => setPayingInvoice(invoice)}>
-                          <Wallet />
-                          Record
+                      <div className="flex flex-wrap gap-1">
+                        {invoice.paymentStatus !== 'PAID' && (
+                          <Button size="sm" variant="outline" onClick={() => setPayingInvoice(invoice)}>
+                            <Wallet />
+                            Record
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => setReturnOrderId(invoice.orderId)}>
+                          <Undo2 />
+                          Return Goods
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -233,6 +241,11 @@ function OutstandingInvoicesTab() {
         open={!!payingInvoice}
         onOpenChange={(open) => !open && setPayingInvoice(null)}
         invoice={payingInvoice}
+      />
+      <SalesReturnFormDialog
+        open={!!returnOrderId}
+        onOpenChange={(open) => !open && setReturnOrderId(null)}
+        orderId={returnOrderId}
       />
     </div>
   );
@@ -251,6 +264,7 @@ function PaymentHistoryTab() {
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [revertPayment, setRevertPayment] = useState<Payment | null>(null);
   const [returnPayment, setReturnPayment] = useState<Payment | null>(null);
+  const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
   const updateChequeStatus = useUpdatePaymentChequeStatus();
   const returnPaymentMutation = useReturnPayment();
 
@@ -358,6 +372,12 @@ function PaymentHistoryTab() {
           <Button size="sm" variant="outline" className="text-destructive" onClick={() => setReturnPayment(payment)}>
             <Trash2 className="size-3.5" />
             Return
+          </Button>
+        )}
+        {payment.invoice && (
+          <Button size="sm" variant="outline" onClick={() => setReturnOrderId(payment.invoice!.orderId)}>
+            <Undo2 className="size-3.5" />
+            Return Goods
           </Button>
         )}
       </div>
@@ -598,6 +618,12 @@ function PaymentHistoryTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SalesReturnFormDialog
+        open={!!returnOrderId}
+        onOpenChange={(open) => !open && setReturnOrderId(null)}
+        orderId={returnOrderId}
+      />
     </div>
   );
 }

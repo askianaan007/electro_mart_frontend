@@ -13,13 +13,16 @@ import {
   Receipt,
   Trash2,
   Truck,
+  Undo2,
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/empty-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,9 +38,12 @@ import { OrderTimeline } from '@/components/order-timeline';
 import { RejectOrderDialog } from '@/components/admin/reject-order-dialog';
 import { ApproveOrderDialog } from '@/components/admin/approve-order-dialog';
 import { EditOrderItemsDialog } from '@/components/admin/edit-order-items-dialog';
+import { SalesReturnFormDialog } from '@/components/admin/sales-return-form-dialog';
 import { useCompleteOrderDirectly, useDeleteOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
+import { useDeleteSalesReturn, useSalesReturnsForOrder } from '@/hooks/use-sales-returns';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
+import type { SalesReturn } from '@/lib/api/types';
 
 const NEXT_STATUS: Record<string, 'PACKED' | 'DELIVERED' | 'COMPLETED' | undefined> = {
   APPROVED: 'PACKED',
@@ -51,6 +57,12 @@ const NEXT_STATUS_LABEL: Record<string, string> = {
   COMPLETED: 'Mark as Completed',
 };
 
+const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function canEditReturn(salesReturn: SalesReturn) {
+  return Date.now() - new Date(salesReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+}
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -59,15 +71,24 @@ export default function OrderDetailPage() {
   const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [returnFormOpen, setReturnFormOpen] = useState(false);
+  const [editingReturn, setEditingReturn] = useState<SalesReturn | null>(null);
+  const [deletingReturn, setDeletingReturn] = useState<SalesReturn | null>(null);
 
   const { data: order, isLoading } = useOrder(id);
+  const { data: salesReturns, isLoading: returnsLoading } = useSalesReturnsForOrder(id);
   const updateStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
   const completeDirectly = useCompleteOrderDirectly();
+  const deleteSalesReturn = useDeleteSalesReturn();
 
   if (isLoading || !order) {
     return <Skeleton className="h-96 w-full" />;
   }
+
+  const returnedAmount = (salesReturns ?? []).reduce((sum, r) => sum + Number(r.totalAmount), 0);
+  const hasReturns = returnedAmount > 0;
+  const netAfterReturns = Number(order.totalAmount) - returnedAmount;
 
   const creditExceeded =
     !order.dealer.unlimitedCredit &&
@@ -112,6 +133,18 @@ export default function OrderDetailPage() {
     });
   }
 
+  function confirmDeleteReturn() {
+    if (!deletingReturn) return;
+    deleteSalesReturn.mutate(
+      { id: deletingReturn.id, orderId: deletingReturn.orderId },
+      {
+        onSuccess: () => toast.success('Return deleted — stock and dealer credit reversed'),
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+    setDeletingReturn(null);
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
@@ -124,6 +157,11 @@ export default function OrderDetailPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold">{order.orderNumber}</h1>
             <OrderStatusBadge status={order.status} />
+            {hasReturns && (
+              <Badge variant={netAfterReturns <= 0 ? 'destructive' : 'warning'}>
+                {netAfterReturns <= 0 ? 'Fully Returned' : 'Partially Returned'}
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             <Link href={`/admin/dealers/${order.dealer.id}`} className="text-primary hover:underline">
@@ -162,6 +200,12 @@ export default function OrderDetailPage() {
             <Button variant="success" onClick={() => setCompleteOpen(true)}>
               <FastForward />
               Directly Completed
+            </Button>
+          )}
+          {order.status === 'COMPLETED' && (
+            <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
+              <Undo2 />
+              Record Return
             </Button>
           )}
           {order.invoice && (
@@ -270,9 +314,96 @@ export default function OrderDetailPage() {
               <span>Total</span>
               <span>{formatCurrency(order.totalAmount)}</span>
             </div>
+            {hasReturns && (
+              <>
+                <div className="flex justify-between text-sm text-destructive">
+                  <span>Returned</span>
+                  <span>−{formatCurrency(returnedAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 font-semibold">
+                  <span>Net after returns</span>
+                  <span>{formatCurrency(netAfterReturns)}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>Returns</CardTitle>
+          {salesReturns && salesReturns.length > 0 && (
+            <Badge variant="warning">
+              {salesReturns.length} return{salesReturns.length === 1 ? '' : 's'}
+            </Badge>
+          )}
+        </CardHeader>
+        <CardContent className="p-0 sm:p-0">
+          {returnsLoading ? (
+            <div className="space-y-2 p-6">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : !salesReturns || salesReturns.length === 0 ? (
+            <EmptyState
+              icon={Undo2}
+              title="No returns yet"
+              description="Goods the dealer sends back will appear here"
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Return #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {salesReturns.map((salesReturn) => (
+                  <TableRow key={salesReturn.id}>
+                    <TableCell className="font-medium">{salesReturn.returnNumber}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{formatDate(salesReturn.returnDate)}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{salesReturn.reason}</TableCell>
+                    <TableCell className="text-right font-medium text-destructive">
+                      −{formatCurrency(salesReturn.totalAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {canEditReturn(salesReturn) && (
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingReturn(salesReturn)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => setDeletingReturn(salesReturn)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <SalesReturnFormDialog open={returnFormOpen} onOpenChange={setReturnFormOpen} orderId={order.id} />
+      <SalesReturnFormDialog
+        open={!!editingReturn}
+        onOpenChange={(open) => !open && setEditingReturn(null)}
+        orderId={editingReturn?.orderId ?? null}
+        editingReturn={editingReturn}
+      />
 
       <RejectOrderDialog open={rejectOpen} onOpenChange={setRejectOpen} orderId={id} />
       <ApproveOrderDialog
@@ -319,6 +450,28 @@ export default function OrderDetailPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingReturn} onOpenChange={(open) => !open && setDeletingReturn(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this return?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently reverses return {deletingReturn?.returnNumber} — removes the{' '}
+              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the dealer
+              credit it created. Only available within 1 day of recording it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteReturn}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete return
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
