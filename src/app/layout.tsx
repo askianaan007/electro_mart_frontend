@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from 'next/font/google';
 import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ThemedToaster } from '@/providers/themed-toaster';
+import { AuthRefreshProvider } from '@/providers/auth-refresh-provider';
 import './globals.css';
 
 const geistSans = Inter({
@@ -32,8 +33,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="flex min-h-full flex-col bg-background text-foreground print:block">
         <ThemeProvider>
           <QueryProvider>
-            {children}
-            <ThemedToaster />
+            <AuthRefreshProvider>
+              {children}
+              <ThemedToaster />
+            </AuthRefreshProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

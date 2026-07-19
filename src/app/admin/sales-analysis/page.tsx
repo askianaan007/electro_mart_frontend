@@ -126,7 +126,7 @@ export default function SalesAnalysisPage() {
       </div>
 
       {summaryLoading ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
@@ -135,7 +135,7 @@ export default function SalesAnalysisPage() {
         <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} />
       ) : (
         summary && (
-          <div className={cn('grid grid-cols-2 gap-4 lg:grid-cols-5', summaryFetching && 'opacity-60 transition-opacity')}>
+          <div className={cn('grid grid-cols-2 gap-4', summaryFetching && 'opacity-60 transition-opacity')}>
             <StatCard label="Total Sales" value={formatCurrency(summary.totalSales)} icon={ShoppingBag} />
             <StatCard label="Total Buying Price" value={formatCurrency(summary.totalBuying)} icon={TrendingDown} />
             <StatCard label="Gross Profit" value={formatCurrency(summary.totalProfit)} icon={TrendingUp} tone="success" />

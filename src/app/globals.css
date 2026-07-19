@@ -103,6 +103,98 @@
   }
 }
 
+/* Login screen: splash + entrance choreography. Scoped to `.login-*` names
+   so nothing here can collide with any other page's animations. Every
+   keyframe is gated behind `prefers-reduced-motion: no-preference` — with
+   it unset, elements render in their final state immediately. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes login-splash-logo {
+    0% {
+      opacity: 0;
+      transform: scale(0.75);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes login-splash-ring {
+    0% {
+      opacity: 0.5;
+      transform: scale(0.6);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.8);
+    }
+  }
+
+  @keyframes login-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes login-card-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes login-bg-zoom {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.08);
+    }
+  }
+
+  .login-splash-logo {
+    animation: login-splash-logo 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .login-splash-ring {
+    animation: login-splash-ring 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+
+  .login-rise-in {
+    animation: login-rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--login-splash-hold, 1s) + var(--delay, 0s));
+  }
+
+  .login-card-in {
+    animation: login-card-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--login-splash-hold, 1s) + 0.1s);
+  }
+
+  .login-bg-zoom {
+    animation: login-bg-zoom 20s ease-in-out infinite alternate;
+  }
+}
+
+/* The splash's own show/hide is a plain opacity fade driven by React state
+   (see LoginSplash) rather than a keyframe, so it still works the same way
+   even when the fancier motion above is switched off. */
+.login-splash {
+  transition: opacity 0.5s ease-in;
+}
+
 @media print {
   @page {
     size: A4;

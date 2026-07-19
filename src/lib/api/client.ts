@@ -61,9 +61,22 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshPromise: Promise<string | null> | null = null;
+// Refresh tokens rotate server-side (a new one is issued and the old one
+// revoked every time), so two near-simultaneous refreshes — e.g. this app
+// open in two tabs — must never both fire: whichever loses the race would
+// present an already-revoked token and get wrongly logged out. Zustand's
+// `persist` only writes to localStorage, it doesn't push updates to other
+// open tabs on its own, so each tab also needs to pull in whatever the
+// others just wrote.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'electromart-auth') {
+      void useAuthStore.persist.rehydrate();
+    }
+  });
+}
 
-async function refreshAccessToken(): Promise<string | null> {
+async function performRefresh(): Promise<string | null> {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) return null;
 
@@ -74,10 +87,49 @@ async function refreshAccessToken(): Promise<string | null> {
     );
     useAuthStore.getState().setTokens(response.data.accessToken, response.data.refreshToken);
     return response.data.accessToken;
-  } catch {
-    forceLogout('Your session has ended. Please log in again.');
+  } catch (err) {
+    // Only a genuine rejection from the server — the refresh token is
+    // invalid, revoked, or actually expired — means the session is really
+    // over. A network blip or the API being briefly unreachable must not
+    // log the user out; the next request (or the background scheduler)
+    // just tries again on its own.
+    if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 400)) {
+      forceLogout('Your session has ended. Please log in again.');
+    }
     return null;
   }
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Cross-tab-safe token refresh. `staleToken` is whatever access token the
+ * caller believed was dead when it decided to refresh — if another tab (or
+ * an earlier call in this one) has already rotated past it by the time we
+ * actually get to run, we reuse that instead of rotating again.
+ */
+export async function refreshAccessToken(staleToken: string | null): Promise<string | null> {
+  const current = useAuthStore.getState().accessToken;
+  if (current && current !== staleToken) return current;
+
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    return navigator.locks.request('electromart-token-refresh', async () => {
+      const latest = useAuthStore.getState().accessToken;
+      if (latest && latest !== staleToken) return latest;
+
+      refreshPromise ??= performRefresh().finally(() => {
+        refreshPromise = null;
+      });
+      return refreshPromise;
+    });
+  }
+
+  // Browsers without the Web Locks API only get same-tab deduplication —
+  // the cross-tab race is rarer than the single-tab one this still covers.
+  refreshPromise ??= performRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
 }
 
 apiClient.interceptors.response.use(
@@ -90,11 +142,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthFree) {
       originalRequest._retry = true;
 
-      refreshPromise ??= refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-
-      const newAccessToken = await refreshPromise;
+      const staleToken = useAuthStore.getState().accessToken;
+      const newAccessToken = await refreshAccessToken(staleToken);
       if (newAccessToken) {
         originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
         try {

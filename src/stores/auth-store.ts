@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AuthResponse, AuthUser } from '@/lib/api/types';
 
 interface AuthState {
@@ -38,3 +38,16 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+/**
+ * "Remember me" — call before setSession on login. Checked (the default)
+ * keeps the existing behavior: the session survives closing the browser.
+ * Unchecked switches to sessionStorage instead, so it only survives page
+ * reloads and clears once the tab/browser closes — same token lifetime
+ * either way, just where it's allowed to outlive the tab.
+ */
+export function setRememberMe(remember: boolean) {
+  useAuthStore.persist.setOptions({
+    storage: createJSONStorage(() => (remember ? localStorage : sessionStorage)),
+  });
+}
