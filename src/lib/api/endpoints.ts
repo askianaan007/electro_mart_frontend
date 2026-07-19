@@ -38,6 +38,15 @@ import type {
   SupplierPayment,
 } from './types';
 
+// Per-line discount is mutually exclusive with the order-wide discount —
+// enforced by the backend, mirrored here for the request shape.
+type OrderItemInput = {
+  productId: string;
+  quantity: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+};
+
 function buildParams<T extends object>(params: T) {
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
@@ -203,7 +212,7 @@ export const api = {
     get: (id: string) => apiClient.get<Order>(`/orders/${id}`).then((r) => r.data),
     create: (data: {
       dealerId?: string;
-      items: { productId: string; quantity: number }[];
+      items: OrderItemInput[];
       discountPercentage?: number;
       discountAmount?: number;
       saleDate?: string;
@@ -221,7 +230,7 @@ export const api = {
       id: string,
       data: {
         dealerId: string;
-        items: { productId: string; quantity: number }[];
+        items: OrderItemInput[];
         discountPercentage?: number;
         discountAmount?: number;
         saleDate?: string;

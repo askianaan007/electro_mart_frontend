@@ -14,6 +14,15 @@ type OrderParams = PaginationParams & {
   dateTo?: string;
 };
 
+// Per-line discount is mutually exclusive with the order-wide discount —
+// enforced by the backend, mirrored here for the request shape.
+type OrderItemInput = {
+  productId: string;
+  quantity: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+};
+
 export const orderKeys = {
   all: ['orders'] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
@@ -52,7 +61,7 @@ export function useCreateOrder() {
   return useMutation({
     mutationFn: (data: {
       dealerId?: string;
-      items: { productId: string; quantity: number }[];
+      items: OrderItemInput[];
       discountPercentage?: number;
       discountAmount?: number;
       saleDate?: string;
@@ -103,7 +112,7 @@ export function useUpdateOrder(id: string) {
   return useMutation({
     mutationFn: (data: {
       dealerId: string;
-      items: { productId: string; quantity: number }[];
+      items: OrderItemInput[];
       discountPercentage?: number;
       discountAmount?: number;
       saleDate?: string;

@@ -24,6 +24,8 @@ import type { Dealer, Order, Product } from '@/lib/api/types';
 const lineItemSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
   quantity: z.string().refine((v) => Number(v) >= 1, 'Min 1'),
+  discountType: z.enum(['PERCENTAGE', 'FIXED']),
+  discountValue: z.string(),
 });
 
 const schema = z
@@ -32,6 +34,9 @@ const schema = z
     recordAsCompleted: z.boolean(),
     saleDate: z.string(),
     items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
+    // An order uses either one discount across the whole order, or a
+    // separate discount per product — never both at once.
+    discountMode: z.enum(['ORDER', 'PRODUCT']),
     discountType: z.enum(['PERCENTAGE', 'FIXED']),
     discountValue: z.string(),
   })
@@ -39,15 +44,39 @@ const schema = z
     if (data.recordAsCompleted && data.saleDate > new Date().toISOString().slice(0, 10)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['saleDate'], message: 'Sale date cannot be in the future' });
     }
-    if (data.discountValue.trim() === '') return;
-    const num = Number(data.discountValue);
-    if (Number.isNaN(num) || num < 0) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Enter a valid amount' });
+
+    if (data.discountMode === 'ORDER') {
+      if (data.discountValue.trim() === '') return;
+      const num = Number(data.discountValue);
+      if (Number.isNaN(num) || num < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Enter a valid amount' });
+        return;
+      }
+      if (data.discountType === 'PERCENTAGE' && num > 100) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Percentage cannot exceed 100' });
+      }
       return;
     }
-    if (data.discountType === 'PERCENTAGE' && num > 100) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountValue'], message: 'Percentage cannot exceed 100' });
-    }
+
+    data.items.forEach((item, index) => {
+      if (item.discountValue.trim() === '') return;
+      const num = Number(item.discountValue);
+      if (Number.isNaN(num) || num < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['items', index, 'discountValue'],
+          message: 'Enter a valid amount',
+        });
+        return;
+      }
+      if (item.discountType === 'PERCENTAGE' && num > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['items', index, 'discountValue'],
+          message: 'Percentage cannot exceed 100',
+        });
+      }
+    });
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -56,19 +85,67 @@ function unitPrice(products: Product[] | undefined, productId: string | undefine
   return Number(products?.find((p) => p.id === productId)?.wholesalePrice ?? 0);
 }
 
+function lineDiscountAmount(lineTotal: number, discountType: 'PERCENTAGE' | 'FIXED', discountValue: string) {
+  const value = Number(discountValue) || 0;
+  if (value <= 0) return 0;
+  return discountType === 'PERCENTAGE' ? (lineTotal * value) / 100 : Math.min(value, lineTotal);
+}
+
 function LineTotal({
   control,
   index,
   products,
+  discountMode,
 }: {
   control: ReturnType<typeof useForm<FormValues>>['control'];
   index: number;
   products: Product[] | undefined;
+  discountMode: 'ORDER' | 'PRODUCT';
 }) {
   const productId = useWatch({ control, name: `items.${index}.productId` });
   const quantity = useWatch({ control, name: `items.${index}.quantity` });
-  const total = (Number(quantity) || 0) * unitPrice(products, productId);
-  return <span className="font-medium">{formatCurrency(total)}</span>;
+  const discountType = useWatch({ control, name: `items.${index}.discountType` });
+  const discountValue = useWatch({ control, name: `items.${index}.discountValue` });
+  const gross = (Number(quantity) || 0) * unitPrice(products, productId);
+
+  if (discountMode !== 'PRODUCT') {
+    return <span className="font-medium">{formatCurrency(gross)}</span>;
+  }
+
+  const discount = lineDiscountAmount(gross, discountType, discountValue);
+  if (discount <= 0) {
+    return <span className="font-medium">{formatCurrency(gross)}</span>;
+  }
+  const net = Math.max(gross - discount, 0);
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-muted-foreground line-through">{formatCurrency(gross)}</span>
+      <span className="font-medium">{formatCurrency(net)}</span>
+    </div>
+  );
+}
+
+/**
+ * Existing orders don't store which discount mode was used — figure it out
+ * from the numbers. If every line's stored allocatedDiscount matches what
+ * proportionally splitting the order's total discount by lineTotal share
+ * would produce, it was an order-wide discount; otherwise it must have been
+ * entered per product.
+ */
+function detectDiscountMode(order: Order): 'ORDER' | 'PRODUCT' {
+  const totalDiscount = Number(order.discount);
+  if (totalDiscount <= 0) return 'ORDER';
+
+  const subtotal = order.items.reduce((sum, item) => sum + Number(item.lineTotal), 0);
+  if (subtotal <= 0) return 'ORDER';
+
+  const ratio = totalDiscount / subtotal;
+  const isProportional = order.items.every((item) => {
+    const lineTotal = Number(item.lineTotal);
+    const expected = Math.round(lineTotal * ratio * 100) / 100;
+    return Math.abs(Number(item.allocatedDiscount) - expected) <= 0.02;
+  });
+  return isProportional ? 'ORDER' : 'PRODUCT';
 }
 
 function defaultValuesFor(order?: Order): FormValues {
@@ -77,18 +154,28 @@ function defaultValuesFor(order?: Order): FormValues {
       dealerId: '',
       recordAsCompleted: false,
       saleDate: new Date().toISOString().slice(0, 10),
-      items: [{ productId: '', quantity: '1' }],
+      items: [{ productId: '', quantity: '1', discountType: 'PERCENTAGE', discountValue: '' }],
+      discountMode: 'ORDER',
       discountType: 'PERCENTAGE',
       discountValue: '',
     };
   }
+
+  const discountMode = detectDiscountMode(order);
   return {
     dealerId: order.dealerId,
     recordAsCompleted: order.status === 'COMPLETED',
     saleDate: (order.completedAt ?? order.approvedAt ?? order.createdAt).slice(0, 10),
-    items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
+    items: order.items.map((item) => ({
+      productId: item.productId,
+      quantity: String(item.quantity),
+      discountType: 'FIXED',
+      discountValue:
+        discountMode === 'PRODUCT' && Number(item.allocatedDiscount) > 0 ? String(item.allocatedDiscount) : '',
+    })),
+    discountMode,
     discountType: 'FIXED',
-    discountValue: Number(order.discount) > 0 ? String(order.discount) : '',
+    discountValue: discountMode === 'ORDER' && Number(order.discount) > 0 ? String(order.discount) : '',
   };
 }
 
@@ -187,6 +274,51 @@ function DealerCombobox({
   );
 }
 
+function DiscountModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'ORDER' | 'PRODUCT';
+  onChange: (mode: 'ORDER' | 'PRODUCT') => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
+      <div>
+        <p className="text-sm font-medium">Discount mode</p>
+        <p className="text-xs text-muted-foreground">
+          {value === 'ORDER'
+            ? 'One discount applied across the whole order.'
+            : 'Discount individual products — the rest stay at full price.'}
+        </p>
+      </div>
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1 text-sm">
+        <button
+          type="button"
+          onClick={() => onChange('ORDER')}
+          className={cn(
+            'rounded-md px-3 py-1.5 font-medium transition-colors',
+            value === 'ORDER' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          Order-wide
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('PRODUCT')}
+          className={cn(
+            'rounded-md px-3 py-1.5 font-medium transition-colors',
+            value === 'PRODUCT'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          Per-product
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function OrderForm({ order }: { order?: Order }) {
   const isEdit = !!order;
   const router = useRouter();
@@ -203,6 +335,7 @@ export function OrderForm({ order }: { order?: Order }) {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
   const watchedItems = useWatch({ control: form.control, name: 'items' });
+  const discountMode = form.watch('discountMode');
   const discountType = form.watch('discountType');
   const discountValue = Number(form.watch('discountValue')) || 0;
   const recordAsCompleted = form.watch('recordAsCompleted');
@@ -211,23 +344,62 @@ export function OrderForm({ order }: { order?: Order }) {
     (sum, item) => sum + (Number(item.quantity) || 0) * unitPrice(products?.data, item.productId),
     0,
   );
-  const discountAmount = discountType === 'PERCENTAGE' ? (subtotal * discountValue) / 100 : discountValue;
-  const grandTotal = Math.max(subtotal - discountAmount, 0);
+
+  const productDiscountTotal = watchedItems.reduce((sum, item) => {
+    const gross = (Number(item.quantity) || 0) * unitPrice(products?.data, item.productId);
+    return sum + lineDiscountAmount(gross, item.discountType, item.discountValue);
+  }, 0);
+
+  const discountAmountTotal =
+    discountMode === 'PRODUCT' ? productDiscountTotal : discountType === 'PERCENTAGE' ? (subtotal * discountValue) / 100 : discountValue;
+  const grandTotal = Math.max(subtotal - discountAmountTotal, 0);
+
+  function setDiscountMode(mode: 'ORDER' | 'PRODUCT') {
+    if (mode === form.getValues('discountMode')) return;
+    form.setValue('discountMode', mode);
+    if (mode === 'ORDER') {
+      watchedItems.forEach((_, index) => form.setValue(`items.${index}.discountValue`, ''));
+    } else {
+      form.setValue('discountValue', '');
+    }
+  }
 
   const onSubmit = form.handleSubmit((values) => {
-    const value = values.discountValue.trim() === '' ? 0 : Number(values.discountValue);
+    let orderDiscountPercentage: number | undefined;
+    let orderDiscountAmount: number | undefined;
 
-    if (values.discountType === 'FIXED' && value > subtotal) {
-      form.setError('discountValue', { message: 'Cannot exceed the order subtotal' });
-      return;
+    if (values.discountMode === 'ORDER') {
+      const value = values.discountValue.trim() === '' ? 0 : Number(values.discountValue);
+      if (values.discountType === 'FIXED' && value > subtotal) {
+        form.setError('discountValue', { message: 'Cannot exceed the order subtotal' });
+        return;
+      }
+      orderDiscountPercentage = values.discountType === 'PERCENTAGE' ? value : undefined;
+      orderDiscountAmount = values.discountType === 'FIXED' ? value : undefined;
+    } else {
+      for (let i = 0; i < values.items.length; i++) {
+        const item = values.items[i];
+        if (item.discountType !== 'FIXED') continue;
+        const value = item.discountValue.trim() === '' ? 0 : Number(item.discountValue);
+        const gross = Number(item.quantity) * unitPrice(products?.data, item.productId);
+        if (value > gross) {
+          form.setError(`items.${i}.discountValue`, { message: 'Cannot exceed this line total' });
+          return;
+        }
+      }
     }
 
-    const items = values.items.map((item) => ({
-      productId: item.productId,
-      quantity: Number(item.quantity),
-    }));
-    const discountPercentage = values.discountType === 'PERCENTAGE' ? value : undefined;
-    const discountAmount = values.discountType === 'FIXED' ? value : undefined;
+    const items = values.items.map((item) => {
+      const base = { productId: item.productId, quantity: Number(item.quantity) };
+      if (values.discountMode !== 'PRODUCT') return base;
+      const value = item.discountValue.trim() === '' ? 0 : Number(item.discountValue);
+      if (value <= 0) return base;
+      return {
+        ...base,
+        discountPercentage: item.discountType === 'PERCENTAGE' ? value : undefined,
+        discountAmount: item.discountType === 'FIXED' ? value : undefined,
+      };
+    });
 
     if (isEdit) {
       updateOrder.mutate(
@@ -235,8 +407,8 @@ export function OrderForm({ order }: { order?: Order }) {
           dealerId: values.dealerId,
           saleDate: values.recordAsCompleted ? values.saleDate : undefined,
           items,
-          discountPercentage,
-          discountAmount,
+          discountPercentage: orderDiscountPercentage,
+          discountAmount: orderDiscountAmount,
         },
         {
           onSuccess: (updated) => {
@@ -252,14 +424,14 @@ export function OrderForm({ order }: { order?: Order }) {
           dealerId: values.dealerId,
           saleDate: values.recordAsCompleted ? values.saleDate : undefined,
           items,
-          discountPercentage,
-          discountAmount,
+          discountPercentage: orderDiscountPercentage,
+          discountAmount: orderDiscountAmount,
         },
         {
           onSuccess: (created) => {
             toast.success(
               values.recordAsCompleted
-                ? value > 0
+                ? discountAmountTotal > 0
                   ? 'Order recorded as completed with discount — stock reserved, invoice generated'
                   : 'Order recorded as completed — stock reserved, invoice generated'
                 : "Order created and approved — use Mark as Completed on the order when it's fulfilled",
@@ -359,13 +531,15 @@ export function OrderForm({ order }: { order?: Order }) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ productId: '', quantity: '1' })}
+                onClick={() => append({ productId: '', quantity: '1', discountType: 'PERCENTAGE', discountValue: '' })}
               >
                 <Plus />
                 Add Item
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
+              <DiscountModeToggle value={discountMode} onChange={setDiscountMode} />
+
               <div className="hidden sm:block">
                 <Table>
                   <TableHeader>
@@ -373,6 +547,7 @@ export function OrderForm({ order }: { order?: Order }) {
                       <TableHead className="w-2/5">Product</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Unit Price</TableHead>
+                      {discountMode === 'PRODUCT' && <TableHead>Discount</TableHead>}
                       <TableHead>Line Total</TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
@@ -410,8 +585,49 @@ export function OrderForm({ order }: { order?: Order }) {
                         <TableCell>
                           {formatCurrency(unitPrice(products?.data, watchedItems[index]?.productId))}
                         </TableCell>
+                        {discountMode === 'PRODUCT' && (
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.discountType`}
+                                render={({ field }) => (
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className="h-9 w-[4.5rem] px-2 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="PERCENTAGE">%</SelectItem>
+                                      <SelectItem value="FIXED">Fixed</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.discountValue`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        max={watchedItems[index]?.discountType === 'PERCENTAGE' ? 100 : undefined}
+                                        step="0.01"
+                                        placeholder="0"
+                                        className="h-9 w-20"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage className="text-[10px]" />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell>
-                          <LineTotal control={form.control} index={index} products={products?.data} />
+                          <LineTotal control={form.control} index={index} products={products?.data} discountMode={discountMode} />
                         </TableCell>
                         <TableCell>
                           <Button
@@ -480,9 +696,46 @@ export function OrderForm({ order }: { order?: Order }) {
                         </FormItem>
                       )}
                     />
+                    {discountMode === 'PRODUCT' && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.discountType`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Discount type</FormLabel>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                                  <SelectItem value="FIXED">Fixed amount</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.discountValue`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Discount</FormLabel>
+                              <FormControl>
+                                <Input type="number" min={0} step="0.01" placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Line total</span>
-                      <LineTotal control={form.control} index={index} products={products?.data} />
+                      <LineTotal control={form.control} index={index} products={products?.data} discountMode={discountMode} />
                     </div>
                   </div>
                 ))}
@@ -490,46 +743,54 @@ export function OrderForm({ order }: { order?: Order }) {
 
               <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="grid grid-cols-2 gap-3 sm:w-64">
-                  <FormField
-                    control={form.control}
-                    name="discountType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Discount type</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                            <SelectItem value="FIXED">Fixed amount</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="discountValue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{discountType === 'PERCENTAGE' ? 'Discount %' : 'Discount amount'}</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={discountType === 'PERCENTAGE' ? 100 : undefined}
-                            step="0.01"
-                            placeholder="0"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {discountMode === 'ORDER' ? (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="discountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount type</FormLabel>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                                <SelectItem value="FIXED">Fixed amount</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="discountValue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{discountType === 'PERCENTAGE' ? 'Discount %' : 'Discount amount'}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={discountType === 'PERCENTAGE' ? 100 : undefined}
+                                step="0.01"
+                                placeholder="0"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  ) : (
+                    <p className="col-span-2 self-end text-sm text-muted-foreground">
+                      Set each product&apos;s discount in the table above.
+                    </p>
+                  )}
                 </div>
 
                 <div className="w-full space-y-1 sm:w-64">
@@ -539,7 +800,7 @@ export function OrderForm({ order }: { order?: Order }) {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Discount</span>
-                    <span>−{formatCurrency(discountAmount)}</span>
+                    <span>−{formatCurrency(discountAmountTotal)}</span>
                   </div>
                   <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
                     <span>Order Total</span>
