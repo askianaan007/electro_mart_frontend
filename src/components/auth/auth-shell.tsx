@@ -1,4 +1,4 @@
-import { Zap } from 'lucide-react';
+import Image from 'next/image';
 
 export function AuthShell({
   title,
@@ -14,9 +14,7 @@ export function AuthShell({
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-10 sm:px-6">
       <div className="mb-8 flex items-center gap-2">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Zap className="size-5" />
-        </div>
+        <Image src="/logo-icon.png" alt="" width={40} height={40} className="size-10 shrink-0" priority />
         <div className="leading-tight">
           <p className="font-semibold">Electro Mart</p>
           <p className="text-xs text-muted-foreground">ERP &amp; Dealer Portal</p>

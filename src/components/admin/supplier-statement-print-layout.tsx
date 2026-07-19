@@ -150,7 +150,7 @@ export function SupplierStatementPrintLayout({
                 <td className="border border-black px-2 py-1.5 text-right">{formatCurrency(line.total)}</td>
               </tr>
             ))
-          )}
+          )} 
         </tbody>
       </table>
       {purchaseLines.length > 0 && (

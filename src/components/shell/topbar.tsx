@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, Menu, Search, Zap } from 'lucide-react';
+import Image from 'next/image';
+import { Bell, Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
@@ -25,9 +26,7 @@ export function Topbar({
 
       {showLogo && (
         <div className="flex items-center gap-2 lg:hidden">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple text-primary-foreground">
-            <Zap className="size-4" />
-          </div>
+          <Image src="/logo-icon.png" alt="" width={28} height={28} className="size-7 shrink-0" />
           <span className="font-semibold tracking-tight">Electro Mart</span>
         </div>
       )}
