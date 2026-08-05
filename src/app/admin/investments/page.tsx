@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, MoreHorizontal, Plus, Search, TrendingUp, Trash2 } from 'lucide-react';
+import { FileText, Loader2, MoreHorizontal, Plus, Search, TrendingUp, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { InvestorFormDialog } from '@/components/admin/investor-form-dialog';
 import { InvestmentFormDialog } from '@/components/admin/investment-form-dialog';
+import { InvestorStatementDialog } from '@/components/admin/investor-statement-dialog';
 import { useAllInvestors, useDeleteInvestor } from '@/hooks/use-investors';
 import { useDeleteInvestment, useInvestments } from '@/hooks/use-investments';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -46,6 +47,7 @@ export default function InvestmentsPage() {
   const [investorFormOpen, setInvestorFormOpen] = useState(false);
   const [editingInvestor, setEditingInvestor] = useState<Investor | undefined>(undefined);
   const [deletingInvestor, setDeletingInvestor] = useState<Investor | null>(null);
+  const [statementInvestor, setStatementInvestor] = useState<Investor | null>(null);
 
   const [investmentFormOpen, setInvestmentFormOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | undefined>(undefined);
@@ -243,6 +245,10 @@ export default function InvestmentsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setStatementInvestor(investor)}>
+                                <FileText />
+                                Statement
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingInvestor(investor);
@@ -279,6 +285,10 @@ export default function InvestmentsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setStatementInvestor(investor)}>
+                            <FileText />
+                            Statement
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setEditingInvestor(investor);
@@ -539,6 +549,11 @@ export default function InvestmentsPage() {
       </section>
 
       <InvestorFormDialog open={investorFormOpen} onOpenChange={setInvestorFormOpen} investor={editingInvestor} />
+      <InvestorStatementDialog
+        open={!!statementInvestor}
+        onOpenChange={(open) => !open && setStatementInvestor(null)}
+        investor={statementInvestor}
+      />
       <InvestmentFormDialog open={investmentFormOpen} onOpenChange={setInvestmentFormOpen} investment={editingInvestment} />
 
       <AlertDialog open={!!deletingInvestor} onOpenChange={(open) => !open && setDeletingInvestor(null)}>

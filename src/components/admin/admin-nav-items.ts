@@ -15,6 +15,12 @@ import {
   HandCoins,
   LineChart,
   Undo2,
+  UserCog,
+  Banknote,
+  Landmark,
+  Tag,
+  Image,
+  FileBarChart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -57,6 +63,18 @@ export const adminNavGroups: AdminNavGroup[] = [
     ],
   },
  
+  {
+    label: 'Representative Portal',
+    items: [
+      { label: 'Representatives', href: '/admin/representatives', icon: UserCog },
+      { label: 'Commission', href: '/admin/commission', icon: Banknote },
+      { label: 'Collections', href: '/admin/collections', icon: Landmark },
+      { label: 'Brands', href: '/admin/brands', icon: Tag },
+      { label: 'Banners', href: '/admin/banners', icon: Image },
+      { label: 'Reports', href: '/admin/reports', icon: FileBarChart },
+    ],
+  },
+
   {
     label: 'Purchasing',
     items: [

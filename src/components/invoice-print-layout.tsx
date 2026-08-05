@@ -2,10 +2,17 @@ import { formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/lib/api/types';
 
 const PAGE_HEIGHT_MM = 297;
-const HEADER_HEIGHT_MM = (291 / 3250) * PAGE_HEIGHT_MM;
-const FOOTER_HEIGHT_MM = (126 / 3250) * PAGE_HEIGHT_MM;
+const HEADER_HEIGHT_MM = (210 * 263) / 1541;
+const FOOTER_HEIGHT_MM = (210 * 457) / 1544;
 
-function formatInvoiceDate(value: string) {
+const TOTAL_TABLE_ROWS = 26;
+
+const BILL_TO_RED = '#ED1C24';
+const INFO_BLUE = '#DCEEFB';
+const TABLE_HEAD_NAVY = '#13245C';
+
+function formatInvoiceDate(value: string | null | undefined) {
+  if (!value) return '—';
   const date = new Date(value);
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -15,8 +22,9 @@ function formatInvoiceDate(value: string) {
 export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
   const items = invoice.order?.items ?? [];
   const subtotal = Number(invoice.subtotal);
-  const discount = Number(invoice.discountTotal);
-  const discountPct = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+  const discountTotal = Number(invoice.discountTotal);
+  const grandTotal = Number(invoice.grandTotal);
+  const fillerRows = Math.max(0, TOTAL_TABLE_ROWS - items.length);
 
   return (
     <div
@@ -24,122 +32,146 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
       style={{ width: '210mm', minHeight: `${PAGE_HEIGHT_MM}mm` }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/invoice-header.png"
-        alt=""
-        className="block w-full"
-        style={{ height: `${HEADER_HEIGHT_MM}mm` }}
-      />
+      <img src="/invoice-header.png" alt="" className="block w-full" style={{ height: `${HEADER_HEIGHT_MM}mm` }} />
 
       <div
-        className="flex flex-col px-[14mm] pb-[6mm]"
-        style={{ minHeight: `${PAGE_HEIGHT_MM - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM}mm` }}
+        className="flex flex-col text-[10px]"
+        style={{ minHeight: `${PAGE_HEIGHT_MM - HEADER_HEIGHT_MM - FOOTER_HEIGHT_MM}mm`, padding: '16px' }}
       >
-        <h1 className="mt-[8mm] text-center text-[22pt] font-bold tracking-wide">INVOICE</h1>
+        <div className="py-1 pl-2 font-bold uppercase text-white" style={{ background: BILL_TO_RED }}>
+          Bill To :
+        </div>
 
-        <div className="mt-[9mm] flex justify-between gap-8 text-[10.5pt] leading-relaxed">
+        <div className="flex justify-between gap-6 px-2 py-2 leading-[1.6]" style={{ background: INFO_BLUE }}>
           <div>
             <p>
-              <span className="font-bold">Customer Name</span>: {invoice.dealer?.businessName}
+              <span className="font-bold">Customer Name:</span> {invoice.dealer?.businessName ?? '—'}
             </p>
             <p>
               <span className="font-bold">Address:</span> {invoice.dealer?.address ?? '—'}
             </p>
-            {invoice.dealer?.phone && (
-              <p>
-                <span className="font-bold">Phone:</span> {invoice.dealer.phone}
-              </p>
-            )}
+            <p>
+              <span className="font-bold">Phone:</span> {invoice.dealer?.phone ?? '—'}
+            </p>
+            <p>
+              <span className="font-bold">Email:</span> {invoice.dealer?.email ?? '—'}
+            </p>
           </div>
           <div className="text-right">
-            <p className="font-bold">
-              Invoice Date: <span className="font-normal">{formatInvoiceDate(invoice.createdAt)}</span>
+            <p>
+              <span className="font-bold">Issue Date:</span> {formatInvoiceDate(invoice.createdAt)}
             </p>
-            <p className="mt-1 font-bold">
-              Invoice Number: <span className="font-normal">#{invoice.invoiceNumber}</span>
+            <p>
+              <span className="font-bold">Delivery Date:</span> {formatInvoiceDate(invoice.order?.deliveredAt)}
+            </p>
+            <p>
+              <span className="font-bold">Invoice Ref:</span> #{invoice.invoiceNumber}
             </p>
           </div>
         </div>
 
-        <table className="mt-[8mm] w-full border-collapse text-[10pt]">
-          <thead>
-            <tr>
-              <th className="border border-black px-2 py-2 text-left">No</th>
-              <th className="border border-black px-2 py-2 text-left">Item &amp; Description</th>
-              <th className="border border-black px-2 py-2 text-right">Qty</th>
-              <th className="border border-black px-2 py-2 text-right">Unit Price</th>
-              <th className="border border-black px-2 py-2 text-right">Total Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, index) => (
-              <tr key={item.id}>
-                <td className="border border-black px-2 py-2">{index + 1}</td>
-                <td className="border border-black px-2 py-2">{item.product.name}</td>
-                <td className="border border-black px-2 py-2 text-right">{item.quantity}</td>
-                <td className="border border-black px-2 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
-                <td className="border border-black px-2 py-2 text-right">{formatCurrency(item.lineTotal)}</td>
+        <div className="mt-2 flex-1">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="text-white" style={{ background: TABLE_HEAD_NAVY }}>
+                <th rowSpan={2} className="w-[6%] border border-black px-1.5 py-1 align-middle">
+                  S.No
+                </th>
+                <th rowSpan={2} className="w-[13%] border border-black px-1.5 py-1 align-middle">
+                  Product Code
+                </th>
+                <th rowSpan={2} className="border border-black px-1.5 py-1 text-left align-middle">
+                  Item / Description
+                </th>
+                <th rowSpan={2} className="w-[6%] border border-black px-1.5 py-1 align-middle">
+                  Qty
+                </th>
+                <th rowSpan={2} className="w-[12%] border border-black px-1.5 py-1 align-middle">
+                  Unit Price
+                </th>
+                <th colSpan={2} className="border border-black px-1.5 py-0.5">
+                  Discount
+                </th>
+                <th rowSpan={2} className="w-[14%] border border-black px-1.5 py-1 align-middle">
+                  Total Amount
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="mt-[9mm] flex justify-between gap-8">
-          <div className="max-w-[55%] text-[9.5pt] leading-relaxed">
-            <p className="font-bold">NOTES / TERMS:</p>
-            <p className="mt-2">Warranty Period: 2 Years</p>
-            <p>Warranty Card Is Essential For Warranty Claims</p>
-            <p className="font-semibold">Cheque payments should be made within a period of two months only</p>
-          </div>
-          <table className="h-fit border-collapse text-[10pt]">
+              <tr className="text-white" style={{ background: TABLE_HEAD_NAVY }}>
+                <th className="w-[8%] border border-black px-1.5 py-0.5">%</th>
+                <th className="w-[11%] border border-black px-1.5 py-0.5">Amount</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr>
-                <td className="border border-black px-4 py-2">Sub-Total</td>
-                <td className="border border-black px-4 py-2 text-right">{formatCurrency(subtotal)}</td>
-              </tr>
-              {discount > 0 && (
-                <tr>
-                  <td className="border border-black px-4 py-2">Discount ({discountPct.toFixed(1)}%)</td>
-                  <td className="border border-black px-4 py-2 text-right text-red-600">
-                    -{formatCurrency(discount)}
-                  </td>
+              {items.map((item, index) => {
+                const lineTotal = Number(item.lineTotal);
+                const allocatedDiscount = Number(item.allocatedDiscount);
+                const discountPct = lineTotal > 0 ? (allocatedDiscount / lineTotal) * 100 : 0;
+                return (
+                  <tr key={item.id} className="break-inside-avoid">
+                    <td className="border border-black px-1.5 py-1 text-center">{index + 1}</td>
+                    <td className="border border-black px-1.5 py-1 text-center">{item.product.productCode}</td>
+                    <td className="border border-black px-1.5 py-1">{item.product.name}</td>
+                    <td className="border border-black px-1.5 py-1 text-center">{item.quantity}</td>
+                    <td className="border border-black px-1.5 py-1 text-right">{formatCurrency(item.unitPrice)}</td>
+                    <td className="border border-black px-1.5 py-1 text-center">
+                      {allocatedDiscount > 0 ? `${discountPct.toFixed(1)}%` : '-'}
+                    </td>
+                    <td className="border border-black px-1.5 py-1 text-right">
+                      {allocatedDiscount > 0 ? formatCurrency(allocatedDiscount) : '-'}
+                    </td>
+                    <td className="border border-black px-1.5 py-1 text-right">{formatCurrency(item.netLineTotal)}</td>
+                  </tr>
+                );
+              })}
+              {Array.from({ length: fillerRows }, (_, i) => (
+                <tr key={`filler-${i}`} className="break-inside-avoid">
+                  <td className="border border-black px-1.5 py-1 text-center">{items.length + i + 1}</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                  <td className="border border-black px-1.5 py-1">&nbsp;</td>
                 </tr>
-              )}
-              <tr>
-                <td className="border border-black px-4 py-2 font-bold">Total</td>
-                <td className="border border-black px-4 py-2 text-right font-bold">
-                  {formatCurrency(invoice.grandTotal)}
-                </td>
-              </tr>
+              ))}
             </tbody>
           </table>
         </div>
 
-        <div className="flex-1" />
-
-        <p className="mb-[10mm] text-[10pt]">
-          The goods have been received in good condition and in the correct quantity
-        </p>
-
-        <div className="mb-[6mm] flex justify-between text-[10pt]">
-          <div>
-            <p className="font-bold">AUTHORIZED BY</p>
-            <div className="mt-[10mm] w-[55mm] border-t border-black" />
+        <div className="mt-3 flex items-end justify-between">
+          <div className="text-center">
+            <div className="w-[60mm] border-t border-black" />
+            <p className="mt-1">For, Customer</p>
           </div>
-          <div>
-            <p className="font-bold">CUSTOMER SIGNATURE</p>
-            <div className="mt-[10mm] w-[55mm] border-t border-black" />
-          </div>
+
+          <table className="border-collapse" style={{ background: INFO_BLUE }}>
+            <tbody>
+              <tr>
+                <td className="border border-black px-2 py-1 font-semibold">TOTAL GROSS AMOUNT</td>
+                <td className="border border-black px-2 py-1 text-right">{formatCurrency(subtotal)}</td>
+              </tr>
+              <tr>
+                <td className="border border-black px-2 py-1 font-semibold">TOTAL DISCOUNT AMOUNT</td>
+                <td className="border border-black px-2 py-1 text-right text-red-600">
+                  {discountTotal > 0 ? `-${formatCurrency(discountTotal)}` : '-'}
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-black px-2 py-1 font-semibold">TOTAL DELIVERY COST</td>
+                <td className="border border-black px-2 py-1 text-right">-</td>
+              </tr>
+              <tr>
+                <td className="border border-black px-2 py-1 font-bold">TOTAL NET AMOUNT DUE</td>
+                <td className="border border-black px-2 py-1 text-right font-bold">{formatCurrency(grandTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/invoice-footer.png"
-        alt=""
-        className="block w-full"
-        style={{ height: `${FOOTER_HEIGHT_MM}mm` }}
-      />
+      <img src="/invoice-footer.png" alt="" className="block w-full" style={{ height: `${FOOTER_HEIGHT_MM}mm` }} />
     </div>
   );
 }

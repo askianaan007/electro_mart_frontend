@@ -32,6 +32,33 @@ const CHEQUE_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['va
   RETURNED: { label: 'Returned', variant: 'destructive' },
 };
 
+const REPRESENTATIVE_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  ACTIVE: { label: 'Active', variant: 'success' },
+  SUSPENDED: { label: 'Suspended', variant: 'warning' },
+  BLOCKED: { label: 'Blocked', variant: 'destructive' },
+  INACTIVE: { label: 'Inactive', variant: 'muted' },
+};
+
+const SETTLEMENT_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  PENDING: { label: 'Pending', variant: 'muted' },
+  APPROVED: { label: 'Approved', variant: 'warning' },
+  REJECTED: { label: 'Rejected', variant: 'destructive' },
+  PAID: { label: 'Paid', variant: 'success' },
+};
+
+const COLLECTION_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  PENDING_VERIFICATION: { label: 'Pending Verification', variant: 'warning' },
+  CONFIRMED: { label: 'Confirmed', variant: 'success' },
+  REJECTED: { label: 'Rejected', variant: 'destructive' },
+};
+
+const COMMISSION_LINE_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  PENDING: { label: 'Pending', variant: 'muted' },
+  APPROVED: { label: 'Approved', variant: 'warning' },
+  SETTLED: { label: 'Settled', variant: 'success' },
+  REVERSED: { label: 'Reversed', variant: 'destructive' },
+};
+
 function StatusBadge({
   status,
   map,
@@ -67,4 +94,20 @@ export function StockStatusBadge({ status, className }: { status: string; classN
 
 export function ChequeStatusBadge({ status, className }: { status: string; className?: string }) {
   return <StatusBadge status={status} map={CHEQUE_STATUS_MAP} className={className} />;
+}
+
+export function RepresentativeStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <StatusBadge status={status} map={REPRESENTATIVE_STATUS_MAP} className={className} />;
+}
+
+export function SettlementStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <StatusBadge status={status} map={SETTLEMENT_STATUS_MAP} className={className} />;
+}
+
+export function CollectionStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <StatusBadge status={status} map={COLLECTION_STATUS_MAP} className={className} />;
+}
+
+export function CommissionLineStatusBadge({ status, className }: { status: string; className?: string }) {
+  return <StatusBadge status={status} map={COMMISSION_LINE_STATUS_MAP} className={className} />;
 }

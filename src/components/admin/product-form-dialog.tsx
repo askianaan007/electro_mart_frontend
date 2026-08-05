@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { ProductImagesField } from '@/components/admin/product-images-field';
 import { useCreateProduct, useUpdateProduct, useUploadProductImages } from '@/hooks/use-products';
@@ -21,6 +22,8 @@ import type { Product } from '@/lib/api/types';
 
 const numberField = (label: string) =>
   z.string().refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)) && Number(v) >= 0, `${label} must be a valid number`);
+
+const optionalNumberField = z.string().refine((v) => v.trim() === '' || !Number.isNaN(Number(v)), 'Enter a valid number');
 
 const schema = z.object({
   productCode: z.string().min(1, 'Product code is required'),
@@ -33,6 +36,9 @@ const schema = z.object({
   description: z.string(),
   costPrice: numberField('Cost price'),
   wholesalePrice: numberField('Wholesale price'),
+  retailPrice: optionalNumberField,
+  compareAtPrice: optionalNumberField,
+  isFeatured: z.boolean(),
   currentStock: numberField('Current stock'),
   warranty: z.string(),
   status: z.enum(['ACTIVE', 'INACTIVE']),
@@ -52,6 +58,9 @@ function defaultValuesFor(product?: Product): FormValues {
     description: product?.description ?? '',
     costPrice: product?.costPrice ?? '',
     wholesalePrice: product?.wholesalePrice ?? '',
+    retailPrice: product?.retailPrice ?? '',
+    compareAtPrice: product?.compareAtPrice ?? '',
+    isFeatured: product?.isFeatured ?? false,
     currentStock: product ? String(product.currentStock) : '0',
     warranty: product?.warranty ?? '',
     status: product?.status ?? 'ACTIVE',
@@ -100,6 +109,9 @@ export function ProductFormDialog({
       description: values.description || undefined,
       costPrice: Number(values.costPrice),
       wholesalePrice: Number(values.wholesalePrice),
+      retailPrice: values.retailPrice ? Number(values.retailPrice) : undefined,
+      compareAtPrice: values.compareAtPrice ? Number(values.compareAtPrice) : undefined,
+      isFeatured: values.isFeatured,
       warranty: values.warranty || undefined,
       status: values.status,
     };
@@ -313,6 +325,52 @@ export function ProductFormDialog({
                       <Input type="number" min={0} step="0.01" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="retailPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Retail price (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" {...field} />
+                    </FormControl>
+                    <FormDescription>Rep Portal display price — falls back to wholesale price</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="compareAtPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Compare-at price (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} step="0.01" {...field} />
+                    </FormControl>
+                    <FormDescription>Struck-through &quot;was&quot; price, to show a discount</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isFeatured"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3">
+                    <div>
+                      <FormLabel>Featured</FormLabel>
+                      <FormDescription>Show in Rep Portal featured rails</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
                   </FormItem>
                 )}
               />

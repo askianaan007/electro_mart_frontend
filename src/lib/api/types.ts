@@ -126,6 +126,10 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
   isOutOfStock: boolean;
+  // Representative Portal merchandising (version2_changes_backend.md §1) — additive.
+  retailPrice: string | null;
+  compareAtPrice: string | null;
+  isFeatured: boolean;
 }
 
 export interface InventoryStockRow {
@@ -494,4 +498,287 @@ export interface DealerDashboardSummary {
   pendingOrders: number;
   recentOrders: Order[];
   recentInvoices: Invoice[];
+}
+
+// ---------------------------------------------------------------------------
+// Representative Portal (Rep_Portal_DOCUMENTATION.md / version2_changes_backend.md)
+// ---------------------------------------------------------------------------
+
+export type RepresentativeStatus = 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'INACTIVE';
+export type AssignmentScopeType = 'CATEGORY' | 'PRODUCT' | 'BRAND' | 'CAMPAIGN';
+export type CommissionType = 'PERCENTAGE' | 'FIXED';
+export type CommissionLineStatus = 'PENDING' | 'APPROVED' | 'SETTLED' | 'REVERSED';
+export type SettlementStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
+export type CollectionStatus = 'PENDING_VERIFICATION' | 'CONFIRMED' | 'REJECTED';
+export type BannerLinkType = 'NONE' | 'CATEGORY' | 'PRODUCT' | 'BRAND' | 'EXTERNAL_URL';
+
+export interface Representative {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  username: string;
+  nicOrEmployeeId: string | null;
+  address: string | null;
+  joiningDate: string;
+  status: RepresentativeStatus;
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RepresentativeDetail extends Representative {
+  summary: {
+    totalCustomers: number;
+    totalOrders: number;
+    lifetimeCompletedValue: string;
+  };
+}
+
+export interface RepresentativeSalesStats {
+  todaysOrders: number;
+  monthlyOrders: number;
+  pendingOrders: number;
+  completedOrders: number;
+  revenue: string;
+}
+
+export interface RepresentativeCommissionStats {
+  pendingCommission: string;
+  approvedCommission: string;
+  paidCommission: string;
+}
+
+export interface RepresentativeLoginHistoryEntry {
+  id: string;
+  representativeId: string;
+  success: boolean;
+  failureReason: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  loginAt: string;
+}
+
+export interface RepActivityLogEntry {
+  id: string;
+  representativeId: string;
+  action: string;
+  targetId: string | null;
+  details: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceType: string | null;
+  createdAt: string;
+}
+
+export interface ProductAssignment {
+  id: string;
+  representativeId: string;
+  scopeType: AssignmentScopeType;
+  scopeValue: string;
+  createdAt: string;
+}
+
+export interface Banner {
+  id: string;
+  imageUrl: string;
+  publicId: string;
+  title: string | null;
+  subtitle: string | null;
+  ctaLabel: string | null;
+  linkType: BannerLinkType;
+  linkValue: string | null;
+  sortOrder: number;
+  status: AccountStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BannerAssignment {
+  id: string;
+  representativeId: string;
+  bannerId: string;
+  banner: Banner;
+  priority: number;
+  startsAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  logoPublicId: string | null;
+  imageUrl: string | null;
+  imagePublicId: string | null;
+  description: string | null;
+  sortOrder: number;
+  isFeatured: boolean;
+  status: AccountStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionRule {
+  id: string;
+  productId: string;
+  type: CommissionType;
+  value: string;
+  startDate: string;
+  endDate: string | null;
+  isCampaign: boolean;
+  campaignName: string | null;
+  createdByAdminId: string;
+  createdAt: string;
+}
+
+export interface CommissionLedgerEntry {
+  id: string;
+  representativeId: string;
+  orderId: string;
+  order?: { id: string; orderNumber: string };
+  orderItemId: string;
+  productId: string;
+  product?: { id: string; name: string; productCode: string };
+  commissionRuleId: string | null;
+  amount: string;
+  status: CommissionLineStatus;
+  settlementId: string | null;
+  createdAt: string;
+}
+
+export interface RepresentativeSettlement {
+  id: string;
+  settlementNumber: string;
+  representativeId: string;
+  representative?: { id: string; name: string; email: string; phone?: string };
+  periodStart: string;
+  periodEnd: string;
+  totalCommission: string;
+  status: SettlementStatus;
+  mode: PaymentMode | null;
+  chequeStatus: ChequeStatus | null;
+  chequeNumber: string | null;
+  bankName: string | null;
+  chequeDate: string | null;
+  expenseId: string | null;
+  approvedByAdminId: string | null;
+  approvedAt: string | null;
+  rejectedReason: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  lines?: CommissionLedgerEntry[];
+}
+
+export interface CommissionDashboard {
+  pendingCommission: string;
+  approvedCommission: string;
+  settledCommission: string;
+  pendingSettlementsCount: number;
+  paidThisMonthCount: number;
+  paidThisMonthTotal: string;
+}
+
+export interface CollectionSubmission {
+  id: string;
+  representativeId: string;
+  representative?: { id: string; name: string; email: string };
+  customerId: string;
+  customer?: { id: string; businessName: string; ownerName: string };
+  invoiceId: string | null;
+  invoice?: { id: string; invoiceNumber: string; grandTotal: string; paymentStatus: PaymentStatus };
+  amount: string;
+  mode: PaymentMode;
+  chequeNumber: string | null;
+  bankName: string | null;
+  chequeDate: string | null;
+  collectionDate: string;
+  notes: string | null;
+  chequeImageUrl: string | null;
+  status: CollectionStatus;
+  verifiedByAdminId: string | null;
+  verifiedAt: string | null;
+  rejectedReason: string | null;
+  resultingPaymentId: string | null;
+  createdAt: string;
+}
+
+export interface RepresentativePerformanceRow {
+  representativeId: string;
+  representativeName: string;
+  orderCount: number;
+  revenue: string;
+}
+
+export interface CollectionPerformanceRow {
+  representativeId: string;
+  representativeName: string;
+  confirmed: number;
+  rejected: number;
+  pending: number;
+  confirmedAmount: string;
+}
+
+export interface OutstandingByRepresentativeRow {
+  representativeId: string;
+  representativeName: string;
+  customerCount: number;
+  outstandingBalance: string;
+}
+
+export interface CommissionSummaryRow {
+  representativeId: string;
+  representativeName: string;
+  pending: string;
+  approved: string;
+  settled: string;
+  reversed: string;
+}
+
+export interface SettlementSummaryRow {
+  status: SettlementStatus;
+  count: number;
+  totalCommission: string;
+}
+
+export interface OverdueCollectionRow {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  representativeId: string | null;
+  representativeName: string;
+  invoiceNumber: string;
+  outstandingAmount: string;
+  overdueDays: number;
+}
+
+export interface ReturnedChequeRow {
+  paymentId: string;
+  customerName: string;
+  invoiceNumber: string | null;
+  representativeId: string | null;
+  representativeName: string | null;
+  chequeNumber: string | null;
+  bankName: string | null;
+  amount: string;
+  chequeStatusUpdatedAt: string | null;
+}
+
+export interface ProductSalesRow {
+  productId: string;
+  productName: string;
+  productCode: string;
+  quantitySold: number;
+  revenue: string;
+  orderLineCount: number;
+}
+
+export interface CategorySalesRow {
+  category: string;
+  quantitySold: number;
+  revenue: string;
 }

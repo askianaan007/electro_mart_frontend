@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
+import { ProductAvailabilityOverrideDialog } from '@/components/admin/product-availability-override-dialog';
+import { ProductCommissionRulesDialog } from '@/components/admin/product-commission-rules-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useDeleteProduct, useProducts, useSetProductStatus } from '@/hooks/use-products';
@@ -40,7 +42,17 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
 
-function ProductRowActions({ product, onDeleteRequest }: { product: Product; onDeleteRequest: () => void }) {
+function ProductRowActions({
+  product,
+  onDeleteRequest,
+  onAvailabilityOverride,
+  onCommissionRules,
+}: {
+  product: Product;
+  onDeleteRequest: () => void;
+  onAvailabilityOverride: () => void;
+  onCommissionRules: () => void;
+}) {
   const setStatus = useSetProductStatus();
 
   function toggleStatus() {
@@ -65,6 +77,8 @@ function ProductRowActions({ product, onDeleteRequest }: { product: Product; onD
         <DropdownMenuItem onClick={toggleStatus}>
           {product.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={onAvailabilityOverride}>Rep availability override</DropdownMenuItem>
+        <DropdownMenuItem onClick={onCommissionRules}>Commission rules</DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onClick={onDeleteRequest}>
           <Trash2 />
           Delete
@@ -86,6 +100,8 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [availabilityOverrideProduct, setAvailabilityOverrideProduct] = useState<Product | null>(null);
+  const [commissionRulesProduct, setCommissionRulesProduct] = useState<Product | null>(null);
 
   const deleteProduct = useDeleteProduct();
   const { data: categories } = useAllCategories();
@@ -288,7 +304,12 @@ export default function ProductsPage() {
                         <AccountStatusBadge status={product.status} />
                       </TableCell>
                       <TableCell>
-                        <ProductRowActions product={product} onDeleteRequest={() => setDeletingProduct(product)} />
+                        <ProductRowActions
+                          product={product}
+                          onDeleteRequest={() => setDeletingProduct(product)}
+                          onAvailabilityOverride={() => setAvailabilityOverrideProduct(product)}
+                          onCommissionRules={() => setCommissionRulesProduct(product)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -302,6 +323,16 @@ export default function ProductsPage() {
 
       <ProductFormDialog open={formOpen} onOpenChange={setFormOpen} product={editingProduct} />
       <CategoryManagerDialog open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} />
+      <ProductAvailabilityOverrideDialog
+        open={!!availabilityOverrideProduct}
+        onOpenChange={(open) => !open && setAvailabilityOverrideProduct(null)}
+        product={availabilityOverrideProduct}
+      />
+      <ProductCommissionRulesDialog
+        open={!!commissionRulesProduct}
+        onOpenChange={(open) => !open && setCommissionRulesProduct(null)}
+        product={commissionRulesProduct}
+      />
 
       <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
         <AlertDialogContent>

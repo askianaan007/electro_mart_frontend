@@ -5,7 +5,7 @@ import type {
   AuthResponse,
   Category,
   ChequeStatus,
-  CreditsSummary,
+  CreditsSummary, 
   DealerDashboardSummary,
   Dealer,
   DealerDetail,
@@ -36,6 +36,32 @@ import type {
   Supplier,
   SupplierCreditDetail,
   SupplierPayment,
+  Representative,
+  RepresentativeDetail,
+  RepresentativeSalesStats,
+  RepresentativeCommissionStats,
+  RepresentativeLoginHistoryEntry,
+  RepActivityLogEntry,
+  ProductAssignment,
+  AssignmentScopeType,
+  Banner,
+  BannerAssignment,
+  Brand,
+  CategorySalesRow,
+  CollectionPerformanceRow,
+  CollectionStatus,
+  CollectionSubmission,
+  CommissionDashboard,
+  CommissionRule,
+  CommissionSummaryRow,
+  OutstandingByRepresentativeRow,
+  OverdueCollectionRow,
+  ProductSalesRow,
+  RepresentativePerformanceRow,
+  RepresentativeSettlement,
+  ReturnedChequeRow,
+  SettlementStatus,
+  SettlementSummaryRow,
 } from './types';
 
 // Per-line discount is mutually exclusive with the order-wide discount —
@@ -125,6 +151,24 @@ export const api = {
     },
     removeImage: (id: string, imageId: string) =>
       apiClient.delete<{ message: string }>(`/products/${id}/images/${imageId}`).then((r) => r.data),
+
+    setAvailabilityOverride: (id: string, forceAvailable: boolean, reason?: string) =>
+      apiClient
+        .post(`/products/${id}/availability-override`, { forceAvailable, reason })
+        .then((r) => r.data),
+    removeAvailabilityOverride: (id: string) =>
+      apiClient.delete<{ message: string }>(`/products/${id}/availability-override`).then((r) => r.data),
+
+    commissionRules: (id: string) =>
+      apiClient.get<CommissionRule[]>(`/products/${id}/commission-rules`).then((r) => r.data),
+    createCommissionRule: (id: string, data: Record<string, unknown>) =>
+      apiClient.post<CommissionRule>(`/products/${id}/commission-rules`, data).then((r) => r.data),
+    updateCommissionRule: (id: string, ruleId: string, data: Record<string, unknown>) =>
+      apiClient.patch<CommissionRule>(`/products/${id}/commission-rules/${ruleId}`, data).then((r) => r.data),
+    removeCommissionRule: (id: string, ruleId: string) =>
+      apiClient
+        .delete<{ message: string }>(`/products/${id}/commission-rules/${ruleId}`)
+        .then((r) => r.data),
   },
 
   categories: {
@@ -436,6 +480,214 @@ export const api = {
     summary: (params: { dateFrom?: string; dateTo?: string; dealerId?: string; search?: string }) =>
       apiClient
         .get<SalesAnalysisSummary>('/sales-analysis/summary', { params: buildParams(params) })
+        .then((r) => r.data),
+  },
+
+  // Representative Management (version2_changes_backend.md §3) — mirrors api.dealers exactly.
+  representatives: {
+    list: (params: PaginationParams & { status?: string }) =>
+      apiClient.get<Paginated<Representative>>('/representatives', { params: buildParams(params) }).then((r) => r.data),
+    get: (id: string) => apiClient.get<RepresentativeDetail>(`/representatives/${id}`).then((r) => r.data),
+    create: (data: Record<string, unknown>) =>
+      apiClient
+        .post<{ representative: Representative; temporaryPassword?: string }>('/representatives', data)
+        .then((r) => r.data),
+    update: (id: string, data: Record<string, unknown>) =>
+      apiClient.patch<Representative>(`/representatives/${id}`, data).then((r) => r.data),
+    setStatus: (id: string, status: string) =>
+      apiClient.patch<Representative>(`/representatives/${id}/status`, { status }).then((r) => r.data),
+    resetPassword: (id: string) =>
+      apiClient
+        .post<{ representative: Representative; temporaryPassword: string }>(`/representatives/${id}/reset-password`)
+        .then((r) => r.data),
+    forcePasswordChange: (id: string) =>
+      apiClient.post<Representative>(`/representatives/${id}/force-password-change`).then((r) => r.data),
+    unlock: (id: string) => apiClient.post<Representative>(`/representatives/${id}/unlock`).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/representatives/${id}`).then((r) => r.data),
+
+    loginHistory: (id: string, params: PaginationParams) =>
+      apiClient
+        .get<Paginated<RepresentativeLoginHistoryEntry>>(`/representatives/${id}/login-history`, {
+          params: buildParams(params),
+        })
+        .then((r) => r.data),
+    activityLog: (id: string, params: PaginationParams) =>
+      apiClient
+        .get<Paginated<RepActivityLogEntry>>(`/representatives/${id}/activity-log`, { params: buildParams(params) })
+        .then((r) => r.data),
+    clearActivityLog: (id: string) =>
+      apiClient.delete<{ message: string; count: number }>(`/representatives/${id}/activity-log`).then((r) => r.data),
+    salesStats: (id: string) =>
+      apiClient.get<RepresentativeSalesStats>(`/representatives/${id}/sales-stats`).then((r) => r.data),
+    commissionStats: (id: string) =>
+      apiClient.get<RepresentativeCommissionStats>(`/representatives/${id}/commission-stats`).then((r) => r.data),
+    settlements: (id: string, params: PaginationParams) =>
+      apiClient
+        .get<Paginated<RepresentativeSettlement>>(`/representatives/${id}/settlements`, { params: buildParams(params) })
+        .then((r) => r.data),
+
+    assignedProducts: (id: string) =>
+      apiClient.get<ProductAssignment[]>(`/representatives/${id}/assigned-products`).then((r) => r.data),
+    assignProduct: (id: string, scopeType: AssignmentScopeType, scopeValue: string) =>
+      apiClient
+        .post<ProductAssignment>(`/representatives/${id}/assigned-products`, { scopeType, scopeValue })
+        .then((r) => r.data),
+    removeProductAssignment: (id: string, assignmentId: string) =>
+      apiClient
+        .delete<{ message: string }>(`/representatives/${id}/assigned-products/${assignmentId}`)
+        .then((r) => r.data),
+
+    assignedBanners: (id: string) =>
+      apiClient.get<BannerAssignment[]>(`/representatives/${id}/assigned-banners`).then((r) => r.data),
+    assignedCustomers: (id: string, params: PaginationParams) =>
+      apiClient
+        .get<Paginated<Dealer>>(`/representatives/${id}/assigned-customers`, { params: buildParams(params) })
+        .then((r) => r.data),
+  },
+
+  // Brand module (version2_changes_backend.md §8) — mirrors api.categories.
+  brands: {
+    list: (params: PaginationParams) =>
+      apiClient.get<Paginated<Brand>>('/brands', { params: buildParams(params) }).then((r) => r.data),
+    get: (id: string) => apiClient.get<Brand>(`/brands/${id}`).then((r) => r.data),
+    create: (data: Record<string, unknown>) => apiClient.post<Brand>('/brands', data).then((r) => r.data),
+    update: (id: string, data: Record<string, unknown>) =>
+      apiClient.patch<Brand>(`/brands/${id}`, data).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/brands/${id}`).then((r) => r.data),
+    uploadLogo: (id: string, file: File) => {
+      const form = new FormData();
+      form.append('logo', file);
+      return apiClient.post<Brand>(`/brands/${id}/logo`, form, { headers: { 'Content-Type': undefined } }).then((r) => r.data);
+    },
+    uploadImage: (id: string, file: File) => {
+      const form = new FormData();
+      form.append('image', file);
+      return apiClient.post<Brand>(`/brands/${id}/image`, form, { headers: { 'Content-Type': undefined } }).then((r) => r.data);
+    },
+  },
+
+  // Banner module (version2_changes_backend.md §7) — admin CMS + representative assignments.
+  banners: {
+    list: () => apiClient.get<Banner[]>('/banners').then((r) => r.data),
+    get: (id: string) => apiClient.get<Banner>(`/banners/${id}`).then((r) => r.data),
+    create: (data: Record<string, unknown>, image: File) => {
+      const form = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') form.append(key, String(value));
+      });
+      form.append('image', image);
+      return apiClient.post<Banner>('/banners', form, { headers: { 'Content-Type': undefined } }).then((r) => r.data);
+    },
+    update: (id: string, data: Record<string, unknown>) =>
+      apiClient.patch<Banner>(`/banners/${id}`, data).then((r) => r.data),
+    setStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') =>
+      apiClient.patch<Banner>(`/banners/${id}/status`, { status }).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/banners/${id}`).then((r) => r.data),
+    listAssignments: (id: string) =>
+      apiClient.get<BannerAssignment[]>(`/banners/${id}/assignments`).then((r) => r.data),
+    assign: (id: string, data: { representativeId: string; priority?: number; startsAt?: string; expiresAt?: string }) =>
+      apiClient.post<BannerAssignment>(`/banners/${id}/assignments`, data).then((r) => r.data),
+    removeAssignment: (id: string, assignmentId: string) =>
+      apiClient
+        .delete<{ message: string }>(`/banners/${id}/assignments/${assignmentId}`)
+        .then((r) => r.data),
+  },
+
+  // Commission engine + Settlements (version2_changes_backend.md §9-§12) — the commission-side
+  // mirror of api.credits.
+  commission: {
+    dashboard: () => apiClient.get<CommissionDashboard>('/commission/dashboard').then((r) => r.data),
+    representativeSummary: (id: string) =>
+      apiClient
+        .get<{
+          representativeId: string;
+          representativeName: string;
+          pendingCommission: string;
+          approvedCommission: string;
+          settledCommission: string;
+          recentSettlements: RepresentativeSettlement[];
+        }>(`/commission/representatives/${id}/summary`)
+        .then((r) => r.data),
+    settlements: (params: PaginationParams & { status?: SettlementStatus; representativeId?: string }) =>
+      apiClient
+        .get<Paginated<RepresentativeSettlement>>('/commission/settlements', { params: buildParams(params) })
+        .then((r) => r.data),
+    createSettlement: (data: { representativeId: string; periodStart: string; periodEnd: string }) =>
+      apiClient.post<RepresentativeSettlement>('/commission/settlements', data).then((r) => r.data),
+    getSettlement: (id: string) =>
+      apiClient.get<RepresentativeSettlement>(`/commission/settlements/${id}`).then((r) => r.data),
+    approveSettlement: (id: string) =>
+      apiClient.patch<RepresentativeSettlement>(`/commission/settlements/${id}/approve`).then((r) => r.data),
+    rejectSettlement: (id: string, reason: string) =>
+      apiClient
+        .patch<RepresentativeSettlement>(`/commission/settlements/${id}/reject`, { reason })
+        .then((r) => r.data),
+    paySettlement: (
+      id: string,
+      data: { mode: PaymentMode; reference?: string; chequeNumber?: string; bankName?: string; chequeDate?: string },
+    ) => apiClient.patch<RepresentativeSettlement>(`/commission/settlements/${id}/pay`, data).then((r) => r.data),
+    updateSettlementChequeStatus: (id: string, status: 'CLEARED' | 'RETURNED') =>
+      apiClient
+        .patch<RepresentativeSettlement>(`/commission/settlements/${id}/cheque-status`, { status })
+        .then((r) => r.data),
+    receipt: (id: string) =>
+      apiClient.get<RepresentativeSettlement>(`/commission/settlements/${id}/receipt`).then((r) => r.data),
+  },
+
+  // Customer Collection Management (version2_changes_backend.md §14) — admin review queue.
+  collections: {
+    list: (params: PaginationParams & { status?: CollectionStatus; representativeId?: string }) =>
+      apiClient
+        .get<Paginated<CollectionSubmission>>('/collections', { params: buildParams(params) })
+        .then((r) => r.data),
+    get: (id: string) => apiClient.get<CollectionSubmission>(`/collections/${id}`).then((r) => r.data),
+    confirm: (id: string, invoiceId?: string) =>
+      apiClient
+        .patch<CollectionSubmission>(`/collections/${id}/confirm`, { invoiceId })
+        .then((r) => r.data),
+    reject: (id: string, reason: string) =>
+      apiClient
+        .patch<CollectionSubmission>(`/collections/${id}/reject`, { reason })
+        .then((r) => r.data),
+  },
+
+  // Reporting (version2_changes_backend.md §17) — 100% read-only aggregation.
+  reports: {
+    representativePerformance: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<RepresentativePerformanceRow[]>('/reports/representative-performance', { params: buildParams(params) })
+        .then((r) => r.data),
+    collectionPerformance: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<CollectionPerformanceRow[]>('/reports/collection-performance', { params: buildParams(params) })
+        .then((r) => r.data),
+    outstandingByRepresentative: () =>
+      apiClient
+        .get<OutstandingByRepresentativeRow[]>('/reports/outstanding-by-representative')
+        .then((r) => r.data),
+    commissionSummary: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<CommissionSummaryRow[]>('/reports/commission-summary', { params: buildParams(params) })
+        .then((r) => r.data),
+    settlementSummary: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<SettlementSummaryRow[]>('/reports/settlement-summary', { params: buildParams(params) })
+        .then((r) => r.data),
+    overdueCollections: () =>
+      apiClient.get<OverdueCollectionRow[]>('/reports/overdue-collections').then((r) => r.data),
+    returnedCheques: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<ReturnedChequeRow[]>('/reports/returned-cheques', { params: buildParams(params) })
+        .then((r) => r.data),
+    salesByProduct: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient.get<ProductSalesRow[]>('/reports/sales/product', { params: buildParams(params) }).then((r) => r.data),
+    salesByCategory: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<CategorySalesRow[]>('/reports/sales/category', { params: buildParams(params) })
+        .then((r) => r.data),
+    salesByRepresentative: (params: { dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<RepresentativePerformanceRow[]>('/reports/sales/representative', { params: buildParams(params) })
         .then((r) => r.data),
   },
 };
