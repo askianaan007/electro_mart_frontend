@@ -6,9 +6,10 @@ import { ThemedToaster } from '@/providers/themed-toaster';
 import { AuthRefreshProvider } from '@/providers/auth-refresh-provider';
 import './globals.css';
 
-const geistSans = Inter({
-  variable: '--font-geist-sans',
+const inter = Inter({
   subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
@@ -29,8 +30,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="flex min-h-full flex-col bg-background text-foreground print:block">
+    <html
+      lang="en"
+      className={`${inter.variable} ${geistMono.variable} font-sans h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <body className="flex min-h-full flex-col bg-background text-foreground print:block font-sans">
         <ThemeProvider>
           <QueryProvider>
             <AuthRefreshProvider>
