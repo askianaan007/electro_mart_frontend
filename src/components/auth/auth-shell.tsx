@@ -60,8 +60,8 @@ export function AuthShell({
         className={cn(
           'absolute -top-24 -left-24 size-[380px] sm:size-[500px] blur-[100px] sm:blur-[130px] opacity-70 pointer-events-none transition-all duration-1000 ease-in-out',
           isAdmin
-            ? 'bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-900'
-            : 'bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-800'
+            ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-900'
+            : 'bg-gradient-to-br from-blue-600 via-sky-500 to-blue-800'
         )}
         style={{ animation: 'liquid-float-1 14s infinite ease-in-out' }}
       />
@@ -71,8 +71,8 @@ export function AuthShell({
         className={cn(
           'absolute -bottom-24 -right-24 size-[350px] sm:size-[480px] blur-[90px] sm:blur-[120px] opacity-65 pointer-events-none transition-all duration-1000 ease-in-out',
           isAdmin
-            ? 'bg-gradient-to-tl from-fuchsia-600 via-violet-700 to-purple-900'
-            : 'bg-gradient-to-tl from-cyan-400 via-blue-600 to-indigo-900'
+            ? 'bg-gradient-to-tl from-red-500 via-rose-700 to-indigo-900'
+            : 'bg-gradient-to-tl from-sky-400 via-blue-600 to-indigo-900'
         )}
         style={{ animation: 'liquid-float-2 16s infinite ease-in-out' }}
       />
@@ -108,8 +108,8 @@ export function AuthShell({
           </div>
 
           <div className="leading-tight">
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-              Electro <span className={isAdmin ? 'text-purple-400' : 'text-cyan-400'}>Mart</span>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+              <span className="text-blue-400">Electro</span> <span className="text-red-500">Mart</span>
             </h1>
             <p className="text-xs font-medium tracking-wide text-slate-400">
               ERP &amp; Dealer Ecosystem
@@ -121,18 +121,18 @@ export function AuthShell({
             className={cn(
               'mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold tracking-wider uppercase backdrop-blur-md transition-all duration-500 shadow-md',
               isAdmin
-                ? 'border-purple-500/40 bg-purple-950/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                : 'border-cyan-500/40 bg-cyan-950/50 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                ? 'border-red-500/40 bg-red-950/50 text-rose-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                : 'border-blue-500/40 bg-blue-950/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
             )}
           >
             {isAdmin ? (
               <>
-                <ShieldCheck className="size-3.5 text-purple-400" />
+                <ShieldCheck className="size-3.5 text-red-400" />
                 <span>Admin Workspace</span>
               </>
             ) : (
               <>
-                <Store className="size-3.5 text-cyan-400" />
+                <Store className="size-3.5 text-blue-400" />
                 <span>Dealer Workspace</span>
               </>
             )}
@@ -151,7 +151,7 @@ export function AuthShell({
               className={cn(
                 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5',
                 !isAdmin
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-[0_2px_10px_rgba(6,182,212,0.4)]'
+                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)]'
                   : 'text-slate-400 hover:text-white'
               )}
             >
@@ -164,7 +164,7 @@ export function AuthShell({
               className={cn(
                 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5',
                 isAdmin
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_2px_10px_rgba(168,85,247,0.4)]'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-[0_2px_10px_rgba(239,68,68,0.4)]'
                   : 'text-slate-400 hover:text-white'
               )}
             >
@@ -179,8 +179,8 @@ export function AuthShell({
           className={cn(
             'relative w-full rounded-3xl border p-6 sm:p-8 backdrop-blur-2xl sm:backdrop-blur-3xl transition-all duration-700 ease-out',
             isAdmin
-              ? 'border-purple-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(124,58,237,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
-              : 'border-cyan-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(6,182,212,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
+              ? 'border-red-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(239,68,68,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
+              : 'border-blue-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(59,130,246,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
           )}
           style={{ transform: 'translateZ(20px)' }}
         >

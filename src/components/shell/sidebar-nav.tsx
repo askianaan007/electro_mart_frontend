@@ -31,16 +31,16 @@ export function SidebarNav({ groups, onNavigate }: { groups: AdminNavGroup[]; on
                 className={cn(
                   'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium transition-all duration-200',
                   active
-                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold shadow-md shadow-indigo-600/30 border border-white/20'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-slate-800/60 backdrop-blur-md hover:translate-x-1 border border-transparent'
+                    ? 'bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 text-white font-semibold shadow-md shadow-blue-950/50 border border-blue-700/40'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-blue-400 dark:hover:text-white hover:bg-blue-950/20 dark:hover:bg-blue-950/40 backdrop-blur-md hover:translate-x-1 border border-transparent'
                 )}
               >
                 <Icon
                   className={cn(
                     'size-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110',
                     active
-                      ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
-                      : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-500 dark:group-hover:text-cyan-400'
+                      ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                      : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-400'
                   )}
                 />
                 <span className="flex-1 truncate">{item.label}</span>
@@ -49,8 +49,8 @@ export function SidebarNav({ groups, onNavigate }: { groups: AdminNavGroup[]; on
                     className={cn(
                       'ml-auto inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow-xs border',
                       active
-                        ? 'bg-white/20 text-white border-white/30'
-                        : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25'
+                        ? 'bg-blue-900/60 text-blue-200 border-blue-700/40'
+                        : 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25'
                     )}
                   >
                     {item.badge}

@@ -265,7 +265,7 @@ function DealerLoginForm({
                   icon={Store}
                   placeholder="your_business_username"
                   autoComplete="username"
-                  focusRingClass="focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                  focusRingClass="focus-visible:ring-blue-600/50 focus-visible:border-blue-500"
                   {...field}
                 />
               </FormControl>
@@ -284,7 +284,7 @@ function DealerLoginForm({
               <FormControl>
                 <PasswordInput
                   autoComplete="current-password"
-                  focusRingClass="focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                  focusRingClass="focus-visible:ring-blue-600/50 focus-visible:border-blue-500"
                   {...field}
                 />
               </FormControl>
@@ -295,7 +295,7 @@ function DealerLoginForm({
         <RememberAndForgot remember={remember} onRememberChange={onRememberChange} role="DEALER" />
         <Button
           type="submit"
-          className="group h-12 w-full rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-teal-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-base shadow-lg shadow-cyan-600/30 transition-all duration-300 hover:shadow-cyan-600/50"
+          className="group h-12 w-full rounded-xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white font-semibold text-base shadow-lg shadow-blue-950/40 transition-all duration-300 hover:shadow-blue-900/60"
           loading={login.isPending}
         >
           <span>Log in as Dealer</span>
@@ -335,8 +335,8 @@ export default function LoginPage() {
         className={cn(
           'absolute -top-32 -left-32 size-[450px] sm:size-[600px] blur-[120px] sm:blur-[150px] opacity-75 pointer-events-none transition-all duration-1000 ease-in-out',
           isAdmin
-            ? 'bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-900'
-            : 'bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-800'
+            ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-900'
+            : 'bg-gradient-to-br from-blue-600 via-sky-500 to-blue-800'
         )}
         style={{ animation: 'liquid-float-1 15s infinite ease-in-out' }}
       />
@@ -344,8 +344,8 @@ export default function LoginPage() {
         className={cn(
           'absolute -bottom-32 -right-32 size-[400px] sm:size-[550px] blur-[110px] sm:blur-[140px] opacity-70 pointer-events-none transition-all duration-1000 ease-in-out',
           isAdmin
-            ? 'bg-gradient-to-tl from-fuchsia-600 via-violet-700 to-purple-900'
-            : 'bg-gradient-to-tl from-cyan-400 via-blue-600 to-indigo-900'
+            ? 'bg-gradient-to-tl from-red-500 via-rose-700 to-indigo-900'
+            : 'bg-gradient-to-tl from-sky-400 via-blue-600 to-indigo-900'
         )}
         style={{ animation: 'liquid-float-2 18s infinite ease-in-out' }}
       />
@@ -372,7 +372,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-base font-extrabold text-white tracking-wide">
-                Electro <span className={isAdmin ? 'text-purple-400' : 'text-cyan-400'}>Mart</span>
+                <span className="text-blue-400">Electro</span> <span className="text-red-500">Mart</span>
               </p>
               <p className="text-xs text-slate-400 font-medium">Enterprise Management System</p>
             </div>
@@ -384,18 +384,18 @@ export default function LoginPage() {
               className={cn(
                 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-500 shadow-md',
                 isAdmin
-                  ? 'border-purple-500/40 bg-purple-950/50 text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
-                  : 'border-cyan-500/40 bg-cyan-950/50 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+                  ? 'border-red-500/40 bg-red-950/50 text-rose-300 shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                  : 'border-blue-500/40 bg-blue-950/50 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
               )}
             >
               {isAdmin ? (
                 <>
-                  <ShieldCheck className="size-4 text-purple-400" />
+                  <ShieldCheck className="size-4 text-red-400" />
                   <span>Admin Command Portal</span>
                 </>
               ) : (
                 <>
-                  <Store className="size-4 text-cyan-400" />
+                  <Store className="size-4 text-blue-400" />
                   <span>Dealer Commerce Hub</span>
                 </>
               )}
@@ -407,8 +407,8 @@ export default function LoginPage() {
                 className={cn(
                   'text-transparent bg-clip-text',
                   isAdmin
-                    ? 'bg-gradient-to-r from-purple-400 via-fuchsia-300 to-indigo-300'
-                    : 'bg-gradient-to-r from-cyan-400 via-blue-300 to-teal-300'
+                    ? 'bg-gradient-to-r from-red-400 via-rose-300 to-red-500'
+                    : 'bg-gradient-to-r from-blue-400 via-sky-300 to-blue-500'
                 )}
               >
                 Electronics Commerce
@@ -432,8 +432,8 @@ export default function LoginPage() {
                   className={cn(
                     'flex size-10 items-center justify-center rounded-xl transition-all duration-300',
                     isAdmin
-                      ? 'bg-purple-500/20 text-purple-300 group-hover:bg-purple-500/30'
-                      : 'bg-cyan-500/20 text-cyan-300 group-hover:bg-cyan-500/30'
+                      ? 'bg-red-500/20 text-rose-300 group-hover:bg-red-500/30'
+                      : 'bg-blue-500/20 text-blue-300 group-hover:bg-blue-500/30'
                   )}
                 >
                   <feature.icon className="size-5" />
@@ -454,8 +454,8 @@ export default function LoginPage() {
               className={cn(
                 'login-card-in relative my-6 w-full rounded-3xl border p-6 sm:p-8 backdrop-blur-3xl shadow-2xl transition-all duration-700 ease-out',
                 isAdmin
-                  ? 'border-purple-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(124,58,237,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
-                  : 'border-cyan-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(6,182,212,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
+                  ? 'border-red-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(239,68,68,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
+                  : 'border-blue-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(59,130,246,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
               )}
             >
               {/* iOS Liquid Glass Top Specular Highlight Overlay */}
@@ -478,8 +478,8 @@ export default function LoginPage() {
                   className={cn(
                     'text-xl sm:text-2xl font-bold tracking-tight text-transparent bg-clip-text',
                     isAdmin
-                      ? 'bg-gradient-to-r from-purple-300 via-violet-200 to-indigo-300'
-                      : 'bg-gradient-to-r from-cyan-300 via-blue-200 to-teal-300'
+                      ? 'bg-gradient-to-r from-red-400 via-rose-200 to-pink-300'
+                      : 'bg-gradient-to-r from-blue-400 via-sky-200 to-cyan-300'
                   )}
                 >
                   Log in to your account
@@ -498,14 +498,14 @@ export default function LoginPage() {
                 <TabsList className="grid h-12 w-full grid-cols-2 gap-1.5 rounded-xl border border-white/10 bg-slate-900/80 p-1 backdrop-blur-md shadow-inner">
                   <TabsTrigger
                     value="DEALER"
-                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-600/30 text-slate-400 hover:text-white"
+                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-900 data-[state=active]:to-indigo-900 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-950/50 text-slate-400 hover:text-white"
                   >
                     <Store className="size-4" />
                     Dealer
                   </TabsTrigger>
                   <TabsTrigger
                     value="ADMIN"
-                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-600/30 text-slate-400 hover:text-white"
+                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-600/30 text-slate-400 hover:text-white"
                   >
                     <ShieldCheck className="size-4" />
                     Admin
