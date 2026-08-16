@@ -10,67 +10,102 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
     revenue: Number(point.revenue),
   }));
 
+  const formatYAxis = (value: number) => {
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(0)}k`;
+    return `₹${value}`;
+  };
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart
-        data={chartData}
-        margin={{ top: 10, right: 10, left: 8, bottom: 20 }}
-        accessibilityLayer
-        aria-label="Line chart of monthly revenue. Once focused, use the left and right arrow keys to move between months."
-      >
-        <defs>
-          <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
-            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 6" vertical={false} stroke="var(--color-border)" />
-        <XAxis
-          dataKey="month"
-          tickLine={false}
-          axisLine={false}
-          className="text-xs"
-          stroke="var(--color-muted-foreground)"
-          label={{
-            value: 'Month',
-            position: 'insideBottom',
-            offset: -12,
-            fill: 'var(--color-muted-foreground)',
-            fontSize: 11,
-          }}
-        />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          className="text-xs"
-          stroke="var(--color-muted-foreground)"
-          tickFormatter={(value: number) => (value >= 1000 ? `${Math.round(value / 1000)}k` : String(value))}
-          width={48}
-        />
-        <Tooltip
-          formatter={(value) => [formatCurrency(Number(value)), 'Revenue']}
-          labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullMonth ?? _label}
-          cursor={{ stroke: 'var(--color-primary)', strokeWidth: 1, strokeDasharray: '4 4' }}
-          contentStyle={{
-            background: 'var(--color-card)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 14,
-            fontSize: 12,
-            boxShadow: '0 8px 24px -8px rgb(0 0 0 / 0.15)',
-          }}
-        />
-        <Area
-          type="natural"
-          dataKey="revenue"
-          name="Revenue"
-          stroke="var(--color-primary)"
-          strokeWidth={2.5}
-          fill="url(#revenueFill)"
-          activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--color-card)' }}
-          animationDuration={900}
-          animationEasing="ease-out"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div className="relative w-full select-none pt-2">
+      <ResponsiveContainer width="100%" height={320}>
+        <AreaChart
+          data={chartData}
+          margin={{ top: 15, right: 15, left: -5, bottom: 5 }}
+          accessibilityLayer
+          aria-label="Revenue chart timeline"
+        >
+          <defs>
+            <linearGradient id="revenueGlowGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.45} />
+              <stop offset="50%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.15} />
+              <stop offset="100%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.0} />
+            </linearGradient>
+          </defs>
+
+          <CartesianGrid
+            strokeDasharray="4 4"
+            vertical={false}
+            stroke="var(--color-border)"
+            opacity={0.35}
+          />
+
+          <XAxis
+            dataKey="month"
+            tickLine={false}
+            axisLine={false}
+            className="text-[11px] font-semibold"
+            stroke="var(--color-muted-foreground)"
+            dy={8}
+          />
+
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            className="text-[11px] font-medium"
+            stroke="var(--color-muted-foreground)"
+            tickFormatter={formatYAxis}
+            width={52}
+          />
+
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const item = payload[0].payload;
+                return (
+                  <div className="rounded-2xl border border-border/80 bg-card/90 dark:bg-slate-900/90 p-3.5 backdrop-blur-xl shadow-2xl space-y-1 min-w-[150px]">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {item.fullMonth}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="size-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                      <p className="text-sm font-extrabold text-foreground">
+                        {formatCurrency(item.revenue)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+            cursor={{
+              stroke: 'var(--color-primary, #3b82f6)',
+              strokeWidth: 1.5,
+              strokeDasharray: '4 4',
+              opacity: 0.7,
+            }}
+          />
+
+          <Area
+            type="monotone"
+            dataKey="revenue"
+            name="Revenue"
+            stroke="var(--color-primary, #3b82f6)"
+            strokeWidth={3}
+            fill="url(#revenueGlowGradient)"
+            activeDot={{
+              r: 6,
+              strokeWidth: 3,
+              stroke: 'var(--color-primary, #3b82f6)',
+              fill: 'var(--color-card, #ffffff)',
+              className: 'shadow-lg',
+            }}
+            isAnimationActive={true}
+            animationDuration={1200}
+            animationEasing="ease-in-out"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

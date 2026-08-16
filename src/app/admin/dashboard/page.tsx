@@ -99,13 +99,13 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <MiniStatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} tone="primary" />
           <MiniStatCard
             label="Invoice Due"
