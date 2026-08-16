@@ -25,7 +25,7 @@ export function formatStatementDate(value: string) {
   return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-async function loadImageDataUrl(url: string): Promise<string> {
+export async function loadImageDataUrl(url: string): Promise<string> {
   const res = await fetch(url);
   const blob = await res.blob();
   return await new Promise((resolve, reject) => {

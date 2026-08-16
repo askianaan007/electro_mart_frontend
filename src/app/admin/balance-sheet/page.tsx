@@ -10,10 +10,12 @@ import {
   Clock,
   Coins,
   DollarSign,
+  Download,
   FileSpreadsheet,
   HandCoins,
   Info,
   Landmark,
+  Loader2,
   PieChart as PieChartIcon,
   Receipt,
   RefreshCw,
@@ -29,6 +31,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueryErrorState } from '@/components/query-error-state';
 import { StatCard } from '@/components/stat-card';
 import { useBalanceSheetSummary } from '@/hooks/use-balance-sheet';
+import { downloadBalanceSheetPdf } from '@/lib/balance-sheet-pdf';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { BalanceSheetResponse, ReconciliationStatus } from '@/lib/api/types';
 
@@ -361,6 +364,17 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
 export default function BalanceSheetPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useBalanceSheetSummary();
   const [viewMode, setViewMode] = useState<'REGISTER' | 'DIAGRAM'>('REGISTER');
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!data) return;
+    setIsExporting(true);
+    try {
+      await downloadBalanceSheetPdf(data, `balance-sheet-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-6 select-none">
@@ -420,6 +434,16 @@ export default function BalanceSheetPage() {
           >
             <RefreshCw className={cn('size-4 mr-1.5', isFetching && 'animate-spin')} />
             <span>{isFetching ? 'Refreshing...' : 'Refresh'}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={!data || isExporting}
+            className="rounded-2xl font-bold h-10 px-4 shadow-xs"
+          >
+            {isExporting ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Download className="size-4 mr-1.5" />}
+            <span>{isExporting ? 'Generating PDF...' : 'Download PDF'}</span>
           </Button>
         </div>
       </div>
