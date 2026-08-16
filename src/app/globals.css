@@ -134,6 +134,47 @@
     }
   }
 
+  @keyframes spin3d {
+    0% {
+      transform: rotateX(70deg) rotateY(15deg) rotateZ(0deg);
+    }
+    100% {
+      transform: rotateX(70deg) rotateY(15deg) rotateZ(360deg);
+    }
+  }
+
+  @keyframes spin3d-reverse {
+    0% {
+      transform: rotateX(60deg) rotateY(-25deg) rotateZ(360deg);
+    }
+    100% {
+      transform: rotateX(60deg) rotateY(-25deg) rotateZ(0deg);
+    }
+  }
+
+  @keyframes splash-progress {
+    0% {
+      width: 0%;
+    }
+    50% {
+      width: 70%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(0.95);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.08);
+    }
+  }
+
   @keyframes login-rise-in {
     from {
       opacity: 0;
