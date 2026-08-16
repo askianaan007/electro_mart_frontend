@@ -43,6 +43,8 @@ export default function ResetPasswordPage() {
     defaultValues: { role: 'DEALER', token: '', newPassword: '', confirmPassword: '' },
   });
 
+  const role = form.watch('role');
+
   const onSubmit = form.handleSubmit((values) => {
     setErrorMsg(null);
     resetPassword.mutate(values, {
@@ -56,6 +58,7 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell
+      role={role}
       title="Reset your password"
       description="Paste the token from your email and choose a new password"
       footer={

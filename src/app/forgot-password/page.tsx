@@ -65,6 +65,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
+      role={role}
       title="Forgot your password?"
       description="We'll send a reset token to your registered email"
       footer={

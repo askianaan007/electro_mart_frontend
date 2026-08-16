@@ -165,9 +165,9 @@ export function LoginSplash() {
       {/* 3D Dynamic WebGL/Canvas Starfield Background */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-70" />
 
-      {/* Ambient Pulsing Glow Orbs */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[550px] bg-gradient-to-tr from-blue-600/20 via-cyan-500/15 to-indigo-600/20 rounded-full blur-[130px] pointer-events-none animate-pulse" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[320px] bg-cyan-400/20 rounded-full blur-[90px] pointer-events-none" />
+      {/* Ambient Pulsing Glow Orbs - Dual Blue & Red */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[550px] bg-gradient-to-tr from-blue-600/20 via-sky-500/15 to-red-600/20 rounded-full blur-[130px] pointer-events-none animate-pulse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[320px] bg-red-500/15 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Perspective Scene Viewport */}
       <div
@@ -183,31 +183,31 @@ export function LoginSplash() {
           className="relative flex size-48 items-center justify-center sm:size-56"
           style={{ transformStyle: 'preserve-3d' }}
         >
-          {/* Ring 1: Primary Blue 3D Gyro Orbit */}
+          {/* Ring 1: Primary Electric Blue 3D Gyro Orbit */}
           <div
-            className="absolute inset-0 rounded-full border-2 border-blue-500/40 shadow-[0_0_35px_rgba(59,130,246,0.35)]"
+            className="absolute inset-0 rounded-full border-2 border-blue-500/50 shadow-[0_0_35px_rgba(59,130,246,0.4)]"
             style={{
               transform: 'rotateX(70deg) rotateY(15deg) translateZ(10px)',
               animation: 'spin3d 9s linear infinite',
             }}
           >
-            <div className="absolute -top-1 left-1/2 size-3 -translate-x-1/2 rounded-full bg-cyan-400 shadow-[0_0_12px_#06b6d4]" />
+            <div className="absolute -top-1 left-1/2 size-3 -translate-x-1/2 rounded-full bg-blue-400 shadow-[0_0_12px_#3b82f6]" />
           </div>
 
-          {/* Ring 2: Cyan Reverse Orbit Ring */}
+          {/* Ring 2: Energetic Red Reverse Orbit Ring */}
           <div
-            className="absolute inset-3 rounded-full border-2 border-dashed border-cyan-400/50"
+            className="absolute inset-3 rounded-full border-2 border-dashed border-red-500/50"
             style={{
               transform: 'rotateX(60deg) rotateY(-25deg) translateZ(-10px)',
               animation: 'spin3d-reverse 7s linear infinite',
             }}
           >
-            <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-blue-400 shadow-[0_0_10px_#3b82f6]" />
+            <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]" />
           </div>
 
-          {/* Ring 3: Accent Red/Violet Holographic Outer Halo */}
+          {/* Ring 3: Accent Dual Holographic Outer Halo */}
           <div
-            className="absolute inset-6 rounded-full border border-indigo-400/40 shadow-[0_0_20px_rgba(99,102,241,0.25)]"
+            className="absolute inset-6 rounded-full border border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.25)]"
             style={{
               transform: 'rotateX(45deg) rotateY(45deg) translateZ(0px)',
               animation: 'spin3d 13s linear infinite',
@@ -216,7 +216,7 @@ export function LoginSplash() {
 
           {/* Glowing Inner Core Sphere Glow */}
           <div
-            className="absolute size-28 rounded-full bg-gradient-to-br from-blue-500/30 to-cyan-400/30 blur-md pointer-events-none"
+            className="absolute size-28 rounded-full bg-gradient-to-br from-blue-500/25 to-red-500/25 blur-md pointer-events-none"
             style={{
               animation: 'pulse-glow 2.5s ease-in-out infinite',
               transform: 'translateZ(15px)',
@@ -225,11 +225,11 @@ export function LoginSplash() {
 
           {/* Central Floating Glassmorphic 3D Emblem Container */}
           <div
-            className="relative flex size-28 items-center justify-center rounded-3xl border border-white/25 bg-slate-950/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7),0_0_50px_rgba(59,130,246,0.45)] backdrop-blur-xl sm:size-32"
+            className="relative flex size-28 items-center justify-center rounded-3xl border border-white/25 bg-slate-950/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7),0_0_50px_rgba(59,130,246,0.4)] backdrop-blur-xl sm:size-32"
             style={{
               transform: 'translateZ(35px)',
               boxShadow:
-                '0 20px 40px rgba(0,0,0,0.65), inset 0 1px 2px rgba(255,255,255,0.35), 0 0 30px rgba(6,182,212,0.3)',
+                '0 20px 40px rgba(0,0,0,0.65), inset 0 1px 2px rgba(255,255,255,0.35), 0 0 30px rgba(59,130,246,0.3)',
             }}
           >
             {/* Shimmer Light Reflection Overlay */}
@@ -254,18 +254,23 @@ export function LoginSplash() {
           style={{ transform: 'translateZ(30px)' }}
         >
           <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-300 drop-shadow-[0_2px_12px_rgba(59,130,246,0.6)]">
-              ELECTRO<span className="text-blue-500">MART</span>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-wider drop-shadow-lg">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
+                ELECTRO
+              </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-rose-400 to-red-600 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)] ml-1">
+                MART
+              </span>
             </h1>
           </div>
           <p className="mt-1 text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-slate-400 uppercase opacity-90">
             Powering Smart Commerce
           </p>
 
-          {/* Futuristic Laser Progress Beam */}
-          <div className="relative mt-5 h-1 w-44 overflow-hidden rounded-full bg-slate-900/90 border border-slate-700/60 shadow-inner">
+          {/* Futuristic Laser Progress Beam - Blue to Red */}
+          <div className="relative mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-slate-900/90 border border-slate-700/60 shadow-inner">
             <div
-              className="absolute inset-y-0 left-0 bg-linear-to-r from-blue-600 via-cyan-400 to-blue-400 shadow-[0_0_15px_rgba(6,182,212,0.9)]"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-600 via-sky-400 to-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]"
               style={{
                 animation: 'splash-progress 1.1s cubic-bezier(0.65, 0, 0.35, 1) forwards',
               }}

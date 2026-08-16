@@ -30,6 +30,8 @@ export interface AdminNavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  badge?: string | number;
+  badgeVariant?: 'default' | 'accent' | 'purple' | 'cyan' | 'warning';
 }
 
 export interface AdminNavGroup {
