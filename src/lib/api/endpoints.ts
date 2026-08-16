@@ -15,6 +15,7 @@ import type {
   LiquidCashHistoryEntry,
   LiquidCashEntryType,
   CreditBalanceSummary,
+  BalanceSheetResponse,
   CreditBalanceHistoryEntry,
   CreditBalanceEntryType,
   Expense,
@@ -314,6 +315,7 @@ export const api = {
         dealerId?: string;
         dateFrom?: string;
         dateTo?: string;
+        sortBy?: 'createdAt' | 'chequeDate';
       },
     ) => apiClient.get<Paginated<Payment>>('/payments', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Payment>(`/payments/${id}`).then((r) => r.data),
@@ -441,6 +443,10 @@ export const api = {
       apiClient
         .get<Paginated<CreditBalanceHistoryEntry>>('/credit-balance/history', { params: buildParams(params) })
         .then((r) => r.data),
+  },
+
+  balanceSheet: {
+    summary: () => apiClient.get<BalanceSheetResponse>('/balance-sheet').then((r) => r.data),
   },
 
   salesReturns: {

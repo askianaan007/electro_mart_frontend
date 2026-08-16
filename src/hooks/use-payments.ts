@@ -11,6 +11,7 @@ type PaymentParams = PaginationParams & {
   dealerId?: string;
   dateFrom?: string;
   dateTo?: string;
+  sortBy?: 'createdAt' | 'chequeDate';
 };
 
 export const paymentKeys = {
@@ -20,11 +21,12 @@ export const paymentKeys = {
   detail: (id: string) => [...paymentKeys.all, 'detail', id] as const,
 };
 
-export function usePayments(params: PaymentParams) {
+export function usePayments(params: PaymentParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: paymentKeys.list(params),
     queryFn: () => api.payments.list(params),
     placeholderData: (prev) => prev,
+    enabled: options?.enabled,
   });
 }
 

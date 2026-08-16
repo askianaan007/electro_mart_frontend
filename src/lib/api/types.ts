@@ -452,6 +452,85 @@ export interface CreditBalanceHistoryEntry {
   createdAt: string;
 }
 
+export type ReconciliationStatus = 'BALANCED' | 'BALANCED_WITH_KNOWN_TIMING_DIFFERENCE' | 'UNBALANCED';
+
+/**
+ * GET /balance-sheet — a live (never historical) Assets/Liabilities/Equity snapshot composed
+ * from Liquid Cash, Credit Balance, and Equity. All monetary fields are fixed-2-decimal-place
+ * strings (never a JS number) — the backend computes everything with Prisma.Decimal and only
+ * serializes to string at the API boundary. `null` means the category has no underlying data
+ * model at all (see `unsupported`); Commission Payable is real but deliberately excluded from
+ * every total (see `memorandum`) — see balance_sheet.md in the backend repo for the full
+ * accounting specification.
+ */
+export interface BalanceSheetResponse {
+  asOf: string;
+  assets: {
+    current: {
+      cashAndBank: string;
+      accountsReceivable: string;
+      chequesInHand: string;
+      inventory: string;
+      supplierAdvances: null;
+      prepaidExpenses: null;
+      otherCurrentAssets: null;
+      totalCurrentAssets: string;
+    };
+    nonCurrent: {
+      fixedAssets: null;
+      accumulatedDepreciation: null;
+      totalNonCurrentAssets: string;
+    };
+    totalAssets: string;
+  };
+  liabilities: {
+    current: {
+      accountsPayable: string;
+      supplierChequesIssued: string;
+      taxPayable: null;
+      accruedExpenses: null;
+      customerAdvances: null;
+      totalCurrentLiabilities: string;
+    };
+    nonCurrent: {
+      loans: null;
+      totalNonCurrentLiabilities: string;
+    };
+    totalLiabilities: string;
+  };
+  equity: {
+    capitalContributions: string;
+    ownerWithdrawals: string;
+    accumulatedEarnings: string;
+    totalEquity: string;
+  };
+  summary: {
+    totalAssets: string;
+    totalLiabilities: string;
+    totalEquity: string;
+    liabilitiesAndEquity: string;
+    rawDifference: string;
+  };
+  reconciliation: {
+    knownOrderTimingDifference: string;
+    knownUnallocatedEquityDifference: string;
+    knownDifference: string;
+    unexplainedDifference: string;
+    inFlightOrderCount: number;
+    investorPercentageTotal: string;
+    status: ReconciliationStatus;
+  };
+  memorandum: {
+    commissionPayable: {
+      value: string;
+      includedInTotals: false;
+      pendingOrApprovedLineCount: number;
+    };
+  };
+  accountingWarnings: string[];
+  unsupported: string[];
+}
+
 export interface SalesReturnItem {
   id: string;
   salesReturnId: string;
@@ -514,6 +593,15 @@ export interface AdminDashboardSummary {
   pendingApprovals: number;
   outOfStockItems: number;
   outstandingPayments: string;
+  outstandingByDealer: {
+    id: string;
+    businessName: string;
+    ownerName: string;
+    phone: string;
+    outstandingBalance: string;
+    creditLimit: string;
+    unlimitedCredit: boolean;
+  }[];
   recentOrders: Order[];
   monthlyRevenue: { month: string; revenue: string }[];
   topProducts: { product: { id: string; name: string; productCode: string } | null; quantitySold: number }[];
@@ -537,6 +625,10 @@ export interface AdminDashboardSummary {
   invoiceDuePaymentsChangePct: number | null;
   invoiceDue: string;
   liquidCash: number;
+  /** All-time cleared dealer collections (cash/bank-transfer immediately, cheque only once CLEARED). */
+  totalCollected: number;
+  /** Dealer cheques recorded as payments but not yet cleared by the bank — already off Outstanding Payments, not yet in Total Collected. */
+  pendingDealerCheques: number;
   creditBalance: number;
   upcomingCheques: UpcomingCheque[];
   chequesDueCount: number;

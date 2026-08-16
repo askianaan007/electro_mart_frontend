@@ -57,8 +57,8 @@ function SheetContent({
           </VisuallyHidden>
         )}
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <X className="size-4" />
+        <DialogPrimitive.Close className="absolute right-4 top-4 z-50 rounded-xl p-1 text-muted-foreground hover:text-foreground opacity-80 ring-offset-background transition-all hover:opacity-100 hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-ring active:scale-95">
+          <X className="size-5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

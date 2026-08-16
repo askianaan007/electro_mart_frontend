@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Calendar, Loader2, ScrollText, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Calendar, Loader2, ScrollText, User, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -88,8 +88,8 @@ export function InventoryLedgerSheet({
 
         {/* Fixed Top Header & Filter Bar */}
         <div className="shrink-0 space-y-4 pb-3">
-          {/* Sheet Header */}
-          <SheetHeader className="relative z-10 space-y-1">
+          {/* Sheet Header with pr-12 for Close Button clearance */}
+          <SheetHeader className="relative z-10 space-y-1 pr-12 sm:pr-14">
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
                 <ScrollText className="size-4.5" />
@@ -100,13 +100,13 @@ export function InventoryLedgerSheet({
               </SheetTitle>
             </div>
             {productName && (
-              <p className="text-xs text-muted-foreground font-semibold">
+              <p className="text-xs text-muted-foreground font-semibold truncate">
                 Product: <span className="text-foreground font-bold">{productName}</span>
               </p>
             )}
           </SheetHeader>
 
-          {/* Filter Bar */}
+          {/* Filter Controls Bar */}
           <div className="relative z-10 flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-muted/40 p-3 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center">
             <Select
               value={type}
@@ -168,7 +168,7 @@ export function InventoryLedgerSheet({
           </div>
         </div>
 
-        {/* Scrollable Main Ledger Area */}
+        {/* Scrollable Main Ledger Content */}
         <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pr-1">
           {isLoading ? (
             <div className="space-y-3 py-2">
@@ -194,14 +194,14 @@ export function InventoryLedgerSheet({
           ) : (
             <>
               {/* Desktop Table View */}
-              <div className={cn('hidden sm:block overflow-hidden rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md', isFetching && 'opacity-60 transition-opacity')}>
-                <Table>
+              <div className={cn('hidden sm:block overflow-x-auto rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md', isFetching && 'opacity-60 transition-opacity')}>
+                <Table className="min-w-[650px]">
                   <TableHeader className="bg-muted/60">
                     <TableRow className="hover:bg-transparent border-border/60">
                       <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
                         Type
                       </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground min-w-[220px]">
                         Movement Details &amp; Performer
                       </TableHead>
                       <TableHead className="text-center font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -213,7 +213,7 @@ export function InventoryLedgerSheet({
                       <TableHead className="text-right font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
                         Balance After
                       </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                         Timestamp
                       </TableHead>
                     </TableRow>
@@ -231,13 +231,14 @@ export function InventoryLedgerSheet({
                               {typeInfo.label}
                             </span>
                           </TableCell>
-                          <TableCell className="max-w-md">
+                          <TableCell className="max-w-md py-3">
                             <p className="font-semibold text-xs sm:text-sm text-foreground leading-snug break-words">
                               {log.description}
                             </p>
                             {log.performedBy && (
-                              <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
-                                By: <span className="font-bold text-foreground">{log.performedBy}</span>
+                              <p className="text-[11px] font-medium text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <User className="size-3 text-muted-foreground/70" />
+                                <span>By: <strong className="text-foreground">{log.performedBy}</strong></span>
                               </p>
                             )}
                           </TableCell>
@@ -284,30 +285,40 @@ export function InventoryLedgerSheet({
                   return (
                     <div
                       key={log.id}
-                      className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md space-y-2 shadow-2xs"
+                      className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md space-y-2.5 shadow-2xs"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px]', typeInfo.className)}>
                           {typeInfo.label}
                         </span>
-                        <span className="text-[10px] font-semibold text-muted-foreground">
+                        <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                          <Calendar className="size-3" />
                           {formatDateTime(log.createdAt)}
                         </span>
                       </div>
 
-                      <p className="font-bold text-xs text-foreground leading-snug break-words">
+                      <p className="font-bold text-xs text-foreground leading-relaxed break-words">
                         {log.description}
                       </p>
 
+                      {log.performedBy && (
+                        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                          <User className="size-3 text-muted-foreground/70" />
+                          <span>By: <strong className="text-foreground">{log.performedBy}</strong></span>
+                        </p>
+                      )}
+
                       <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 font-black">
                           {log.quantityIn ? (
-                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                              <ArrowDownLeft className="size-3" />
                               +{log.quantityIn} in
                             </span>
                           ) : null}
                           {log.quantityOut ? (
-                            <span className="font-black text-rose-600 dark:text-rose-400">
+                            <span className="inline-flex items-center gap-0.5 text-rose-600 dark:text-rose-400">
+                              <ArrowUpRight className="size-3" />
                               -{log.quantityOut} out
                             </span>
                           ) : null}

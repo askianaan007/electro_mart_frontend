@@ -1,13 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import {
   AlertTriangle,
+  BadgeDollarSign,
+  Clock,
   ClipboardCheck,
   CreditCard,
   HandCoins,
   IndianRupee,
+  Landmark,
   Receipt,
-  ShoppingCart,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -20,6 +23,8 @@ import { BusinessHealth } from '@/components/admin/dashboard/business-health';
 import { RevenueAnalyticsCard } from '@/components/admin/dashboard/revenue-analytics-card';
 import { TopProductsCard } from '@/components/admin/dashboard/top-products-card';
 import { UpcomingChequesCard } from '@/components/admin/dashboard/upcoming-cheques-card';
+import { OutstandingPaymentsDialog } from '@/components/admin/dashboard/outstanding-payments-dialog';
+import { PendingChequesDialog } from '@/components/admin/dashboard/pending-cheques-dialog';
 import { RecentOrdersCard } from '@/components/admin/dashboard/recent-orders-card';
 import { ActivityTimeline } from '@/components/admin/dashboard/activity-timeline';
 import { QuickActionsPanel } from '@/components/admin/dashboard/quick-actions-panel';
@@ -31,6 +36,8 @@ import { formatCurrency } from '@/lib/utils';
 export default function AdminDashboardPage() {
   const { data, isLoading, isError, error, refetch } = useAdminDashboard();
   const { data: activity, isLoading: activityLoading } = useActivityLog({ page: 1, limit: 6 });
+  const [outstandingDialogOpen, setOutstandingDialogOpen] = useState(false);
+  const [pendingChequesDialogOpen, setPendingChequesDialogOpen] = useState(false);
 
   const creditBalance = Number(data?.creditBalance ?? 0);
   const liquidCash = data?.liquidCash ?? 0;
@@ -50,13 +57,13 @@ export default function AdminDashboardPage() {
       <GreetingHeader />
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-[168px] w-full rounded-[22px]" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <HeroKpiCard
             label="Liquid Cash"
             value={data.liquidCash}
@@ -87,15 +94,39 @@ export default function AdminDashboardPage() {
             mask="SALE"
             subtitle="Sales recorded today"
           />
+
           <HeroKpiCard
-            label="Today's Orders"
-            value={data.todaysOrders}
-            icon={ShoppingCart}
+            label="Total Sales"
+            value={data.netSales}
+            formatValue={(n) => formatCurrency(n)}
+            icon={BadgeDollarSign}
+            gradient="purple"
+            mask="REVN"
+            subtitle="All-time net sales from completed orders, after returns"
+            href="/admin/sales-analysis"
+          />
+          <HeroKpiCard
+            label="Total Collected"
+            value={data.totalCollected}
+            formatValue={(n) => formatCurrency(n)}
+            icon={Landmark}
+            gradient="teal"
+            mask="PAID"
+            subtitle="All-time dealer payments collected (cheques counted once cleared)"
+            href="/admin/payments"
+          />
+          <HeroKpiCard
+            label="Pending Dealer Cheques"
+            value={data.pendingDealerCheques}
+            formatValue={(n) => formatCurrency(n)}
+            icon={Clock}
             gradient="blue"
-            mask="ORD"
-            subtitle={`${data.pendingApprovals} pending approval${data.pendingApprovals === 1 ? '' : 's'}`}
+            mask="CHQ"
+            subtitle="Cheque payments recorded but not yet cleared by the bank"
+            onClick={() => setPendingChequesDialogOpen(true)}
           />
         </div>
+
       )}
 
       {isLoading || !data ? (
@@ -106,7 +137,13 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          <MiniStatCard label="Outstanding Payments" value={formatCurrency(data.outstandingPayments)} icon={Wallet} tone="primary" />
+          <MiniStatCard
+            label="Outstanding Payments"
+            value={formatCurrency(data.outstandingPayments)}
+            icon={Wallet}
+            tone="primary"
+            onClick={() => setOutstandingDialogOpen(true)}
+          />
           <MiniStatCard
             label="Invoice Due"
             value={formatCurrency(data.invoiceDue)}
@@ -203,6 +240,18 @@ export default function AdminDashboardPage() {
       )}
 
       <QuickActionsPanel />
+
+      <OutstandingPaymentsDialog
+        open={outstandingDialogOpen}
+        onOpenChange={setOutstandingDialogOpen}
+        dealers={data?.outstandingByDealer ?? []}
+      />
+
+      <PendingChequesDialog
+        open={pendingChequesDialogOpen}
+        onOpenChange={setPendingChequesDialogOpen}
+        totalAmount={data?.pendingDealerCheques ?? 0}
+      />
     </div>
   );
 }

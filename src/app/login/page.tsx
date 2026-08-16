@@ -181,7 +181,7 @@ function AdminLoginForm({
                   icon={User}
                   placeholder="admin@electromart.com"
                   autoComplete="username"
-                  focusRingClass="focus-visible:ring-purple-500/50 focus-visible:border-purple-400"
+                  focusRingClass="focus-visible:ring-rose-500/50 focus-visible:border-rose-400"
                   {...field}
                 />
               </FormControl>
@@ -200,7 +200,7 @@ function AdminLoginForm({
               <FormControl>
                 <PasswordInput
                   autoComplete="current-password"
-                  focusRingClass="focus-visible:ring-purple-500/50 focus-visible:border-purple-400"
+                  focusRingClass="focus-visible:ring-rose-500/50 focus-visible:border-rose-400"
                   {...field}
                 />
               </FormControl>
@@ -211,7 +211,7 @@ function AdminLoginForm({
         <RememberAndForgot remember={remember} onRememberChange={onRememberChange} role="ADMIN" />
         <Button
           type="submit"
-          className="group h-12 w-full rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-base shadow-lg shadow-purple-600/30 transition-all duration-300 hover:shadow-purple-600/50"
+          className="group h-12 w-full rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-base shadow-lg shadow-rose-600/35 transition-all duration-300 hover:shadow-rose-600/55 hover:scale-[1.01] active:scale-[0.99]"
           loading={login.isPending}
         >
           <span>Log in as Admin</span>

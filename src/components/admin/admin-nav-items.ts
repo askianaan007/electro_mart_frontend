@@ -23,6 +23,7 @@ import {
   FileBarChart,
   Coins,
   Scale,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -96,6 +97,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Expenses', href: '/admin/expenses', icon: CreditCard },
       { label: 'Equity', href: '/admin/equity', icon: PieChart },
       { label: 'Liquid Cash', href: '/admin/liquid-cash', icon: Coins },
+      { label: 'Balance Sheet', href: '/admin/balance-sheet', icon: FileSpreadsheet },
     ],
   },
   {

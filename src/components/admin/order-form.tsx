@@ -6,10 +6,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  Check,
+  ChevronDown,
+  Loader2,
+  Package,
+  Plus,
+  Search,
+  ShoppingBag,
+  Store,
+  Trash2,
+  User,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -34,8 +48,6 @@ const schema = z
     recordAsCompleted: z.boolean(),
     saleDate: z.string(),
     items: z.array(lineItemSchema).min(1, 'Add at least one line item'),
-    // An order uses either one discount across the whole order, or a
-    // separate discount per product — never both at once.
     discountMode: z.enum(['ORDER', 'PRODUCT']),
     discountType: z.enum(['PERCENTAGE', 'FIXED']),
     discountValue: z.string(),
@@ -109,29 +121,22 @@ function LineTotal({
   const gross = (Number(quantity) || 0) * unitPrice(products, productId);
 
   if (discountMode !== 'PRODUCT') {
-    return <span className="font-medium">{formatCurrency(gross)}</span>;
+    return <span className="font-black text-xs sm:text-sm text-foreground">{formatCurrency(gross)}</span>;
   }
 
   const discount = lineDiscountAmount(gross, discountType, discountValue);
   if (discount <= 0) {
-    return <span className="font-medium">{formatCurrency(gross)}</span>;
+    return <span className="font-black text-xs sm:text-sm text-foreground">{formatCurrency(gross)}</span>;
   }
   const net = Math.max(gross - discount, 0);
   return (
-    <div className="flex flex-col">
-      <span className="text-xs text-muted-foreground line-through">{formatCurrency(gross)}</span>
-      <span className="font-medium">{formatCurrency(net)}</span>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] text-muted-foreground line-through">{formatCurrency(gross)}</span>
+      <span className="font-black text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(net)}</span>
     </div>
   );
 }
 
-/**
- * Existing orders don't store which discount mode was used — figure it out
- * from the numbers. If every line's stored allocatedDiscount matches what
- * proportionally splitting the order's total discount by lineTotal share
- * would produce, it was an order-wide discount; otherwise it must have been
- * entered per product.
- */
 function detectDiscountMode(order: Order): 'ORDER' | 'PRODUCT' {
   const totalDiscount = Number(order.discount);
   if (totalDiscount <= 0) return 'ORDER';
@@ -179,10 +184,6 @@ function defaultValuesFor(order?: Order): FormValues {
   };
 }
 
-// A plain Radix Select can't host a working search box — Select manages
-// roving focus/typeahead across its items aggressively and steals focus
-// back from any input placed inside it. This is a fully self-contained
-// dropdown instead, so search input focus is never contested.
 function DealerCombobox({
   value,
   onChange,
@@ -215,8 +216,10 @@ function DealerCombobox({
     }
   }, [open]);
 
-  const filtered = dealers.filter((dealer) =>
-    dealer.businessName.toLowerCase().includes(search.trim().toLowerCase()),
+  const filtered = dealers.filter(
+    (dealer) =>
+      dealer.businessName.toLowerCase().includes(search.trim().toLowerCase()) ||
+      (dealer.ownerName && dealer.ownerName.toLowerCase().includes(search.trim().toLowerCase())),
   );
   const selected = dealers.find((dealer) => dealer.id === value);
 
@@ -228,27 +231,41 @@ function DealerCombobox({
           setSearch('');
           setOpen((o) => !o);
         }}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+        className="flex h-12 w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-2.5 text-xs sm:text-sm font-semibold shadow-2xs backdrop-blur-md transition-all hover:bg-background/80 focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
-        <span className={cn('truncate', !selected && 'text-muted-foreground')}>
-          {selected ? selected.businessName : 'Select dealer'}
-        </span>
-        <ChevronDown className="size-4 shrink-0 opacity-50" />
+        {selected ? (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary font-extrabold text-[10px] shrink-0">
+              {selected.businessName.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="font-bold text-foreground truncate">{selected.businessName}</p>
+              {selected.ownerName && (
+                <p className="text-[10px] text-muted-foreground font-medium truncate">{selected.ownerName}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <span className="text-muted-foreground font-medium">Select a dealer for this order...</span>
+        )}
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground opacity-70" />
       </button>
+
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md">
-          <div className="p-1.5">
+        <div className="absolute left-0 right-0 z-[100] mt-2 rounded-2xl border border-border/60 bg-card/95 p-2 shadow-2xl backdrop-blur-2xl">
+          <div className="relative p-1">
+            <Search className="absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={inputRef}
-              placeholder="Search dealer..."
+              placeholder="Search dealer by business or owner name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8"
+              className="h-9 rounded-xl border-border/60 bg-background/60 pl-9 text-xs"
             />
           </div>
-          <div className="max-h-60 overflow-y-auto p-1">
+          <div className="mt-1 max-h-60 overflow-y-auto space-y-1 p-1">
             {filtered.length === 0 ? (
-              <p className="p-2 text-sm text-muted-foreground">No dealers found</p>
+              <p className="p-3 text-center text-xs font-semibold text-muted-foreground">No dealers found</p>
             ) : (
               filtered.map((dealer) => (
                 <button
@@ -259,11 +276,20 @@ function DealerCombobox({
                     setOpen(false);
                   }}
                   className={cn(
-                    'flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground',
-                    dealer.id === value && 'bg-accent/60',
+                    'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-muted/60',
+                    dealer.id === value && 'bg-primary/10 border border-primary/20 text-primary font-bold'
                   )}
                 >
-                  {dealer.businessName}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex size-7 items-center justify-center rounded-full bg-muted border border-border/60 font-bold text-[10px] text-muted-foreground shrink-0">
+                      {dealer.businessName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-foreground truncate">{dealer.businessName}</p>
+                      {dealer.ownerName && <p className="text-[10px] text-muted-foreground">{dealer.ownerName}</p>}
+                    </div>
+                  </div>
+                  {dealer.id === value && <Check className="size-4 text-primary shrink-0" />}
                 </button>
               ))
             )}
@@ -282,22 +308,25 @@ function DiscountModeToggle({
   onChange: (mode: 'ORDER' | 'PRODUCT') => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3.5 backdrop-blur-md">
       <div>
-        <p className="text-sm font-medium">Discount mode</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs font-extrabold text-foreground">Discount Mode</p>
+        <p className="text-[11px] text-muted-foreground font-medium">
           {value === 'ORDER'
-            ? 'One discount applied across the whole order.'
-            : 'Discount individual products — the rest stay at full price.'}
+            ? 'One overall discount calculated across the entire order total'
+            : 'Discount individual product lines — remaining items stay at wholesale rate'}
         </p>
       </div>
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1 text-sm">
+
+      <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-background/60 p-1 text-xs shrink-0">
         <button
           type="button"
           onClick={() => onChange('ORDER')}
           className={cn(
-            'rounded-md px-3 py-1.5 font-medium transition-colors',
-            value === 'ORDER' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+            'rounded-lg px-3 py-1.5 font-extrabold transition-all duration-200',
+            value === 'ORDER'
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           Order-wide
@@ -306,10 +335,10 @@ function DiscountModeToggle({
           type="button"
           onClick={() => onChange('PRODUCT')}
           className={cn(
-            'rounded-md px-3 py-1.5 font-medium transition-colors',
+            'rounded-lg px-3 py-1.5 font-extrabold transition-all duration-200',
             value === 'PRODUCT'
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
           Per-product
@@ -445,38 +474,57 @@ export function OrderForm({ order }: { order?: Order }) {
   });
 
   return (
-    <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
+    <div className="space-y-6 select-none max-w-5xl mx-auto">
+      {/* Top Navigation */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.back()}
+        className="-ml-2 rounded-full font-bold text-xs hover:bg-muted"
+      >
+        <ArrowLeft className="size-4" />
+        <span>Back to Orders</span>
       </Button>
 
-      <div>
-        <h1 className="text-2xl font-semibold">{isEdit ? `Edit ${order.orderNumber}` : 'New order'}</h1>
-        <p className="text-sm text-muted-foreground">
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
+            <ShoppingBag className="size-5" />
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+            {isEdit ? `Edit Order #${order.orderNumber}` : 'Create New Dealer Order'}
+          </h1>
+        </div>
+        <p className="text-xs text-muted-foreground font-medium sm:text-sm">
           {isEdit
-            ? recordAsCompleted
-              ? "Corrects a mistake in this order — stock and the dealer's balance are reconciled to match the changes."
-              : "Corrects a mistake in this order's dealer/items/discount — stock is reconciled to match the changes. This order isn't completed yet, so the dealer's balance is untouched."
-            : recordAsCompleted
-              ? "Recorded as a completed sale on the date you choose — stock is reserved, an invoice is generated, and the dealer's balance is updated immediately."
-              : "Created pre-approved for this dealer — stock is reserved and an invoice is generated, but it stays open until you mark it as completed from the order page."}
+            ? 'Modify line items, quantities, or order-wide discounts for this existing order record'
+            : 'Build a new dealer order with real-time stock availability and custom discount structures'}
         </p>
       </div>
 
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dealer</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
+          {/* Card 1: Dealer & Sale Mode Setup */}
+          <div className="relative z-30 rounded-3xl border border-border/50 bg-card/70 backdrop-blur-2xl p-5 sm:p-6 shadow-md space-y-4">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-14 rounded-t-3xl overflow-hidden bg-gradient-to-b from-white/15 via-white/5 to-transparent dark:from-white/10" />
+
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
+              <Store className="size-4.5 text-primary" />
+              <h2 className="text-sm font-extrabold tracking-tight text-foreground uppercase">
+                1. Customer &amp; Order Type
+              </h2>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="dealerId"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dealer</FormLabel>
+                  <FormItem className="sm:col-span-1">
+                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Target Dealer
+                    </FormLabel>
                     <FormControl>
                       <DealerCombobox value={field.value} onChange={field.onChange} dealers={dealers?.data ?? []} />
                     </FormControl>
@@ -490,12 +538,13 @@ export function OrderForm({ order }: { order?: Order }) {
                   control={form.control}
                   name="recordAsCompleted"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3 sm:col-span-2">
-                      <div>
-                        <FormLabel>Record as an already-completed sale</FormLabel>
-                        <FormDescription>
-                          Off: order is created pre-approved and completed manually later. On: instantly completed
-                          on the date you pick.
+                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/50 p-3.5 sm:col-span-2 backdrop-blur-md shadow-2xs">
+                      <div className="space-y-0.5 min-w-0">
+                        <FormLabel className="text-xs font-extrabold text-foreground cursor-pointer">
+                          Record as Already-Completed Sale
+                        </FormLabel>
+                        <FormDescription className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                          Off: Order created in Approved state for later fulfillment. On: Instantly complete sale &amp; update dealer balance.
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -512,170 +561,238 @@ export function OrderForm({ order }: { order?: Order }) {
                   name="saleDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sale date</FormLabel>
+                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Backdated Sale Date
+                      </FormLabel>
                       <FormControl>
-                        <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
+                        <div className="relative">
+                          <Calendar className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="date"
+                            max={new Date().toISOString().slice(0, 10)}
+                            className="h-12 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle>Line items</CardTitle>
+          {/* Card 2: Line Items */}
+          <div className="relative z-20 rounded-3xl border border-border/50 bg-card/70 backdrop-blur-2xl p-5 sm:p-6 shadow-md space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2">
+                <Package className="size-4.5 text-primary" />
+                <h2 className="text-sm font-extrabold tracking-tight text-foreground uppercase">
+                  2. Order Line Items ({fields.length})
+                </h2>
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => append({ productId: '', quantity: '1', discountType: 'PERCENTAGE', discountValue: '' })}
+                className="rounded-2xl font-bold text-xs backdrop-blur-md shadow-xs h-9"
               >
-                <Plus />
-                Add Item
+                <Plus className="size-4" />
+                <span>Add Item</span>
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DiscountModeToggle value={discountMode} onChange={setDiscountMode} />
+            </div>
 
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-2/5">Product</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Price</TableHead>
-                      {discountMode === 'PRODUCT' && <TableHead>Discount</TableHead>}
-                      <TableHead>Line Total</TableHead>
+            <DiscountModeToggle value={discountMode} onChange={setDiscountMode} />
+
+            {/* Desktop Items Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md">
+                <Table className="min-w-[700px] text-xs">
+                  <TableHeader className="bg-muted/60">
+                    <TableRow className="hover:bg-transparent border-border/60">
+                      <TableHead className="w-5/12 font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Product Item
+                      </TableHead>
+                      <TableHead className="w-28 font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Quantity
+                      </TableHead>
+                      <TableHead className="w-28 font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Wholesale Rate
+                      </TableHead>
+                      {discountMode === 'PRODUCT' && (
+                        <TableHead className="w-44 font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                          Discount
+                        </TableHead>
+                      )}
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Line Total
+                      </TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {fields.map((rowField, index) => (
-                      <TableRow key={rowField.id}>
-                        <TableCell>
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.productId`}
-                            render={({ field }) => (
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {products?.data.map((product) => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.name} ({product.currentStock} in stock)
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.quantity`}
-                            render={({ field }) => <Input type="number" min={1} className="w-24" {...field} />}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(unitPrice(products?.data, watchedItems[index]?.productId))}
-                        </TableCell>
-                        {discountMode === 'PRODUCT' && (
+                  <TableBody className="divide-y divide-border/50">
+                    {fields.map((rowField, index) => {
+                      const selectedProd = products?.data.find((p) => p.id === watchedItems[index]?.productId);
+                      const reqQty = Number(watchedItems[index]?.quantity) || 0;
+                      const stockWarning = selectedProd && reqQty > selectedProd.currentStock;
+
+                      return (
+                        <TableRow key={rowField.id} className="hover:bg-muted/30 transition-colors">
                           <TableCell>
-                            <div className="flex gap-1">
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.discountType`}
-                                render={({ field }) => (
-                                  <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger className="h-9 w-[4.5rem] px-2 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="PERCENTAGE">%</SelectItem>
-                                      <SelectItem value="FIXED">Fixed</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.discountValue`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        max={watchedItems[index]?.discountType === 'PERCENTAGE' ? 100 : undefined}
-                                        step="0.01"
-                                        placeholder="0"
-                                        className="h-9 w-20"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormMessage className="text-[10px]" />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.productId`}
+                              render={({ field }) => (
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <SelectTrigger className="h-10 rounded-xl border-border/60 bg-background/60 text-xs font-semibold">
+                                    <SelectValue placeholder="Select product item..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-2xl border-border/60 shadow-xl">
+                                    {products?.data.map((product) => (
+                                      <SelectItem key={product.id} value={product.id} className="text-xs">
+                                        <span>{product.name}</span>
+                                        <span className="ml-1 text-[10px] text-muted-foreground">
+                                          ({product.currentStock} in stock)
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                            {stockWarning && (
+                              <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="size-3 shrink-0" />
+                                <span>Requested qty ({reqQty}) exceeds available stock ({selectedProd.currentStock})</span>
+                              </p>
+                            )}
                           </TableCell>
-                        )}
-                        <TableCell>
-                          <LineTotal control={form.control} index={index} products={products?.data} discountMode={discountMode} />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={fields.length === 1}
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.quantity`}
+                              render={({ field }) => (
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  className="h-10 w-24 rounded-xl border-border/60 bg-background/60 font-bold text-xs text-center"
+                                  {...field}
+                                />
+                              )}
+                            />
+                          </TableCell>
+
+                          <TableCell className="font-semibold text-xs text-muted-foreground whitespace-nowrap">
+                            {formatCurrency(unitPrice(products?.data, watchedItems[index]?.productId))}
+                          </TableCell>
+
+                          {discountMode === 'PRODUCT' && (
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.discountType`}
+                                  render={({ field }) => (
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <SelectTrigger className="h-9 w-16 rounded-xl border-border/60 bg-background/60 px-2 text-xs font-extrabold">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl">
+                                        <SelectItem value="PERCENTAGE">%</SelectItem>
+                                        <SelectItem value="FIXED">$</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.discountValue`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          max={watchedItems[index]?.discountType === 'PERCENTAGE' ? 100 : undefined}
+                                          step="0.01"
+                                          placeholder="0"
+                                          className="h-9 w-20 rounded-xl border-border/60 bg-background/60 text-xs font-semibold"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage className="text-[10px]" />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </TableCell>
+                          )}
+
+                          <TableCell className="whitespace-nowrap">
+                            <LineTotal control={form.control} index={index} products={products?.data} discountMode={discountMode} />
+                          </TableCell>
+
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              disabled={fields.length === 1}
+                              onClick={() => remove(index)}
+                              className="size-8 rounded-xl text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+            </div>
 
-              <div className="space-y-4 sm:hidden">
-                {fields.map((rowField, index) => (
-                  <div key={rowField.id} className="space-y-3 rounded-lg border border-border p-3">
+            {/* Mobile Cards View */}
+            <div className="space-y-3 sm:hidden">
+              {fields.map((rowField, index) => {
+                const selectedProd = products?.data.find((p) => p.id === watchedItems[index]?.productId);
+                const reqQty = Number(watchedItems[index]?.quantity) || 0;
+                const stockWarning = selectedProd && reqQty > selectedProd.currentStock;
+
+                return (
+                  <div key={rowField.id} className="rounded-2xl border border-border/60 bg-background/60 p-4 backdrop-blur-md space-y-3 shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Item {index + 1}</span>
+                      <span className="text-xs font-black uppercase text-muted-foreground">Line Item #{index + 1}</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         disabled={fields.length === 1}
                         onClick={() => remove(index)}
+                        className="size-8 rounded-xl text-rose-600 hover:bg-rose-500/10"
                       >
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+
                     <FormField
                       control={form.control}
                       name={`items.${index}.productId`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Product</FormLabel>
+                          <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Product</FormLabel>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select product" />
+                              <SelectTrigger className="h-10 rounded-xl border-border/60 bg-background/60 text-xs font-semibold">
+                                <SelectValue placeholder="Select product item..." />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent className="rounded-2xl">
                               {products?.data.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
+                                <SelectItem key={product.id} value={product.id} className="text-xs">
                                   {product.name} ({product.currentStock} in stock)
                                 </SelectItem>
                               ))}
@@ -684,140 +801,181 @@ export function OrderForm({ order }: { order?: Order }) {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity</FormLabel>
-                          <FormControl>
-                            <Input type="number" min={1} {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+
+                    {stockWarning && (
+                      <p className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                        <AlertCircle className="size-3 shrink-0" />
+                        <span>Qty ({reqQty}) exceeds stock ({selectedProd.currentStock})</span>
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Quantity</FormLabel>
+                            <FormControl>
+                              <Input type="number" min={1} className="h-10 rounded-xl border-border/60 bg-background/60 text-xs font-bold" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Wholesale Rate</p>
+                        <p className="h-10 flex items-center font-bold text-xs text-foreground">
+                          {formatCurrency(unitPrice(products?.data, watchedItems[index]?.productId))}
+                        </p>
+                      </div>
+                    </div>
+
                     {discountMode === 'PRODUCT' && (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-2 border-t border-border/50 pt-2">
                         <FormField
                           control={form.control}
                           name={`items.${index}.discountType`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Discount type</FormLabel>
+                              <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Type</FormLabel>
                               <Select value={field.value} onValueChange={field.onChange}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-9 rounded-xl border-border/60 text-xs font-bold">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                                  <SelectItem value="FIXED">Fixed amount</SelectItem>
+                                  <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                                  <SelectItem value="FIXED">Fixed ($)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </FormItem>
                           )}
                         />
+
                         <FormField
                           control={form.control}
                           name={`items.${index}.discountValue`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Discount</FormLabel>
+                              <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Discount</FormLabel>
                               <FormControl>
-                                <Input type="number" min={0} step="0.01" placeholder="0" {...field} />
+                                <Input type="number" min={0} step="0.01" placeholder="0" className="h-9 rounded-xl border-border/60 text-xs font-semibold" {...field} />
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className="text-[10px]" />
                             </FormItem>
                           )}
                         />
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Line total</span>
+
+                    <div className="flex justify-between border-t border-border/50 pt-2 text-xs">
+                      <span className="font-bold text-muted-foreground">Line Total</span>
                       <LineTotal control={form.control} index={index} products={products?.data} discountMode={discountMode} />
                     </div>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 3: Financial Summary & Actions */}
+          <div className="relative isolate overflow-hidden rounded-3xl border border-border/50 bg-card/70 backdrop-blur-2xl p-5 sm:p-6 shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            {/* Left: Order-wide discount controls */}
+            <div className="sm:max-w-xs w-full space-y-2">
+              {discountMode === 'ORDER' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={form.control}
+                    name="discountType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
+                          Order Discount Type
+                        </FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="h-10 rounded-xl border-border/60 bg-background/60 text-xs font-bold">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                            <SelectItem value="FIXED">Fixed Amount ($)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="discountValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
+                          {discountType === 'PERCENTAGE' ? 'Discount %' : 'Discount $'}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={discountType === 'PERCENTAGE' ? 100 : undefined}
+                            step="0.01"
+                            placeholder="0"
+                            className="h-10 rounded-xl border-border/60 bg-background/60 font-semibold text-xs"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-border/60 bg-background/50 p-3 text-xs font-medium text-muted-foreground">
+                  Per-product discount active. Set individual discounts in the table above.
+                </div>
+              )}
+            </div>
+
+            {/* Right: Calculations & CTA */}
+            <div className="flex flex-col sm:items-end gap-4 sm:w-80">
+              <div className="w-full space-y-2 rounded-2xl border border-border/60 bg-background/60 p-4 backdrop-blur-md">
+                <div className="flex justify-between text-xs font-semibold text-muted-foreground">
+                  <span>Gross Subtotal</span>
+                  <span className="font-bold text-foreground">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-xs font-semibold text-muted-foreground">
+                  <span>Total Discount</span>
+                  <span className="font-bold text-rose-600 dark:text-rose-400">−{formatCurrency(discountAmountTotal)}</span>
+                </div>
+                <div className="flex justify-between border-t border-border/60 pt-2 text-base font-black text-foreground">
+                  <span>Net Order Total</span>
+                  <span className="text-primary">{formatCurrency(grandTotal)}</span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="grid grid-cols-2 gap-3 sm:w-64">
-                  {discountMode === 'ORDER' ? (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="discountType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Discount type</FormLabel>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                                <SelectItem value="FIXED">Fixed amount</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="discountValue"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{discountType === 'PERCENTAGE' ? 'Discount %' : 'Discount amount'}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={discountType === 'PERCENTAGE' ? 100 : undefined}
-                                step="0.01"
-                                placeholder="0"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  ) : (
-                    <p className="col-span-2 self-end text-sm text-muted-foreground">
-                      Set each product&apos;s discount in the table above.
-                    </p>
-                  )}
-                </div>
-
-                <div className="w-full space-y-1 sm:w-64">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span>−{formatCurrency(discountAmountTotal)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
-                    <span>Order Total</span>
-                    <span>{formatCurrency(grandTotal)}</span>
-                  </div>
-                </div>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="flex-1 sm:flex-none rounded-2xl font-bold h-11 px-5"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={pending}
+                  className="flex-1 sm:flex-none rounded-2xl font-black h-11 px-6 shadow-md hover:shadow-lg transition-all"
+                >
+                  {pending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  <span>{isEdit ? 'Save Order Changes' : 'Create Order Now'}</span>
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              {isEdit ? 'Save changes' : 'Create Order'}
-            </Button>
+            </div>
           </div>
         </form>
       </Form>

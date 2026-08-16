@@ -46,6 +46,7 @@ export function MiniStatCard({
   change,
   changeLabel,
   href,
+  onClick,
 }: {
   label: string;
   value: string | number;
@@ -54,6 +55,7 @@ export function MiniStatCard({
   change?: number | null;
   changeLabel?: string;
   href?: string;
+  onClick?: () => void;
 }) {
   const t = TONES[tone];
 
@@ -115,7 +117,7 @@ export function MiniStatCard({
           >
             <Icon className="size-5" />
           </div>
-          {href && (
+          {(href || onClick) && (
             <ArrowUpRight className="size-3.5 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground" />
           )}
         </div>
@@ -128,6 +130,18 @@ export function MiniStatCard({
       <Link href={href} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
         {content}
       </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="block w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+      >
+        {content}
+      </button>
     );
   }
 

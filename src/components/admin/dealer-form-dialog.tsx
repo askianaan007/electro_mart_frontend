@@ -5,10 +5,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import {
+  Building2,
+  CreditCard,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -135,7 +149,7 @@ export function DealerFormDialog({
 
       updateDealer.mutate(payload, {
         onSuccess: () => {
-          toast.success('Dealer updated');
+          toast.success('Dealer account updated successfully');
           onOpenChange(false);
         },
         onError: (error) => toast.error(getErrorMessage(error)),
@@ -145,7 +159,7 @@ export function DealerFormDialog({
 
       createDealer.mutate(payload, {
         onSuccess: (result) => {
-          toast.success('Dealer created');
+          toast.success('Dealer account registered successfully');
           onOpenChange(false);
           if (result.temporaryPassword) {
             onCreated?.({ username: values.username, temporaryPassword: result.temporaryPassword });
@@ -158,212 +172,328 @@ export function DealerFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={isEdit ? 'Edit dealer' : 'Add dealer'} className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit dealer' : 'Add a new dealer'}</DialogTitle>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="businessName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="ownerName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone number</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email (optional)</FormLabel>
-                    <FormControl>
-                      <Input type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address (optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="district"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>District (optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        onChange={(e) => {
-                          usernameTouched.current = true;
-                          field.onChange(e);
-                        }}
-                      />
-                    </FormControl>
-                    {!isEdit && (
-                      <FormDescription>Auto-suggested from the business name — edit it if you&apos;d like something different.</FormDescription>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="creditLimit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Credit limit</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} step="0.01" disabled={unlimitedCredit} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="unlimitedCredit"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3">
-                    <div>
-                      <FormLabel>Unlimited credit</FormLabel>
-                      <FormDescription>Orders are never blocked by credit limit</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              {isEdit && (
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ACTIVE">Active</SelectItem>
-                          <SelectItem value="INACTIVE">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
+      <DialogContent
+        title={isEdit ? 'Edit dealer profile' : 'Register new dealer'}
+        className="sm:max-w-2xl rounded-3xl border border-border/60 bg-card/95 backdrop-blur-2xl p-6 shadow-2xl select-none overflow-hidden max-h-[92vh] flex flex-col"
+      >
+        {/* Specular Shimmer Top Curve Overlay */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 rounded-t-3xl bg-gradient-to-b from-white/20 via-white/5 to-transparent dark:from-white/10" />
 
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <FormField
-                control={form.control}
-                name="resetPassword"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between gap-2">
-                    <div>
-                      <FormLabel>{isEdit ? 'Reset password' : 'Set a specific password'}</FormLabel>
-                      <FormDescription>
-                        {isEdit
-                          ? 'Turn on to set a new password for this dealer'
-                          : 'Leave off to auto-generate a temporary password'}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              {resetPassword && (
+        {/* Dialog Header */}
+        <DialogHeader className="relative z-10 space-y-1 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
+              {isEdit ? <Pencil className="size-4.5" /> : <UserPlus className="size-4.5" />}
+            </div>
+            <DialogTitle className="text-lg sm:text-xl font-extrabold tracking-tight">
+              {isEdit ? 'Edit Dealer Profile' : 'Register New Dealer Account'}
+            </DialogTitle>
+          </div>
+          <DialogDescription className="text-xs text-muted-foreground font-medium">
+            {isEdit
+              ? 'Update business details, contact information, and allocated credit terms'
+              : 'Add an authorized dealer to the platform with custom credit limits and login credentials'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Scrollable Form Content */}
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pr-1 my-2">
+          <Form {...form}>
+            <form id="dealer-form" onSubmit={onSubmit} className="space-y-4">
+              <div className="grid gap-3.5 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="businessName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>New password</FormLabel>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Business Name</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <div className="relative">
+                          <Building2 className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="e.g. Apex Electronics Ltd"
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
-            </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={pending}>
-                {isEdit ? 'Save changes' : 'Create dealer'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                <FormField
+                  control={form.control}
+                  name="ownerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Owner Name</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="e.g. John Doe"
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Contact Phone</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Phone className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="+1 (555) 000-0000"
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Email (Optional)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="email"
+                            placeholder="dealer@company.com"
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Business Address</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="Street address..."
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-semibold backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="district"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">District / Region</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. Central District"
+                          className="h-11 rounded-2xl border-border/60 bg-background/60 px-4 text-xs font-semibold backdrop-blur-md"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Login Username</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="username"
+                          className="h-11 rounded-2xl border-border/60 bg-background/60 px-4 text-xs font-extrabold text-primary backdrop-blur-md"
+                          {...field}
+                          onChange={(e) => {
+                            usernameTouched.current = true;
+                            field.onChange(e);
+                          }}
+                        />
+                      </FormControl>
+                      {!isEdit && (
+                        <FormDescription className="text-[10px] text-muted-foreground">
+                          Auto-suggested from business name
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="creditLimit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-extrabold text-foreground">Allocated Credit Limit</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <CreditCard className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            disabled={unlimitedCredit}
+                            className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-black backdrop-blur-md"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Credit Options & Status */}
+              <div className="grid gap-3 sm:grid-cols-2 pt-1">
+                <FormField
+                  control={form.control}
+                  name="unlimitedCredit"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md shadow-2xs">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-xs font-extrabold text-foreground cursor-pointer">
+                          Unlimited Credit Access
+                        </FormLabel>
+                        <FormDescription className="text-[10px] text-muted-foreground">
+                          Bypasses credit evaluation checks
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {isEdit && (
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md shadow-2xs">
+                        <FormLabel className="text-xs font-extrabold text-foreground">Account Status</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="h-9 rounded-xl border-border/60 text-xs font-bold mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-2xl">
+                            <SelectItem value="ACTIVE">Active Account</SelectItem>
+                            <SelectItem value="INACTIVE">Inactive Account</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* Password Management */}
+              <div className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md space-y-3 shadow-2xs">
+                <FormField
+                  control={form.control}
+                  name="resetPassword"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-xs font-extrabold text-foreground cursor-pointer">
+                          {isEdit ? 'Set Custom Password' : 'Specify Initial Password'}
+                        </FormLabel>
+                        <FormDescription className="text-[10px] text-muted-foreground">
+                          {isEdit
+                            ? 'Enable to manually override the dealer password'
+                            : 'Leave off to auto-generate a secure temporary password'}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {resetPassword && (
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="pt-1">
+                        <FormLabel className="text-xs font-extrabold text-foreground">Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              type="password"
+                              placeholder="••••••••"
+                              className="h-11 rounded-2xl border-border/60 bg-background/60 pl-10 text-xs font-medium"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            </form>
+          </Form>
+        </div>
+
+        {/* Dialog Footer */}
+        <DialogFooter className="relative z-10 shrink-0 pt-2 gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-2xl font-bold text-xs h-10 px-4"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="dealer-form"
+            disabled={pending}
+            className="rounded-2xl font-extrabold text-xs h-10 px-5 shadow-md hover:shadow-lg transition-all"
+          >
+            {pending && <Loader2 className="mr-2 size-4 animate-spin" />}
+            <span>{isEdit ? 'Save Changes' : 'Register Dealer'}</span>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

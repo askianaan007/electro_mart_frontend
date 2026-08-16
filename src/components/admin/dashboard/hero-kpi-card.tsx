@@ -38,6 +38,20 @@ const VARIANTS = {
     chip: 'from-sky-100 via-blue-200 to-indigo-300',
     accentBorder: 'border-blue-400/30',
   },
+  purple: {
+    base: 'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 35%, #7c3aed 70%, #8b5cf6 100%)',
+    mesh: 'radial-gradient(circle at 14% 12%, rgba(221,214,254,0.45), transparent 45%), radial-gradient(circle at 88% 85%, rgba(139,92,246,0.4), transparent 50%)',
+    glow: 'shadow-[0_20px_50px_-15px_rgba(124,58,237,0.55)]',
+    chip: 'from-violet-200 via-purple-300 to-fuchsia-400',
+    accentBorder: 'border-violet-400/30',
+  },
+  teal: {
+    base: 'linear-gradient(135deg, #042f2e 0%, #115e59 35%, #0d9488 70%, #14b8a6 100%)',
+    mesh: 'radial-gradient(circle at 14% 12%, rgba(153,246,228,0.45), transparent 45%), radial-gradient(circle at 88% 85%, rgba(45,212,191,0.4), transparent 50%)',
+    glow: 'shadow-[0_20px_50px_-15px_rgba(13,148,136,0.55)]',
+    chip: 'from-teal-200 via-cyan-300 to-teal-400',
+    accentBorder: 'border-teal-400/30',
+  },
 } as const;
 
 function ChipGlyph({ gradient }: { gradient: string }) {
@@ -64,6 +78,7 @@ export function HeroKpiCard({
   mask,
   progress,
   href,
+  onClick,
 }: {
   label: string;
   value: number;
@@ -76,6 +91,8 @@ export function HeroKpiCard({
   progress?: { pct: number; label: string };
   /** When set, the whole card becomes a link that opens in a new tab. */
   href?: string;
+  /** When set (and href is not), the whole card becomes a button — e.g. to open a breakdown dialog. */
+  onClick?: () => void;
 }) {
   const animated = useCountUp(value);
   const v = VARIANTS[gradient];
@@ -159,18 +176,32 @@ export function HeroKpiCard({
     </div>
   );
 
-  if (!href) return card;
+  if (href) {
+    return (
+      <Link
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Open full ${label} history in a new tab`}
+        className="block h-full rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
+        {card}
+      </Link>
+    );
+  }
 
-  return (
-    <Link
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`Open full ${label} history in a new tab`}
-      className="block h-full rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-    >
-      {card}
-    </Link>
-  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="block h-full w-full rounded-[24px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
+        {card}
+      </button>
+    );
+  }
+
+  return card;
 }
 
