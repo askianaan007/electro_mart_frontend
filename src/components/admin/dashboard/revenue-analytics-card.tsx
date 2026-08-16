@@ -29,41 +29,41 @@ export function RevenueAnalyticsCard({ data }: { data: RevenuePoint[] }) {
     data.length > 0 ? `${monthLabel(data[0].month)} to ${monthLabel(data[data.length - 1].month)}` : null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <div className="rounded-2xl border border-border bg-gradient-to-br via-card to-card p-5 shadow-sm sm:p-6 transition-all duration-300 hover:shadow-md">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Revenue Analytics</h3>
+          <h3 className="text-sm font-bold tracking-tight text-foreground">Revenue Analytics</h3>
           <p className="text-xs text-muted-foreground">
             Monthly revenue trend{rangeLabel ? `, ${rangeLabel}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-success/10 px-3 py-1.5 text-success">
+        <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
           <TrendingUp className="size-3.5" aria-hidden="true" />
-          <span className="text-xs font-semibold">{formatCurrency(total)} total</span>
+          <span className="text-xs font-bold">{formatCurrency(total)} total</span>
         </div>
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border py-4 sm:grid-cols-3">
-        <div>
-          <dt className="text-[11px] font-medium text-muted-foreground">Monthly average</dt>
-          <dd className="mt-0.5 text-sm font-semibold text-foreground">{formatCurrency(average)}</dd>
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border/80 py-4 sm:grid-cols-3">
+        <div className="rounded-xl bg-muted/40 p-3">
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Monthly average</dt>
+          <dd className="mt-0.5 text-sm font-bold text-foreground">{formatCurrency(average)}</dd>
         </div>
-        <div>
-          <dt className="text-[11px] font-medium text-muted-foreground">Peak month</dt>
-          <dd className="mt-0.5 text-sm font-semibold text-foreground">
+        <div className="rounded-xl bg-muted/40 p-3">
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Peak month</dt>
+          <dd className="mt-0.5 text-sm font-bold text-foreground">
             {formatCurrency(peakValue)}
-            {peakMonth && <span className="ml-1 font-normal text-muted-foreground">({peakMonth})</span>}
+            {peakMonth && <span className="ml-1 font-normal text-muted-foreground text-xs">({peakMonth})</span>}
           </dd>
         </div>
-        <div>
-          <dt className="text-[11px] font-medium text-muted-foreground">Vs previous month</dt>
+        <div className="col-span-2 rounded-xl bg-muted/40 p-3 sm:col-span-1">
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Vs previous month</dt>
           {growthPct === null ? (
             <dd className="mt-0.5 text-sm font-semibold text-muted-foreground">Not enough data</dd>
           ) : (
             <dd
               className={cn(
-                'mt-0.5 flex items-center gap-1 text-sm font-semibold',
-                growthPct >= 0 ? 'text-success' : 'text-destructive',
+                'mt-0.5 flex items-center gap-1 text-sm font-bold',
+                growthPct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
               )}
             >
               {growthPct >= 0 ? (
@@ -80,7 +80,7 @@ export function RevenueAnalyticsCard({ data }: { data: RevenuePoint[] }) {
       </dl>
 
       <div className="mt-4">
-        <p className="mb-1 text-[11px] font-medium text-muted-foreground">Revenue by month</p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Revenue breakdown timeline</p>
         <RevenueChart data={data} />
       </div>
 

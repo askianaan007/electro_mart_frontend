@@ -65,6 +65,7 @@ export default function AdminDashboardPage() {
             gradient="orange"
             mask="CASH"
             subtitle="Investments + collections − supplier payments − expenses"
+            href="/admin/liquid-cash"
           />
           <HeroKpiCard
             label="Credit Balance"
@@ -75,6 +76,7 @@ export default function AdminDashboardPage() {
             mask="DEBT"
             subtitle="Outstanding balance owed to suppliers"
             progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
+            href="/admin/credit-balance"
           />
           <HeroKpiCard
             label="Today's Sales"

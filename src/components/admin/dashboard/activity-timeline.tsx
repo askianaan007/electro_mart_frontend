@@ -61,10 +61,13 @@ function describe(log: ActivityLog): string {
 
 export function ActivityTimeline({ items }: { items: ActivityLog[] }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <div className="rounded-2xl border border-border bg-gradient-to-br via-card to-card p-5 shadow-sm sm:p-6 transition-all duration-300 hover:shadow-md">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground">Recent Activity</p>
-        <Button variant="ghost" size="sm" asChild>
+        <div>
+          <p className="text-sm font-bold tracking-tight text-foreground">Recent Activity</p>
+          <p className="text-xs text-muted-foreground">System audit trail & administrative actions</p>
+        </div>
+        <Button variant="ghost" size="sm" asChild className="rounded-lg text-xs font-semibold">
           <Link href="/admin/activity-log">View all</Link>
         </Button>
       </div>
@@ -72,26 +75,26 @@ export function ActivityTimeline({ items }: { items: ActivityLog[] }) {
       {items.length === 0 ? (
         <EmptyState icon={ClipboardList} title="No activity yet" description="Admin actions will show up here" />
       ) : (
-        <ul className="mt-4">
+        <ul className="mt-5">
           {items.map((log, index) => {
             const Icon = iconFor(log.action);
             const tone = toneFor(log.action);
             const isLast = index === items.length - 1;
             return (
-              <li key={log.id} className="relative flex gap-3 pb-5 last:pb-0">
-                {!isLast && <span className="absolute left-4 top-9 h-[calc(100%-2rem)] w-px bg-border" />}
+              <li key={log.id} className="relative flex gap-3.5 pb-5 last:pb-0">
+                {!isLast && <span className="absolute left-4 top-9 h-[calc(100%-1.8rem)] w-0.5 bg-border/70" />}
                 <div
                   className={cn(
-                    'relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-card',
+                    'relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-card shadow-2xs',
                     TONE_CLASSES[tone],
                   )}
                 >
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="break-words text-sm text-foreground">{describe(log)}</p>
-                  {log.details && <p className="break-words text-xs text-muted-foreground">{log.details}</p>}
-                  <p className="mt-0.5 text-xs text-muted-foreground/70">{formatDateTime(log.createdAt)}</p>
+                  <p className="break-words text-xs font-semibold text-foreground">{describe(log)}</p>
+                  {log.details && <p className="mt-0.5 break-words text-xs text-muted-foreground">{log.details}</p>}
+                  <p className="mt-1 text-[11px] font-medium text-muted-foreground/70">{formatDateTime(log.createdAt)}</p>
                 </div>
               </li>
             );
@@ -101,3 +104,4 @@ export function ActivityTimeline({ items }: { items: ActivityLog[] }) {
     </div>
   );
 }
+

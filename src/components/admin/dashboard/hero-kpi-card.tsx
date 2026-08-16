@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { useCountUp } from '@/hooks/use-count-up';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ export function HeroKpiCard({
   gradient,
   mask,
   progress,
+  href,
 }: {
   label: string;
   value: number;
@@ -66,11 +68,13 @@ export function HeroKpiCard({
   gradient: keyof typeof VARIANTS;
   mask?: string;
   progress?: { pct: number; label: string };
+  /** When set, the whole card becomes a link that opens in a new tab. */
+  href?: string;
 }) {
   const animated = useCountUp(value);
   const v = VARIANTS[gradient];
 
-  return (
+  const card = (
     <div
       className={cn(
         'group relative isolate flex min-h-[168px] flex-col justify-between overflow-hidden rounded-[22px] border border-white/15 p-4 text-white transition-all duration-300 hover:-translate-y-1.5 sm:p-5',
@@ -128,5 +132,19 @@ export function HeroKpiCard({
         </div>
       </div>
     </div>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Open full ${label} history in a new tab`}
+      className="block rounded-[22px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+    >
+      {card}
+    </Link>
   );
 }

@@ -387,6 +387,64 @@ export interface EquityHistoryEntry {
   createdAt: string;
 }
 
+export type LiquidCashEntryType = 'INVESTMENT' | 'DEALER_PAYMENT' | 'SUPPLIER_PAYMENT' | 'EXPENSE';
+
+export interface LiquidCashSummary {
+  balance: number;
+  totalInvestments: number;
+  totalCollected: number;
+  totalPaidToSuppliers: number;
+  totalExpensesPaid: number;
+  pendingDealerCheques: number;
+  pendingSupplierCheques: number;
+}
+
+export interface LiquidCashHistoryEntry {
+  id: string;
+  type: LiquidCashEntryType;
+  status: ChequeStatus | null;
+  date: string;
+  description: string;
+  mode: PaymentMode | null;
+  reference: string | null;
+  /** Real transaction value — even for a cheque that hasn't cleared (or never will). */
+  faceAmount: string;
+  /** What actually hit the balance: 0 for an uncleared cheque, else equal to faceAmount. */
+  amount: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  createdAt: string;
+}
+
+export type CreditBalanceEntryType = 'PURCHASE' | 'TRANSPORT_CHARGE' | 'PURCHASE_RETURN' | 'SETTLEMENT';
+
+export interface CreditBalanceSummary {
+  balance: number;
+  totalPurchases: number;
+  totalTransportCharges: number;
+  totalReturns: number;
+  totalSettled: number;
+  /** Already included in `balance` — informational: what would bounce back onto the balance if returned. */
+  pendingChequeSettlements: number;
+}
+
+export interface CreditBalanceHistoryEntry {
+  id: string;
+  type: CreditBalanceEntryType;
+  status: ChequeStatus | null;
+  date: string;
+  description: string;
+  mode: PaymentMode | null;
+  reference: string | null;
+  /** Real transaction value — even for a settlement cheque that later bounces. */
+  faceAmount: string;
+  /** What actually hit the balance: 0 for a returned cheque, else equal to faceAmount. */
+  amount: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  createdAt: string;
+}
+
 export interface SalesReturnItem {
   id: string;
   salesReturnId: string;
@@ -472,7 +530,7 @@ export interface AdminDashboardSummary {
   invoiceDuePaymentsChangePct: number | null;
   invoiceDue: string;
   liquidCash: number;
-  creditBalance: string;
+  creditBalance: number;
   upcomingCheques: UpcomingCheque[];
   chequesDueCount: number;
   chequesDueTotal: number;

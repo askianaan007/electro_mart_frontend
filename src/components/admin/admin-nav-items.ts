@@ -21,6 +21,8 @@ import {
   Tag,
   Image,
   FileBarChart,
+  Coins,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -81,6 +83,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Suppliers', href: '/admin/suppliers', icon: Factory },
       { label: 'Purchases', href: '/admin/purchases', icon: Truck },
       { label: 'Credits', href: '/admin/credits', icon: HandCoins },
+      { label: 'Credit Balance', href: '/admin/credit-balance', icon: Scale },
     ],
   },
 
@@ -90,6 +93,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Investments', href: '/admin/investments', icon: TrendingUp },
       { label: 'Expenses', href: '/admin/expenses', icon: CreditCard },
       { label: 'Equity', href: '/admin/equity', icon: PieChart },
+      { label: 'Liquid Cash', href: '/admin/liquid-cash', icon: Coins },
     ],
   },
   {

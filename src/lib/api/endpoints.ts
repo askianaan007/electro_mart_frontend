@@ -11,6 +11,12 @@ import type {
   DealerDetail,
   EquitySummary,
   EquityHistoryEntry,
+  LiquidCashSummary,
+  LiquidCashHistoryEntry,
+  LiquidCashEntryType,
+  CreditBalanceSummary,
+  CreditBalanceHistoryEntry,
+  CreditBalanceEntryType,
   Expense,
   Invoice,
   InventoryLog,
@@ -406,6 +412,34 @@ export const api = {
     ) =>
       apiClient
         .get<Paginated<EquityHistoryEntry>>('/equity/history', { params: buildParams(params) })
+        .then((r) => r.data),
+  },
+
+  liquidCash: {
+    summary: () => apiClient.get<LiquidCashSummary>('/liquid-cash/summary').then((r) => r.data),
+    history: (
+      params: PaginationParams & {
+        type?: LiquidCashEntryType;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) =>
+      apiClient
+        .get<Paginated<LiquidCashHistoryEntry>>('/liquid-cash/history', { params: buildParams(params) })
+        .then((r) => r.data),
+  },
+
+  creditBalance: {
+    summary: () => apiClient.get<CreditBalanceSummary>('/credit-balance/summary').then((r) => r.data),
+    history: (
+      params: PaginationParams & {
+        type?: CreditBalanceEntryType;
+        dateFrom?: string;
+        dateTo?: string;
+      },
+    ) =>
+      apiClient
+        .get<Paginated<CreditBalanceHistoryEntry>>('/credit-balance/history', { params: buildParams(params) })
         .then((r) => r.data),
   },
 
