@@ -7,7 +7,7 @@ const AUTH_FREE_PATHS = ['/auth/admin/login', '/auth/dealer/login', '/auth/refre
 
 export class ApiError extends Error {
   statusCode: number;
-  errorName: string;
+  errorName: string; 
   path: string;
 
   constructor(shape: ApiErrorShape) {
@@ -44,8 +44,14 @@ function forceLogout(message: string) {
   }
 }
 
+// Trailing slash stripped so raw axios.post URL concatenation below (which,
+// unlike axios's own baseURL joining, does no de-duplication) can't produce
+// a double slash — Vercel 308-redirects those, and the redirect response
+// carries no CORS headers, so cross-origin browsers block it outright.
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -82,7 +88,7 @@ async function performRefresh(): Promise<string | null> {
 
   try {
     const response = await axios.post<{ accessToken: string; refreshToken: string }>(
-      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'}/auth/refresh`,
+      `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
     );
     useAuthStore.getState().setTokens(response.data.accessToken, response.data.refreshToken);
