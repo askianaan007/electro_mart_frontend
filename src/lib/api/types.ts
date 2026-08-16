@@ -149,6 +149,13 @@ export interface InventoryLog {
   quantityOut: number;
   balanceAfter: number;
   reference: string | null;
+  // Human-readable explanation of what caused this movement (resolved
+  // server-side from `reference` — e.g. "Purchase invoice #INV-104 — Acme
+  // Supplies" or "Order #4521 — Acme Store") and, where derivable, who did
+  // it ("Admin: Jane", "Rep: John"). Both can be null for older rows the
+  // server couldn't resolve an actor for.
+  description: string;
+  performedBy: string | null;
   createdAt: string;
 }
 

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { ApiErrorShape } from './types';
 
 const AUTH_FREE_PATHS = ['/auth/admin/login', '/auth/dealer/login', '/auth/refresh', '/auth/forgot-password', '/auth/reset-password'];
-
+ 
 export class ApiError extends Error {
   statusCode: number;
   errorName: string; 

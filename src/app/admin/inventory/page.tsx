@@ -96,9 +96,9 @@ export default function InventoryPage() {
               <Layers className="size-4" />
             </div>
           </div>
-          <p className="mt-2 text-2xl font-black tracking-tight text-foreground">
+          <div className="mt-2 text-2xl font-black tracking-tight text-foreground">
             {isLoading ? <Skeleton className="h-8 w-16" /> : totalSKUs}
-          </p>
+          </div>
         </div>
 
         {/* KPI 2: In-Stock */}
@@ -111,9 +111,9 @@ export default function InventoryPage() {
               <CheckCircle2 className="size-4" />
             </div>
           </div>
-          <p className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+          <div className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
             {isLoading ? <Skeleton className="h-8 w-16" /> : inStockCount}
-          </p>
+          </div>
         </div>
 
         {/* KPI 3: Out-of-Stock */}
@@ -126,9 +126,9 @@ export default function InventoryPage() {
               <AlertTriangle className="size-4" />
             </div>
           </div>
-          <p className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
+          <div className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
             {isLoading ? <Skeleton className="h-8 w-16" /> : outOfStockCount}
-          </p>
+          </div>
         </div>
       </div>
 
