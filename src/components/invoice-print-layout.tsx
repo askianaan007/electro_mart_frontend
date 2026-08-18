@@ -5,10 +5,10 @@ const PAGE_HEIGHT_MM = 297;
 const HEADER_HEIGHT_MM = (210 * 263) / 1541;
 const FOOTER_HEIGHT_MM = (210 * 457) / 1544;
 
-const CAPACITY_SINGLE_PAGE = 18; // Page 1 with Bill To AND Summary totals
+const CAPACITY_SINGLE_PAGE = 20; // Page 1 with Bill To AND Summary totals
 const CAPACITY_FIRST_PAGE = 18; // Page 1 with Bill To, NO Summary totals
 const CAPACITY_MIDDLE_PAGE = 24; // Middle page with NO Bill To, NO Summary totals
-const CAPACITY_LAST_PAGE = 18; // Last page with NO Bill To, WITH Summary totals
+const CAPACITY_LAST_PAGE = 16; // Last page with NO Bill To, WITH Summary totals
 
 const BILL_TO_RED = '#ED1C24';
 const INFO_BLUE = '#DCEEFB';
@@ -139,26 +139,37 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
             size: 210mm 297mm;
             margin: 0;
           }
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
+            background: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          .invoice-print-wrapper {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
           .invoice-page {
             width: 210mm !important;
-            height: 297mm !important;
-            min-height: 297mm !important;
-            max-height: 297mm !important;
+            height: 296.5mm !important;
+            min-height: 296.5mm !important;
+            max-height: 296.5mm !important;
             page-break-after: always !important;
             break-after: page !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             margin: 0 !important;
+            padding-bottom: 0 !important;
             box-shadow: none !important;
             overflow: hidden !important;
+            box-sizing: border-box !important;
           }
-          .invoice-page:last-child {
+          .invoice-page:last-child,
+          .invoice-page:last-of-type {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
             page-break-after: auto !important;
             break-after: auto !important;
           }
@@ -168,7 +179,7 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
       {pages.map((page) => (
         <div
           key={`page-${page.pageNumber}`}
-          className="invoice-page relative mx-auto flex flex-col justify-between overflow-hidden bg-white text-black shadow-lg pb-4 print:m-0 print:pb-4 print:shadow-none"
+          className="invoice-page relative mx-auto flex flex-col justify-between overflow-hidden bg-white text-black shadow-lg pb-4 print:m-0 print:pb-0 print:shadow-none"
           style={{ width: '210mm', height: `${PAGE_HEIGHT_MM}mm`, boxSizing: 'border-box' }}
         >
           {/* Header Image */}
