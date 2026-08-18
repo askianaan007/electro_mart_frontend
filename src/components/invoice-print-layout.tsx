@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/lib/api/types';
 
@@ -122,6 +123,16 @@ function formatInvoiceDate(value: string | null | undefined): string | null {
 }
 
 export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
+  useEffect(() => {
+    if (invoice?.invoiceNumber) {
+      const prevTitle = document.title;
+      document.title = invoice.invoiceNumber;
+      return () => {
+        document.title = prevTitle;
+      };
+    }
+  }, [invoice?.invoiceNumber]);
+
   const items = invoice.order?.items ?? [];
   const subtotal = Number(invoice.subtotal);
   const discountTotal = Number(invoice.discountTotal);
