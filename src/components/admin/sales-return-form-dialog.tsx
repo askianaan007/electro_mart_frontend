@@ -188,7 +188,7 @@ export function SalesReturnFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={isEdit ? 'Edit return' : 'Record sales return'} className="max-w-xl">
+      <DialogContent title={isEdit ? 'Edit return' : 'Record sales return'} className="max-h-[calc(100dvh-2rem)] max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? 'Edit return from' : 'Return items from'} {order?.dealer.businessName}
@@ -214,12 +214,12 @@ export function SalesReturnFormDialog({
                   const enteredQuantity = Number(watchedItems?.[index]?.quantity) || 0;
                   return (
                     <div key={rowField.id} className="space-y-1.5 rounded-lg border border-border p-2.5">
-                      <div className="flex items-start gap-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]">
                         <FormField
                           control={form.control}
                           name={`items.${index}.productId`}
                           render={({ field }) => (
-                            <FormItem className="flex-1">
+                            <FormItem className="col-span-2 min-w-0 sm:col-span-1">
                               <FormLabel>Product</FormLabel>
                               <Select value={field.value} onValueChange={field.onChange}>
                                 <FormControl>
@@ -250,7 +250,7 @@ export function SalesReturnFormDialog({
                                   type="number"
                                   min={1}
                                   max={remaining ?? undefined}
-                                  className="w-24"
+                                  className="w-full sm:w-24"
                                   {...field}
                                 />
                               </FormControl>

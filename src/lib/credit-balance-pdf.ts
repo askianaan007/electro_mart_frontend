@@ -5,6 +5,7 @@ const TYPE_LABEL: Record<CreditBalanceEntryType, string> = {
   PURCHASE: 'Purchase',
   TRANSPORT_CHARGE: 'Transport Charge',
   PURCHASE_RETURN: 'Purchase Return',
+  RETURN_REPLACEMENT: 'Return Replacement',
   SETTLEMENT: 'Settlement',
 };
 
@@ -32,6 +33,9 @@ export async function downloadCreditBalanceStatementPdf(
       { label: 'Purchases', value: meta.summary.totalPurchases, color: BLUE },
       { label: 'Transport Charges', value: -meta.summary.totalTransportCharges, color: GREEN },
       { label: 'Purchase Returns', value: -meta.summary.totalReturns, color: GREEN },
+      ...(meta.summary.totalReplacements > 0
+        ? [{ label: 'Return Replacements', value: meta.summary.totalReplacements, color: BLUE }]
+        : []),
       { label: 'Settlements Paid', value: -meta.summary.totalSettled, color: GREEN },
       { label: 'Pending Cheque Settlements', value: meta.summary.pendingChequeSettlements, color: AMBER },
     ],

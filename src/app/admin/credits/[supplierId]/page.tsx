@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Coins,
+  Eye,
   HandCoins,
   Loader2,
   Plus,
@@ -27,11 +28,14 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
+import { DateRangeInputs } from '@/components/date-range-inputs';
 import { SectionHeader } from '@/components/section-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChequeStatusBadge } from '@/components/status-badge';
 import { SettlementFormDialog } from '@/components/admin/settlement-form-dialog';
 import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
+import { ReturnDetailSheet } from '@/components/admin/return-detail-sheet';
+import { ReplacementStatusBadge } from '@/components/admin/replacement-status-badge';
 import {
   useDeleteSettlement,
   useSupplierCreditDetail,
@@ -77,6 +81,7 @@ export default function SupplierCreditDetailPage() {
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [revertPayment, setRevertPayment] = useState<SupplierPayment | null>(null);
   const [deletePayment, setDeletePayment] = useState<SupplierPayment | null>(null);
+  const [viewingReturnId, setViewingReturnId] = useState<string | null>(null);
   const updateChequeStatus = useUpdateChequeStatus();
   const deleteSettlement = useDeleteSettlement();
 
@@ -236,7 +241,17 @@ export default function SupplierCreditDetailPage() {
         )}
       >
         <StatCard label="Total Purchases" value={formatCurrency(data.totalPurchases)} icon={Truck} />
-        <StatCard label="Returns" value={`−${formatCurrency(data.totalReturns)}`} icon={Undo2} tone="warning" />
+        <StatCard
+          label="Returns"
+          value={`−${formatCurrency(data.totalReturns)}`}
+          icon={Undo2}
+          tone="warning"
+          hint={
+            Number(data.totalReplacements) > 0
+              ? `+${formatCurrency(data.totalReplacements)} re-added for replacements received`
+              : undefined
+          }
+        />
         {Number(data.totalTransportCharges) > 0 && (
           <StatCard
             label="Transport Charges"
@@ -678,24 +693,17 @@ export default function SupplierCreditDetailPage() {
               className="pl-9"
             />
           </div>
-          <Input
-            type="date"
-            value={returnsDateFrom}
-            onChange={(e) => {
-              setReturnsDateFrom(e.target.value);
+          <DateRangeInputs
+            from={returnsDateFrom}
+            to={returnsDateTo}
+            onFromChange={(v) => {
+              setReturnsDateFrom(v);
               setReturnsPage(1);
             }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={returnsDateTo}
-            onChange={(e) => {
-              setReturnsDateTo(e.target.value);
+            onToChange={(v) => {
+              setReturnsDateTo(v);
               setReturnsPage(1);
             }}
-            className="w-auto"
           />
           {returnsFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearReturnsFilters}>
@@ -735,6 +743,8 @@ export default function SupplierCreditDetailPage() {
                     <TableHead>Return #</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Replacement</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -745,6 +755,19 @@ export default function SupplierCreditDetailPage() {
                       <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
                       <TableCell className="whitespace-normal break-words text-right">
                         −{formatCurrency(purchaseReturn.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <ReplacementStatusBadge status={purchaseReturn.replacementStatus} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="View details & replacement history"
+                          onClick={() => setViewingReturnId(purchaseReturn.id)}
+                        >
+                          <Eye className="size-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -762,7 +785,24 @@ export default function SupplierCreditDetailPage() {
                     </span>
                   </div>
                   <p className="mt-1 break-words text-sm text-muted-foreground">{purchaseReturn.reason}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatDate(purchaseReturn.returnDate)}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <ReplacementStatusBadge status={purchaseReturn.replacementStatus} />
+                    <p className="text-xs text-muted-foreground">{formatDate(purchaseReturn.returnDate)}</p>
+                  </div>
+                  {Number(purchaseReturn.receivedAmount ?? 0) > 0 && (
+                    <p className="mt-1 text-xs font-medium text-success">
+                      +{formatCurrency(purchaseReturn.receivedAmount ?? 0)} replaced
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 h-10 w-full"
+                    onClick={() => setViewingReturnId(purchaseReturn.id)}
+                  >
+                    <Eye className="size-3.5" />
+                    View details & replacements
+                  </Button>
                 </div>
               ))}
             </div>
@@ -771,6 +811,8 @@ export default function SupplierCreditDetailPage() {
           </>
         )}
       </div>
+
+      <ReturnDetailSheet purchaseReturnId={viewingReturnId} onOpenChange={(o) => !o && setViewingReturnId(null)} />
 
       <StandalonePurchaseReturnFormDialog
         open={returnFormOpen}

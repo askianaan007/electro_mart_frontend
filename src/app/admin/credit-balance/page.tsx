@@ -12,6 +12,7 @@ import {
   HandCoins,
   Loader2,
   Package,
+  PackageCheck,
   Search,
   Truck,
   Undo2,
@@ -43,6 +44,7 @@ const TYPE_META: Record<CreditBalanceEntryType, { label: string; icon: typeof Pa
   PURCHASE: { label: 'Purchase', icon: Package, tone: 'text-primary' },
   TRANSPORT_CHARGE: { label: 'Transport Charge', icon: Truck, tone: 'text-destructive' },
   PURCHASE_RETURN: { label: 'Purchase Return', icon: Undo2, tone: 'text-destructive' },
+  RETURN_REPLACEMENT: { label: 'Return Replacement', icon: PackageCheck, tone: 'text-primary' },
   SETTLEMENT: { label: 'Settlement', icon: HandCoins, tone: 'text-destructive' },
 };
 
@@ -319,7 +321,13 @@ export default function CreditBalancePage() {
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-teal-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Goods sent back to suppliers</span>
+                  {summary.totalReplacements > 0 ? (
+                    <span>
+                      +{formatCurrency(summary.totalReplacements)} re-added for replacements received
+                    </span>
+                  ) : (
+                    <span>Goods sent back to suppliers</span>
+                  )}
                   <span className="font-medium text-teal-600 dark:text-teal-400">Credited Back</span>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   SupplierStatementPrintLayout,
   type StatementPurchaseLine,
+  type StatementReplacementLine,
   type StatementReturnLine,
   type StatementSettlementLine,
   type StatementTransportLine,
@@ -63,17 +64,24 @@ export default function SupplierStatementPage() {
       fetchAllPages((page, limit) => api.purchaseReturns.list({ supplierId: id, dateFrom, dateTo, page, limit })),
     enabled: !!id,
   });
+  const { data: replacementRows, isLoading: replacementsLoading } = useQuery({
+    queryKey: ['supplier-statement', 'replacements', id, dateFrom, dateTo],
+    queryFn: () =>
+      fetchAllPages((page, limit) => api.replacementReceipts.list({ supplierId: id, dateFrom, dateTo, page, limit })),
+    enabled: !!id,
+  });
   const { data: settlementRows, isLoading: settlementsLoading } = useQuery({
     queryKey: ['supplier-statement', 'settlements', id, dateFrom, dateTo],
     queryFn: () => fetchAllPages((page, limit) => api.credits.settlements(id, { dateFrom, dateTo, page, limit })),
     enabled: !!id,
   });
 
-  const isLoading = supplierLoading || purchasesLoading || returnsLoading || settlementsLoading;
+  const isLoading = supplierLoading || purchasesLoading || returnsLoading || replacementsLoading || settlementsLoading;
 
   const computed = useMemo(() => {
     const purchases = purchaseRows ?? [];
     const returns = returnRows ?? [];
+    const replacements = replacementRows ?? [];
     const settlements = settlementRows ?? [];
 
     const purchaseLines: StatementPurchaseLine[] = purchases.flatMap((purchase) =>
@@ -101,6 +109,15 @@ export default function SupplierStatementPage() {
     }));
     const returnTotal = returnLines.reduce((sum, r) => sum + r.amount, 0);
 
+    const replacementLines: StatementReplacementLine[] = replacements.map((r) => ({
+      date: r.receivedDate,
+      replacementNumber: r.replacementNumber,
+      returnNumber: r.purchaseReturn?.returnNumber ?? '',
+      reference: r.reference ?? '',
+      amount: Number(r.totalAmount),
+    }));
+    const replacementTotal = replacementLines.reduce((sum, r) => sum + r.amount, 0);
+
     const settlementLines: StatementSettlementLine[] = settlements.map((s) => ({
       date: s.paymentDate,
       mode: s.mode.replace('_', ' '),
@@ -112,7 +129,8 @@ export default function SupplierStatementPage() {
       .filter((s) => !isBouncedCheque(s.mode, s.chequeStatus))
       .reduce((sum, s) => sum + Number(s.amount), 0);
 
-    const netPayable = purchaseTotal - returnTotal - transportTotal;
+    // Same components as the backend's supplierBalance(), scoped to the period.
+    const netPayable = purchaseTotal - returnTotal + replacementTotal - transportTotal;
     const balanceForPeriod = netPayable - settlementTotal;
 
     return {
@@ -122,12 +140,14 @@ export default function SupplierStatementPage() {
       transportTotal,
       returnLines,
       returnTotal,
+      replacementLines,
+      replacementTotal,
       settlementLines,
       settlementTotal,
       netPayable,
       balanceForPeriod,
     };
-  }, [purchaseRows, returnRows, settlementRows]);
+  }, [purchaseRows, returnRows, replacementRows, settlementRows]);
 
   function applyPeriod() {
     if (!draftFrom || !draftTo || draftFrom > draftTo) return;

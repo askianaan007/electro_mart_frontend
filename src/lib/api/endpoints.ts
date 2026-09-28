@@ -36,6 +36,7 @@ import type {
   ProductImage,
   Purchase,
   PurchaseReturn,
+  ReplacementReceipt,
   Role,
   SalesAnalysisRow,
   SalesAnalysisSummary,
@@ -249,6 +250,41 @@ export const api = {
       },
     ) => apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchase-returns/${id}`).then((r) => r.data),
+  },
+
+  replacementReceipts: {
+    list: (params: PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string }) =>
+      apiClient
+        .get<Paginated<ReplacementReceipt>>('/purchase-return-replacements', { params: buildParams(params) })
+        .then((r) => r.data),
+    listForReturn: (purchaseReturnId: string) =>
+      apiClient
+        .get<ReplacementReceipt[]>(`/purchase-returns/${purchaseReturnId}/replacements`)
+        .then((r) => r.data),
+    create: (
+      purchaseReturnId: string,
+      data: {
+        idempotencyKey: string;
+        receivedDate: string;
+        reference?: string;
+        notes?: string;
+        items: { purchaseReturnItemId: string; quantity: number }[];
+      },
+    ) =>
+      apiClient
+        .post<ReplacementReceipt>(`/purchase-returns/${purchaseReturnId}/replacements`, data)
+        .then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        receivedDate: string;
+        reference?: string;
+        notes?: string;
+        items: { purchaseReturnItemId: string; quantity: number }[];
+      },
+    ) => apiClient.patch<ReplacementReceipt>(`/purchase-return-replacements/${id}`, data).then((r) => r.data),
+    void: (id: string) =>
+      apiClient.delete<{ message: string }>(`/purchase-return-replacements/${id}`).then((r) => r.data),
   },
 
   orders: {

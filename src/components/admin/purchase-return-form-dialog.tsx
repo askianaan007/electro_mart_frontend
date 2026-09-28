@@ -59,7 +59,9 @@ export function PurchaseReturnFormDialog({
     for (const purchaseReturn of existingReturns ?? []) {
       if (isEdit && purchaseReturn.id === editingReturn!.id) continue;
       for (const item of purchaseReturn.items) {
-        map.set(item.productId, (map.get(item.productId) ?? 0) - item.quantity);
+        // Units the supplier already replaced are back in stock from this
+        // purchase and returnable again — mirrors the server's ceiling.
+        map.set(item.productId, (map.get(item.productId) ?? 0) - item.quantity + (item.receivedQuantity ?? 0));
       }
     }
     return map;
@@ -158,7 +160,7 @@ export function PurchaseReturnFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={isEdit ? 'Edit purchase return' : 'Record purchase return'} className="max-w-xl">
+      <DialogContent title={isEdit ? 'Edit purchase return' : 'Record purchase return'} className="max-h-[calc(100dvh-2rem)] max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? 'Edit return to' : 'Return items to'} {purchase?.supplier.name}
@@ -176,12 +178,12 @@ export function PurchaseReturnFormDialog({
                   const selectedProductId = watchedItems?.[index]?.productId ?? '';
                   const remaining = remainingForRow(selectedProductId, index);
                   return (
-                    <div key={rowField.id} className="flex items-start gap-2">
+                    <div key={rowField.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto] rounded-lg border border-border p-2.5 sm:border-0 sm:p-0">
                       <FormField
                         control={form.control}
                         name={`items.${index}.productId`}
                         render={({ field }) => (
-                          <FormItem className="flex-1">
+                          <FormItem className="col-span-2 min-w-0 sm:col-span-1">
                             <FormLabel>Product</FormLabel>
                             <Select value={field.value} onValueChange={field.onChange}>
                               <FormControl>
@@ -212,7 +214,7 @@ export function PurchaseReturnFormDialog({
                                 type="number"
                                 min={1}
                                 max={remaining ?? undefined}
-                                className="w-24"
+                                className="w-full sm:w-24"
                                 {...field}
                               />
                             </FormControl>

@@ -69,6 +69,11 @@ export default function CreditsPage() {
               value={`−${formatCurrency(data.totals.totalReturns)}`}
               icon={Receipt}
               tone="warning"
+              hint={
+                Number(data.totals.totalReplacements) > 0
+                  ? `+${formatCurrency(data.totals.totalReplacements)} re-added for replacements received`
+                  : undefined
+              }
             />
             <StatCard
               label="Total Settled"
@@ -166,6 +171,11 @@ export default function CreditsPage() {
                       </TableCell>
                       <TableCell className="whitespace-normal break-words text-right">
                         −{formatCurrency(entry.totalReturns)}
+                        {Number(entry.totalReplacements) > 0 && (
+                          <span className="block text-xs text-success">
+                            +{formatCurrency(entry.totalReplacements)} replaced
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-normal break-words text-right">
                         −{formatCurrency(entry.totalSettled)}
@@ -200,6 +210,9 @@ export default function CreditsPage() {
                     <div>
                       <p className="text-muted-foreground">Returns</p>
                       <p className="break-words font-medium">−{formatCurrency(entry.totalReturns)}</p>
+                      {Number(entry.totalReplacements) > 0 && (
+                        <p className="break-words text-success">+{formatCurrency(entry.totalReplacements)} replaced</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Settled</p>

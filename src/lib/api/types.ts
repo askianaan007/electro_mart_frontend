@@ -181,7 +181,7 @@ export interface Purchase {
   admin?: { id: string; name: string; email: string };
   createdAt: string;
   items: PurchaseItem[];
-  purchaseReturns?: { totalAmount: string }[];
+  purchaseReturns?: { totalAmount: string; replacements?: { totalAmount: string }[] }[];
 }
 
 export interface PurchaseReturnItem {
@@ -192,7 +192,12 @@ export interface PurchaseReturnItem {
   quantity: number;
   unitCost: string;
   lineTotal: string;
+  /** Units the supplier has already sent back in replacement for this line. */
+  receivedQuantity?: number;
+  remainingQuantity?: number;
 }
+
+export type ReplacementStatus = 'NOT_REPLACED' | 'PARTIAL' | 'FULL';
 
 export interface PurchaseReturn {
   id: string;
@@ -206,6 +211,38 @@ export interface PurchaseReturn {
   returnDate: string;
   createdAt: string;
   items: PurchaseReturnItem[];
+  /** Value of replacement receipts recorded against this return (derived server-side). */
+  receivedAmount?: string;
+  replacementStatus?: ReplacementStatus;
+}
+
+export interface ReplacementReceiptItem {
+  id: string;
+  replacementId: string;
+  purchaseReturnItemId: string;
+  productId: string;
+  product?: Product;
+  purchaseReturnItem?: { quantity: number };
+  quantity: number;
+  unitCost: string;
+  lineTotal: string;
+}
+
+export interface ReplacementReceipt {
+  id: string;
+  replacementNumber: string;
+  purchaseReturnId: string;
+  purchaseReturn?: { id: string; returnNumber: string; purchaseId: string | null };
+  supplierId: string;
+  supplier?: Supplier;
+  totalAmount: string;
+  receivedDate: string;
+  reference: string | null;
+  notes: string | null;
+  adminId: string;
+  admin?: { id: string; name: string };
+  createdAt: string;
+  items: ReplacementReceiptItem[];
 }
 
 export interface SupplierPayment {
@@ -229,6 +266,7 @@ export interface CreditSummaryEntry {
   totalPurchases: string;
   totalTransportCharges: string;
   totalReturns: string;
+  totalReplacements: string;
   totalSettled: string;
   creditBalance: string;
 }
@@ -240,6 +278,7 @@ export interface CreditsSummary {
     totalPurchases: string;
     totalTransportCharges: string;
     totalReturns: string;
+    totalReplacements: string;
     totalSettled: string;
     totalCreditBalance: string;
   };
@@ -250,6 +289,7 @@ export interface SupplierCreditDetail {
   totalPurchases: string;
   totalTransportCharges: string;
   totalReturns: string;
+  totalReplacements: string;
   totalSettled: string;
   creditBalance: string;
 }
@@ -423,13 +463,19 @@ export interface LiquidCashHistoryEntry {
   createdAt: string;
 }
 
-export type CreditBalanceEntryType = 'PURCHASE' | 'TRANSPORT_CHARGE' | 'PURCHASE_RETURN' | 'SETTLEMENT';
+export type CreditBalanceEntryType =
+  | 'PURCHASE'
+  | 'TRANSPORT_CHARGE'
+  | 'PURCHASE_RETURN'
+  | 'RETURN_REPLACEMENT'
+  | 'SETTLEMENT';
 
 export interface CreditBalanceSummary {
   balance: number;
   totalPurchases: number;
   totalTransportCharges: number;
   totalReturns: number;
+  totalReplacements: number;
   totalSettled: number;
   /** Already included in `balance` — informational: what would bounce back onto the balance if returned. */
   pendingChequeSettlements: number;
@@ -614,6 +660,8 @@ export interface AdminDashboardSummary {
   totalSalesReturnChangePct: number | null;
   totalPurchaseReturn: number;
   totalPurchaseReturnChangePct: number | null;
+  totalReturnReplacement: number;
+  totalReturnReplacementChangePct: number | null;
   netPurchase: number;
   netPurchaseChangePct: number | null;
   netCashFlow: number;

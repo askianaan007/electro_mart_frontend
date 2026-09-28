@@ -118,7 +118,7 @@ export function StandalonePurchaseReturnFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={isEdit ? 'Edit return' : 'Record a return'} className="max-w-xl">
+      <DialogContent title={isEdit ? 'Edit return' : 'Record a return'} className="max-h-[calc(100dvh-2rem)] max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit return' : 'Record a return'}</DialogTitle>
         </DialogHeader>
@@ -152,12 +152,12 @@ export function StandalonePurchaseReturnFormDialog({
               )}
             />
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="productId"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-3">
+                  <FormItem className="col-span-2 min-w-0 sm:col-span-3">
                     <FormLabel>Product</FormLabel>
                     <Select value={field.value} onValueChange={handleProductSelect}>
                       <FormControl>
@@ -207,7 +207,7 @@ export function StandalonePurchaseReturnFormDialog({
                 control={form.control}
                 name="returnDate"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-2 sm:col-span-1">
                     <FormLabel>Return date</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />

@@ -11,12 +11,14 @@ function MetricTile({
   value,
   icon: Icon,
   change,
+  note,
   tone = 'primary',
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
   change?: number | null;
+  note?: string;
   tone?: 'primary' | 'success' | 'warning' | 'purple' | 'rose';
 }) {
   const tones = {
@@ -66,6 +68,7 @@ function MetricTile({
         <p className="mt-0.5 break-words text-xs sm:text-sm font-bold text-foreground tracking-tight drop-shadow-2xs">
           {value}
         </p>
+        {note && <p className="mt-0.5 break-words text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{note}</p>}
         {typeof change === 'number' && (
           <div className="mt-0.5 flex items-center gap-1">
             <span
@@ -147,6 +150,11 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
             value={formatCurrency(data.totalPurchaseReturn)}
             icon={Undo2}
             change={data.totalPurchaseReturnChangePct}
+            note={
+              data.totalReturnReplacement > 0
+                ? `+${formatCurrency(data.totalReturnReplacement)} replaced`
+                : undefined
+            }
             tone="warning"
           />
           <MetricTile

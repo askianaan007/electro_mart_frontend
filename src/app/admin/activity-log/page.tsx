@@ -51,7 +51,17 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
       { value: 'DELETED_PURCHASE', label: 'Deleted purchase' },
     ],
   },
-  { module: 'Purchase Returns', actions: [{ value: 'RECORDED_PURCHASE_RETURN', label: 'Recorded purchase return' }] },
+  {
+    module: 'Purchase Returns',
+    actions: [
+      { value: 'RECORDED_PURCHASE_RETURN', label: 'Recorded purchase return' },
+      { value: 'UPDATED_PURCHASE_RETURN', label: 'Updated purchase return' },
+      { value: 'DELETED_PURCHASE_RETURN', label: 'Deleted purchase return' },
+      { value: 'RECORDED_REPLACEMENT_RECEIPT', label: 'Received return replacement' },
+      { value: 'UPDATED_REPLACEMENT_RECEIPT', label: 'Edited return replacement' },
+      { value: 'VOIDED_REPLACEMENT_RECEIPT', label: 'Voided return replacement' },
+    ],
+  },
   { module: 'Sales Returns', actions: [{ value: 'RECORDED_SALES_RETURN', label: 'Recorded sales return' }] },
   {
     module: 'Supplier Credits',

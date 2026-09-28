@@ -50,8 +50,13 @@ import type { Purchase } from "@/lib/api/types";
 
 function purchaseTotals(purchase: Purchase) {
   const grossValue = Number(purchase.totalValue);
+  // Net of replacement receipts: goods the supplier sent back in place of a
+  // return restore that part of the purchase's value.
   const returnedValue = (purchase.purchaseReturns ?? []).reduce(
-    (sum, r) => sum + Number(r.totalAmount),
+    (sum, r) =>
+      sum +
+      Number(r.totalAmount) -
+      (r.replacements ?? []).reduce((s, rep) => s + Number(rep.totalAmount), 0),
     0,
   );
   const transportCharges = Number(purchase.transportCharges);

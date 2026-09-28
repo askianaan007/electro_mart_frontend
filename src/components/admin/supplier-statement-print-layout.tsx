@@ -24,6 +24,14 @@ export interface StatementReturnLine {
   amount: number;
 }
 
+export interface StatementReplacementLine {
+  date: string;
+  replacementNumber: string;
+  returnNumber: string;
+  reference: string;
+  amount: number;
+}
+
 export interface StatementSettlementLine {
   date: string;
   mode: string;
@@ -63,6 +71,8 @@ export function SupplierStatementPrintLayout({
   transportTotal,
   returnLines,
   returnTotal,
+  replacementLines = [],
+  replacementTotal = 0,
   settlementLines,
   settlementTotal,
   netPayable,
@@ -77,6 +87,8 @@ export function SupplierStatementPrintLayout({
   transportTotal: number;
   returnLines: StatementReturnLine[];
   returnTotal: number;
+  replacementLines?: StatementReplacementLine[];
+  replacementTotal?: number;
   settlementLines: StatementSettlementLine[];
   settlementTotal: number;
   netPayable: number;
@@ -232,10 +244,47 @@ export function SupplierStatementPrintLayout({
         </div>
       )}
 
+      {replacementLines.length > 0 && (
+        <>
+          <SectionTitle>Replacements Received</SectionTitle>
+          <table className="mt-[3mm] w-full border-collapse text-[9.5pt]">
+            <thead>
+              <tr>
+                <th className="w-[7%] border border-black px-2 py-1.5 text-left">No</th>
+                <th className="w-[16%] border border-black px-2 py-1.5 text-left">Date</th>
+                <th className="border border-black px-2 py-1.5 text-left">Receipt #</th>
+                <th className="border border-black px-2 py-1.5 text-left">For Return #</th>
+                <th className="border border-black px-2 py-1.5 text-left">Ref</th>
+                <th className="w-[18%] border border-black px-2 py-1.5 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {replacementLines.map((line, index) => (
+                <tr key={index} className="break-inside-avoid">
+                  <td className="border border-black px-2 py-1.5">{index + 1}</td>
+                  <td className="border border-black px-2 py-1.5">{formatShortDate(line.date)}</td>
+                  <td className="border border-black px-2 py-1.5">{line.replacementNumber}</td>
+                  <td className="border border-black px-2 py-1.5">{line.returnNumber}</td>
+                  <td className="border border-black px-2 py-1.5">{line.reference}</td>
+                  <td className="border border-black px-2 py-1.5 text-right">+{formatCurrency(line.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-end break-inside-avoid">
+            <div className="-mt-px flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
+              <span>TOTAL AMOUNT</span>
+              <span>+{formatCurrency(replacementTotal)}</span>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="mt-[8mm] text-[10pt] leading-relaxed">
         <p>Gross Purchase Amount: {formatCurrency(purchaseTotal)}</p>
         {transportTotal > 0 && <p>Transportation Charges: {formatCurrency(transportTotal)}</p>}
         {returnTotal > 0 && <p>Purchase Returns: −{formatCurrency(returnTotal)}</p>}
+        {replacementTotal > 0 && <p>Replacements Received: +{formatCurrency(replacementTotal)}</p>}
         <p className="mt-[3mm] text-[11pt] font-bold">Net Amount Payable: {formatCurrency(netPayable)}</p>
       </div>
 
