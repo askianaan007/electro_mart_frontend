@@ -342,6 +342,7 @@ export default function PurchaseDetailPage() {
                               size="sm"
                               variant="ghost"
                               title="View details & replacement history"
+                              aria-label="View details & replacement history"
                               onClick={() => setViewingReturnId(purchaseReturn.id)}
                             >
                               <Eye className="size-3.5" />
@@ -351,6 +352,7 @@ export default function PurchaseDetailPage() {
                                 size="sm"
                                 variant="ghost"
                                 title="Receive replacement"
+                                aria-label="Receive replacement"
                                 onClick={() => setReceivingReturn(purchaseReturn)}
                               >
                                 <PackageCheck className="size-3.5" />

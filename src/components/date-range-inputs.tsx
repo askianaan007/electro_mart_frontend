@@ -23,7 +23,7 @@ export function DateRangeInputs({
         value={from}
         max={to || undefined}
         onChange={(e) => onFromChange(e.target.value)}
-        className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+        className="min-w-0 flex-1 px-2 sm:w-auto sm:flex-none sm:px-3"
         aria-label="From date"
       />
       <span className="shrink-0 text-sm text-muted-foreground">to</span>
@@ -32,7 +32,7 @@ export function DateRangeInputs({
         value={to}
         min={from || undefined}
         onChange={(e) => onToChange(e.target.value)}
-        className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+        className="min-w-0 flex-1 px-2 sm:w-auto sm:flex-none sm:px-3"
         aria-label="To date"
       />
     </div>

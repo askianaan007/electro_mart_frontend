@@ -197,17 +197,22 @@ export function ReplacementReceiptFormDialog({
       <DialogContent
         title={isEdit ? 'Edit replacement' : 'Receive replacement'}
         className="max-h-[calc(100dvh-1rem)] max-w-2xl sm:max-h-[calc(100dvh-2rem)]"
+        // Don't auto-focus the first quantity box — on phones that pops the
+        // keyboard over the lines before the user has read them.
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="pr-6">
           <DialogTitle>
-            {isEdit
-              ? `Edit ${editingReceipt?.replacementNumber} (return ${purchaseReturn?.returnNumber ?? ''})`
-              : `Receive replacement for ${purchaseReturn?.returnNumber ?? ''}`}
+            {isEdit ? `Edit ${editingReceipt?.replacementNumber ?? 'receipt'}` : 'Receive replacement'}
           </DialogTitle>
+          <p className="break-words text-sm font-medium">
+            Return {purchaseReturn?.returnNumber}
+            {purchaseReturn?.supplier?.name ? ` · ${purchaseReturn.supplier.name}` : ''}
+          </p>
           <DialogDescription>
             {isEdit
-              ? 'Correct the quantities, move them to the right product line, or fix the date/ref. Stock, the receipt value and the supplier balance are adjusted by the difference.'
-              : `Record the goods ${purchaseReturn?.supplier?.name ?? 'the supplier'} sent in place of this return. Units go back into stock and their value is added back to the supplier balance.`}
+              ? 'Fix the counts, move units to the right product, or correct the date/ref. Stock and the supplier balance adjust by the difference.'
+              : 'Units go back into stock and their value is added back to the supplier balance.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -225,7 +230,7 @@ export function ReplacementReceiptFormDialog({
                     <TableHead>Product</TableHead>
                     <TableHead className="text-right">Returned</TableHead>
                     <TableHead className="text-right">{isEdit ? 'Other receipts' : 'Received'}</TableHead>
-                    <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead className="text-right">{isEdit ? 'Max' : 'Remaining'}</TableHead>
                     <TableHead className="text-right">Unit cost</TableHead>
                     <TableHead>{isEdit ? 'This receipt' : 'Receive now'}</TableHead>
                     <TableHead className="text-right">Value</TableHead>
@@ -280,7 +285,7 @@ export function ReplacementReceiptFormDialog({
                       <dd className="font-medium">{line.received}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Remaining</dt>
+                      <dt className="text-muted-foreground">{isEdit ? 'Max' : 'Remaining'}</dt>
                       <dd className="font-semibold">{line.remaining}</dd>
                     </div>
                   </dl>
@@ -296,22 +301,26 @@ export function ReplacementReceiptFormDialog({
                     </div>
                     <div className="text-right text-xs">
                       <p className="text-muted-foreground">@ {formatCurrency(line.item.unitCost)}</p>
-                      <p className="text-sm font-semibold">{line.qty > 0 ? formatCurrency(line.lineTotal) : '—'}</p>
+                      <p className={cn('text-sm font-semibold', line.qty === 0 && 'text-muted-foreground')}>
+                        {formatCurrency(line.lineTotal)}
+                      </p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={receiveAllRemaining}
-            >
-              Receive all remaining
-            </Button>
+            {!isEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={receiveAllRemaining}
+              >
+                Receive all remaining
+              </Button>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -385,12 +394,19 @@ export function ReplacementReceiptFormDialog({
         )}
 
         {/* Sticky on mobile so the action is always reachable on long returns */}
-        <DialogFooter className="sticky bottom-0 -mx-5 -mb-5 border-t border-border bg-card px-5 py-3 sm:static sm:m-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <DialogFooter className="sticky -bottom-5 z-10 -mx-5 -mb-5 grid grid-cols-2 gap-2 border-t border-border bg-card px-5 py-3 sm:static sm:m-0 sm:flex sm:border-0 sm:bg-transparent sm:p-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} loading={pending} disabled={!anyRemaining || totalUnits === 0}>
-            {isEdit ? 'Save changes' : 'Receive replacement'}
+            {isEdit ? (
+              'Save changes'
+            ) : (
+              <>
+                <span className="sm:hidden">Receive</span>
+                <span className="hidden sm:inline">Receive replacement</span>
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -193,9 +193,7 @@ export function PurchaseReturnsTab() {
               <TableBody>
                 {data.data.map((purchaseReturn) => (
                   <TableRow key={purchaseReturn.id}>
-                    <TableCell className="whitespace-normal break-words">
-                      {formatDate(purchaseReturn.returnDate)}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(purchaseReturn.returnDate)}</TableCell>
                     <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
                     <TableCell className="whitespace-normal break-words">
                       {purchaseReturn.supplier?.name ?? '—'}
@@ -234,6 +232,7 @@ export function PurchaseReturnsTab() {
                           size="sm"
                           variant="ghost"
                           title="View details & replacement history"
+                          aria-label="View details & replacement history"
                           onClick={() => setViewingReturnId(purchaseReturn.id)}
                         >
                           <Eye className="size-3.5" />
@@ -243,6 +242,7 @@ export function PurchaseReturnsTab() {
                             size="sm"
                             variant="ghost"
                             title="Receive replacement"
+                            aria-label="Receive replacement"
                             onClick={() => setReceivingReturn(purchaseReturn)}
                           >
                             <PackageCheck className="size-3.5" />

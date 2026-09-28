@@ -78,7 +78,6 @@ export function ReturnDetailSheet({
             <SheetTitle className="flex flex-wrap items-center gap-2">
               <Undo2 className="size-5 text-muted-foreground" />
               {purchaseReturn?.returnNumber ?? 'Return'}
-              {purchaseReturn && <ReplacementStatusBadge status={purchaseReturn.replacementStatus} />}
             </SheetTitle>
             {purchaseReturn && (
               <p className="break-words text-sm text-muted-foreground">

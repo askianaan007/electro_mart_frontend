@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StandalonePurchaseReturnFormDialog } from "@/components/admin/standalone-purchase-return-form-dialog";
 import { PurchaseReturnsTab } from "@/components/admin/purchase-returns-tab";
+import { DateRangeInputs } from "@/components/date-range-inputs";
 import { useDeletePurchase, usePurchases } from "@/hooks/use-purchases";
 import { useAllSuppliers } from "@/hooks/use-suppliers";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -170,7 +171,7 @@ export default function PurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Truck className="size-5" />
@@ -182,7 +183,7 @@ export default function PurchasesPage() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
           <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
             <Undo2 />
             Record Return
@@ -237,24 +238,17 @@ export default function PurchasesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
+              <DateRangeInputs
+                from={dateFrom}
+                to={dateTo}
+                onFromChange={(v) => {
+                  setDateFrom(v);
                   setPage(1);
                 }}
-                className="w-auto"
-              />
-              <span className="text-sm text-muted-foreground">to</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
+                onToChange={(v) => {
+                  setDateTo(v);
                   setPage(1);
                 }}
-                className="w-auto"
               />
               {filtersActive && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
