@@ -10,6 +10,7 @@ import {
   ArrowUp,
   Coins,
   Eye,
+  FileText,
   HandCoins,
   Loader2,
   Plus,
@@ -35,6 +36,7 @@ import { ChequeStatusBadge } from '@/components/status-badge';
 import { SettlementFormDialog } from '@/components/admin/settlement-form-dialog';
 import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
 import { ReturnDetailSheet } from '@/components/admin/return-detail-sheet';
+import { SupplierStatementDialog } from '@/components/admin/supplier-statement-dialog';
 import { ReplacementStatusBadge } from '@/components/admin/replacement-status-badge';
 import {
   useDeleteSettlement,
@@ -82,6 +84,7 @@ export default function SupplierCreditDetailPage() {
   const [revertPayment, setRevertPayment] = useState<SupplierPayment | null>(null);
   const [deletePayment, setDeletePayment] = useState<SupplierPayment | null>(null);
   const [viewingReturnId, setViewingReturnId] = useState<string | null>(null);
+  const [statementOpen, setStatementOpen] = useState(false);
   const updateChequeStatus = useUpdateChequeStatus();
   const deleteSettlement = useDeleteSettlement();
 
@@ -228,10 +231,16 @@ export default function SupplierCreditDetailPage() {
           <h1 className="text-2xl font-semibold">{data.supplier.name}</h1>
           <p className="text-sm text-muted-foreground">Credit (payable) history</p>
         </div>
-        <Button onClick={() => setSettlementOpen(true)} className="shrink-0">
-          <Plus />
-          Record Settlement
-        </Button>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+          <Button variant="outline" onClick={() => setStatementOpen(true)}>
+            <FileText />
+            Statement
+          </Button>
+          <Button onClick={() => setSettlementOpen(true)}>
+            <Plus />
+            Record Settlement
+          </Button>
+        </div>
       </div>
 
       <div
@@ -813,6 +822,7 @@ export default function SupplierCreditDetailPage() {
       </div>
 
       <ReturnDetailSheet purchaseReturnId={viewingReturnId} onOpenChange={(o) => !o && setViewingReturnId(null)} />
+      <SupplierStatementDialog open={statementOpen} onOpenChange={setStatementOpen} supplier={data.supplier} />
 
       <StandalonePurchaseReturnFormDialog
         open={returnFormOpen}
