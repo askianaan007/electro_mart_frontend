@@ -102,7 +102,7 @@ export function InvestmentFormDialog({
                         <SelectValue placeholder="Select investor" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable searchPlaceholder="Search investors…">
                       {investors?.data.map((investor) => (
                         <SelectItem key={investor.id} value={investor.id}>
                           {investor.name}

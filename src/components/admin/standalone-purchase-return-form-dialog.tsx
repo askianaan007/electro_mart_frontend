@@ -139,7 +139,7 @@ export function StandalonePurchaseReturnFormDialog({
                         <SelectValue placeholder="Select supplier" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable searchPlaceholder="Search suppliers…">
                       {suppliers?.data.map((supplier) => (
                         <SelectItem key={supplier.id} value={supplier.id}>
                           {supplier.name}
@@ -165,7 +165,7 @@ export function StandalonePurchaseReturnFormDialog({
                           <SelectValue placeholder="Select product" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable searchPlaceholder="Search products…">
                         {products?.data.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
                             {product.name}

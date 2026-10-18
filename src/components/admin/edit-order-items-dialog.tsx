@@ -137,7 +137,7 @@ export function EditOrderItemsDialog({
                               <SelectTrigger>
                                 <SelectValue placeholder="Select product" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent searchable searchPlaceholder="Search products…">
                                 {products?.data.map((product) => (
                                   <SelectItem key={product.id} value={product.id}>
                                     {product.name} ({product.currentStock} in stock)

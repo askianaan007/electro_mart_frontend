@@ -586,7 +586,7 @@ export function OrderForm({ order }: { order?: Order }) {
                                 <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select product..." />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent searchable searchPlaceholder="Search products…">
                                   {products?.data.map((product) => (
                                     <SelectItem key={product.id} value={product.id}>
                                       <span>{product.name}</span>
@@ -725,7 +725,7 @@ export function OrderForm({ order }: { order?: Order }) {
                                 <SelectValue placeholder="Select product..." />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                            <SelectContent searchable searchPlaceholder="Search products…">
                               {products?.data.map((product) => (
                                 <SelectItem key={product.id} value={product.id}>
                                   {product.name} ({product.currentStock} in stock)

@@ -150,7 +150,7 @@ export function QuickAddProductDialog({
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable searchPlaceholder="Search categories…">
                         {categories?.data.map((category) => (
                           <SelectItem key={category.id} value={category.name}>
                             {category.name}

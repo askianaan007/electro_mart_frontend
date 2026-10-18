@@ -550,7 +550,7 @@ export default function EquityPage() {
             <SelectTrigger className="sm:w-40">
               <SelectValue placeholder="All Investors" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search investors…">
               <SelectItem value="all">All Investors</SelectItem>
               {investorOptions.map((entry) => (
                 <SelectItem key={entry.investorId} value={entry.investorId}>

@@ -103,7 +103,7 @@ export function AssignProductDialog({
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent searchable searchPlaceholder="Search categories…">
                   {categories?.data.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
@@ -126,7 +126,7 @@ export function AssignProductDialog({
                 <SelectTrigger>
                   <SelectValue placeholder={productsFetching ? 'Searching…' : 'Select a product'} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent searchable searchPlaceholder="Search products…">
                   {productResults?.data.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.name} ({product.productCode})

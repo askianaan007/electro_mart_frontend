@@ -179,7 +179,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                           <SelectValue placeholder="Select supplier" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable searchPlaceholder="Search suppliers…">
                         {suppliers?.data.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.id}>
                             {supplier.name}
@@ -283,7 +283,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                                   <SelectTrigger className="flex-1">
                                     <SelectValue placeholder="Select product" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent searchable searchPlaceholder="Search products…">
                                     {products?.data.map((product) => (
                                       <SelectItem key={product.id} value={product.id}>
                                         {product.name}
@@ -381,7 +381,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                                   <SelectValue placeholder="Select product" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
+                              <SelectContent searchable searchPlaceholder="Search products…">
                                 {products?.data.map((product) => (
                                   <SelectItem key={product.id} value={product.id}>
                                     {product.name}

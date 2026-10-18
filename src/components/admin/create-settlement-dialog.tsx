@@ -83,7 +83,7 @@ export function CreateSettlementDialog({
                         <SelectValue placeholder="Select a representative" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable searchPlaceholder="Search representatives…">
                       {representatives?.data.map((rep) => (
                         <SelectItem key={rep.id} value={rep.id}>
                           {rep.name}

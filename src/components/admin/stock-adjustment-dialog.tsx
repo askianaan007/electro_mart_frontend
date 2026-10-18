@@ -98,7 +98,7 @@ export function StockAdjustmentDialog({
                         <SelectValue placeholder="Select a product from inventory" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="max-h-60">
+                    <SelectContent className="max-h-60" searchable searchPlaceholder="Search products…">
                       {products?.data.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
                           <span className="font-medium text-foreground">{product.name}</span>{' '}

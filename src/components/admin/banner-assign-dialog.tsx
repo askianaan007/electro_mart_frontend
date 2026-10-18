@@ -80,7 +80,7 @@ export function BannerAssignDialog({
               <SelectTrigger>
                 <SelectValue placeholder="Select a representative" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent searchable searchPlaceholder="Search representatives…">
                 {representatives?.data.map((rep) => (
                   <SelectItem key={rep.id} value={rep.id}>
                     {rep.name}

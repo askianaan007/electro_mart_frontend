@@ -215,7 +215,7 @@ export default function SalesAnalysisPage() {
             <SelectTrigger className="sm:w-48">
               <SelectValue placeholder="All Customers" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search customers…">
               <SelectItem value="all">All Customers</SelectItem>
               {dealers?.data.map((dealer) => (
                 <SelectItem key={dealer.id} value={dealer.id}>

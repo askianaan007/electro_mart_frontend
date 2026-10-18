@@ -183,7 +183,7 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
           <SelectTrigger className="sm:w-48">
             <SelectValue placeholder="All customer" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent searchable searchPlaceholder="Search customers…">
             <SelectItem value="all">All customer</SelectItem>
             {dealers?.data.map((dealer) => (
               <SelectItem key={dealer.id} value={dealer.id}>
@@ -574,7 +574,7 @@ function PaymentHistoryTab({
           <SelectTrigger className="sm:w-48">
             <SelectValue placeholder="All customer" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent searchable searchPlaceholder="Search customers…">
             <SelectItem value="all">All customer</SelectItem>
             {dealers?.data.map((dealer) => (
               <SelectItem key={dealer.id} value={dealer.id}>

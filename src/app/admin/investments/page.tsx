@@ -361,7 +361,7 @@ export default function InvestmentsPage() {
             <SelectTrigger className="sm:w-48">
               <SelectValue placeholder="All investors" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search investors…">
               <SelectItem value="all">All investors</SelectItem>
               {investors?.data.map((investor) => (
                 <SelectItem key={investor.id} value={investor.id}>

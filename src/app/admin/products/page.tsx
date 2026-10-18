@@ -237,7 +237,7 @@ export default function ProductsPage() {
             <SelectTrigger className="sm:w-40">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search categories…">
               <SelectItem value="all">All Categories</SelectItem>
               {categories?.data.map((c) => (
                 <SelectItem key={c.id} value={c.name}>

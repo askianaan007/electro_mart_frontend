@@ -112,7 +112,7 @@ export function PurchaseReturnsTab() {
           <SelectTrigger className="sm:w-48">
             <SelectValue placeholder="All suppliers" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent searchable searchPlaceholder="Search suppliers…">
             <SelectItem value="all">All suppliers</SelectItem>
             {suppliers?.data.map((supplier) => (
               <SelectItem key={supplier.id} value={supplier.id}>

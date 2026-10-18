@@ -320,7 +320,7 @@ export default function ActivityLogPage() {
             <SelectTrigger className="sm:w-44">
               <SelectValue placeholder="All admins" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search users…">
               <SelectItem value="all">All admins</SelectItem>
               {admins?.map((admin) => (
                 <SelectItem key={admin.id} value={admin.id}>

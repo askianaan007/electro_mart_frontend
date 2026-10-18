@@ -62,6 +62,10 @@ const NEXT_STATUS_LABEL: Record<string, string> = {
   COMPLETED: 'Mark as Completed',
 };
 
+/** A header action group: two-column grid on phones (a lone last button spans both), inline row from sm. */
+const ACTION_GRID =
+  'grid grid-cols-2 gap-2 empty:hidden *:min-w-0 *:px-2.5 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap sm:items-center sm:*:px-4';
+
 const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function canEditReturn(salesReturn: SalesReturn) {
@@ -192,68 +196,76 @@ export default function OrderDetailPage() {
           </span>
         }
         actions={
-          <>
-            {order.status === 'PENDING_APPROVAL' && (
-              <>
-                <Button variant="outline" onClick={() => setEditItemsOpen(true)}>
-                  <Pencil />
-                  Edit Items
+          // Phones: workflow actions on top, everything else in a two-column grid.
+          // From sm up it's a single row with the workflow actions last.
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className={ACTION_GRID}>
+              {order.status === 'PENDING_APPROVAL' && (
+                <>
+                  <Button variant="outline" onClick={() => setEditItemsOpen(true)}>
+                    <Pencil />
+                    Edit Items
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setRejectOpen(true)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <XCircle />
+                    Reject
+                  </Button>
+                </>
+              )}
+              {order.status === 'COMPLETED' && (
+                <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
+                  <Undo2 />
+                  Record Return
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setRejectOpen(true)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <XCircle />
-                  Reject
+              )}
+              {order.invoice && (
+                <Button variant="outline" asChild>
+                  <Link href={`/admin/invoices/${order.invoice.id}`}>
+                    <Receipt />
+                    View Invoice
+                  </Link>
                 </Button>
+              )}
+              {order.invoice && (
+                <Button variant="outline" asChild>
+                  <Link href={`/admin/orders/${id}/edit`}>
+                    <Pencil />
+                    Edit Order
+                  </Link>
+                </Button>
+              )}
+              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 />
+                Delete
+              </Button>
+            </div>
+            <div className={cn(ACTION_GRID, 'order-first sm:order-none')}>
+              {order.status === 'PENDING_APPROVAL' && (
                 <Button variant="success" onClick={() => setApproveOpen(true)}>
                   <CheckCircle2 />
                   Approve Order
                 </Button>
-              </>
-            )}
-            {nextStatus && (
-              <Button onClick={handleAdvance} loading={updateStatus.isPending}>
-                {nextStatus === 'PACKED' && <PackageCheck />}
-                {nextStatus === 'DELIVERED' && <Truck />}
-                {nextStatus === 'COMPLETED' && <CheckCircle2 />}
-                {NEXT_STATUS_LABEL[nextStatus]}
-              </Button>
-            )}
-            {nextStatus && nextStatus !== 'COMPLETED' && (
-              <Button variant="success" onClick={() => setCompleteOpen(true)}>
-                <FastForward />
-                Directly Completed
-              </Button>
-            )}
-            {order.status === 'COMPLETED' && (
-              <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
-                <Undo2 />
-                Record Return
-              </Button>
-            )}
-            {order.invoice && (
-              <Button variant="outline" asChild>
-                <Link href={`/admin/invoices/${order.invoice.id}`}>
-                  <Receipt />
-                  View Invoice
-                </Link>
-              </Button>
-            )}
-            {order.invoice && (
-              <Button variant="outline" asChild>
-                <Link href={`/admin/orders/${id}/edit`}>
-                  <Pencil />
-                  Edit Order
-                </Link>
-              </Button>
-            )}
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          </>
+              )}
+              {nextStatus && (
+                <Button onClick={handleAdvance} loading={updateStatus.isPending}>
+                  {nextStatus === 'PACKED' && <PackageCheck />}
+                  {nextStatus === 'DELIVERED' && <Truck />}
+                  {nextStatus === 'COMPLETED' && <CheckCircle2 />}
+                  {NEXT_STATUS_LABEL[nextStatus]}
+                </Button>
+              )}
+              {nextStatus && nextStatus !== 'COMPLETED' && (
+                <Button variant="success" onClick={() => setCompleteOpen(true)}>
+                  <FastForward />
+                  Directly Completed
+                </Button>
+              )}
+            </div>
+          </div>
         }
       />
 

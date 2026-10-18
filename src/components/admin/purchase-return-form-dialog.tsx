@@ -190,7 +190,7 @@ export function PurchaseReturnFormDialog({
                                   <SelectValue placeholder="Select product" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
+                              <SelectContent searchable searchPlaceholder="Search items…">
                                 {returnableItems.map((item) => (
                                   <SelectItem key={item.productId} value={item.productId}>
                                     {item.product?.name ?? item.productId}
