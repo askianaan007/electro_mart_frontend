@@ -4,7 +4,6 @@ import { FitToWidth } from '@/components/fit-to-width';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
@@ -20,6 +19,7 @@ import {
 import { useSupplier } from '@/hooks/use-suppliers';
 import { api } from '@/lib/api/endpoints';
 import { fetchAllPages } from '@/lib/api/fetch-all-pages';
+import { PrintButton } from '@/components/print-button';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -204,10 +204,7 @@ export default function SupplierStatementPage() {
             <Button variant="outline" onClick={applyPeriod}>
               Update
             </Button>
-            <Button onClick={() => window.print()}>
-              <Printer />
-              Print
-            </Button>
+            <PrintButton variant="default" disabled={isLoading || isError || !supplier} />
           </>
         }
       />

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Pencil, Printer, Trash2, Undo2, Wallet } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { useDeleteSalesReturn, useSalesReturnsForOrder } from '@/hooks/use-sales
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { SalesReturn } from '@/lib/api/types';
+import { PrintButton } from '@/components/print-button';
 
 const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -112,10 +113,7 @@ export default function InvoiceDetailPage() {
                   Record Return
                 </Button>
               )}
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer />
-                Print
-              </Button>
+              <PrintButton />
               {!isFullyPaid && (
                 <Button onClick={() => setPaymentOpen(true)}>
                   <Wallet />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +10,7 @@ import { InvoicePrintLayout } from '@/components/invoice-print-layout';
 import { FitToWidth } from '@/components/fit-to-width';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useInvoice } from '@/hooks/use-invoices';
+import { PrintButton } from '@/components/print-button';
 
 export default function DealerInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,10 +58,7 @@ export default function DealerInvoiceDetailPage() {
         {backButton}
         <div className="flex items-center gap-2">
           <PaymentStatusBadge status={invoice.paymentStatus} />
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer />
-            Print
-          </Button>
+          <PrintButton />
         </div>
       </div>
 

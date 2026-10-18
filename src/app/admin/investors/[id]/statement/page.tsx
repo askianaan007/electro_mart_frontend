@@ -4,7 +4,7 @@ import { FitToWidth } from '@/components/fit-to-width';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Loader2, Printer } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
@@ -20,6 +20,7 @@ import { useEquitySummary } from '@/hooks/use-equity';
 import { api } from '@/lib/api/endpoints';
 import { fetchAllPages } from '@/lib/api/fetch-all-pages';
 import { downloadCsv } from '@/lib/csv';
+import { PrintButton } from '@/components/print-button';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -209,10 +210,7 @@ export default function InvestorStatementPage() {
               <Download />
               Excel
             </Button>
-            <Button onClick={() => window.print()} disabled={!ready}>
-              <Printer />
-              Print
-            </Button>
+            <PrintButton variant="default" disabled={!ready} />
           </>
         }
       />

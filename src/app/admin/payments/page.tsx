@@ -111,7 +111,7 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
           <Button
             size="sm"
             variant="outline"
-            className={compact ? 'h-8' : 'h-9'}
+            className={compact ? 'h-8' : 'h-9 min-w-0 flex-1'}
             onClick={() => setPayingInvoice(invoice)}
           >
             <Wallet className="size-3.5" />
@@ -121,7 +121,7 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
         <Button
           size="sm"
           variant="ghost"
-          className={compact ? 'h-8' : 'h-9'}
+          className={compact ? 'h-8' : 'h-9 px-2.5'}
           title="Edit, delete or undo this invoice's payments"
           onClick={() => onViewPayments({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })}
         >
@@ -299,7 +299,7 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
                   <span>Due {invoice.dueDate ? formatDate(invoice.dueDate) : '—'}</span>
                   <PaymentStatusBadge status={invoice.paymentStatus} />
                 </div>
-                <div className="mt-3 flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3">
+                <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-border pt-3">
                   {invoiceActions(invoice, false)}
                 </div>
               </div>
