@@ -83,7 +83,7 @@ export default function DealerOrderDetailPage() {
           description={`${order.items.length} ${order.items.length === 1 ? 'item' : 'items'}`}
           className="pb-3"
         />
-        <div className="border-t border-border">
+        <div className="hidden border-t border-border lg:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -107,6 +107,21 @@ export default function DealerOrderDetailPage() {
             </TableBody>
           </Table>
         </div>
+        <ul className="divide-y divide-border border-t border-border lg:hidden">
+          {order.items.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-medium text-foreground">{item.product.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                  {item.quantity} &times; {formatCurrency(item.unitPrice)}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                {formatCurrency(item.lineTotal)}
+              </span>
+            </li>
+          ))}
+        </ul>
         <div className="flex justify-end border-t border-border bg-muted/30 px-4 py-4 sm:px-5">
           <dl className="w-full space-y-2 text-sm sm:w-72">
             <div className="flex justify-between">

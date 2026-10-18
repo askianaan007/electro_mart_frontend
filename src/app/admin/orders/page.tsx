@@ -66,7 +66,9 @@ function AmountBreakdown({ order, className }: { order: Order; className?: strin
   const { grossValue, returnedValue, netValue, hasReturns } = orderTotals(order);
 
   if (!hasReturns) {
-    return <span className={cn('font-medium tabular-nums text-foreground', className)}>{formatCurrency(grossValue)}</span>;
+    return (
+      <span className={cn('font-medium tabular-nums text-foreground', className)}>{formatCurrency(grossValue)}</span>
+    );
   }
 
   return (
@@ -157,7 +159,13 @@ export default function OrdersPage() {
           <>
             <StatCard label="Total Orders" value={totalOrdersCount} icon={ShoppingCart} />
             <StatCard label="Pending Approval" value={pendingCount} icon={Clock} tone="warning" hint="On this page" />
-            <StatCard label="In Packing / Shipping" value={inProgressCount} icon={Truck} tone="purple" hint="On this page" />
+            <StatCard
+              label="In Packing / Shipping"
+              value={inProgressCount}
+              icon={Truck}
+              tone="purple"
+              hint="On this page"
+            />
             <StatCard
               label="Delivered & Completed"
               value={completedCount}
@@ -222,27 +230,29 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
 
-          <Input
-            type="date"
-            aria-label="From date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            aria-label="To date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              aria-label="From date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              aria-label="To date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
 
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -390,8 +400,8 @@ export default function OrdersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset the order-number counter?</AlertDialogTitle>
             <AlertDialogDescription>
-              Realigns the next order number with what&apos;s actually in the table — one past the highest order
-              number still on record, or #00001 if there are no orders left. Existing order numbers are never changed.
+              Realigns the next order number with what&apos;s actually in the table — one past the highest order number
+              still on record, or #00001 if there are no orders left. Existing order numbers are never changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

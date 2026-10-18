@@ -49,7 +49,7 @@ export default function OrderConfirmationPage() {
         <dl className="divide-y divide-border text-sm">
           <div className="flex items-center justify-between gap-3 p-4">
             <dt className="text-muted-foreground">Order Number</dt>
-            <dd className="font-semibold text-foreground">{order.orderNumber}</dd>
+            <dd className="min-w-0 break-words text-right font-semibold text-foreground">{order.orderNumber}</dd>
           </div>
           <div className="flex items-center justify-between gap-3 p-4">
             <dt className="text-muted-foreground">Total</dt>

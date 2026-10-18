@@ -119,25 +119,27 @@ export default function ExpensesPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
-            />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="min-w-0 w-full sm:w-auto"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                className="min-w-0 w-full sm:w-auto"
+              />
+            </div>
             {filtersActive && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 <X />
@@ -164,11 +166,15 @@ export default function ExpensesPage() {
               }
             />
           ) : (
-            <EmptyState icon={Receipt} title="No expenses recorded" description="Add a business expense to track it here" />
+            <EmptyState
+              icon={Receipt}
+              title="No expenses recorded"
+              description="Add a business expense to track it here"
+            />
           )
         ) : (
           <>
-            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -212,14 +218,19 @@ export default function ExpensesPage() {
               </Table>
             </div>
 
-            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((expense) => (
                 <div key={expense.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="break-words font-medium">{expense.description}</p>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="-mr-2 -mt-1 shrink-0" aria-label="Expense actions">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="-mr-2 -mt-1 shrink-0"
+                          aria-label="Expense actions"
+                        >
                           <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -232,7 +243,9 @@ export default function ExpensesPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <p className="mt-1 break-words text-lg font-semibold tabular-nums">{formatCurrency(expense.amount)}</p>
+                  <p className="mt-1 break-words text-lg font-semibold tabular-nums">
+                    {formatCurrency(expense.amount)}
+                  </p>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>{formatDate(expense.expenseDate)}</span>
                     <span className="break-words text-right">{expense.remarks ?? '—'}</span>

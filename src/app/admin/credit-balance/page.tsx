@@ -152,8 +152,13 @@ function downloadHistoryCsv(filename: string, rows: CreditBalanceHistoryEntry[])
 }
 
 export default function CreditBalancePage() {
-  const { data: summary, isLoading: summaryLoading, isError: summaryError, error: summaryErrorObj, refetch: refetchSummary } =
-    useCreditBalanceSummary();
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    error: summaryErrorObj,
+    refetch: refetchSummary,
+  } = useCreditBalanceSummary();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -212,13 +217,17 @@ export default function CreditBalancePage() {
   async function handleExportCsv() {
     if (!historyResult) return;
     if (historyResult.meta.total > EXPORT_CAP) {
-      setExportError(`This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`);
+      setExportError(
+        `This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`,
+      );
       return;
     }
     setExportError(null);
     setIsExportingCsv(true);
     try {
-      const allRows = await fetchAllPages((p, limit) => api.creditBalance.history({ ...historyFilters, page: p, limit }));
+      const allRows = await fetchAllPages((p, limit) =>
+        api.creditBalance.history({ ...historyFilters, page: p, limit }),
+      );
       downloadHistoryCsv(`credit-balance-history-${new Date().toISOString().slice(0, 10)}.csv`, allRows);
     } finally {
       setIsExportingCsv(false);
@@ -228,19 +237,27 @@ export default function CreditBalancePage() {
   async function handleExportPdf() {
     if (!historyResult || !summary) return;
     if (historyResult.meta.total > EXPORT_CAP) {
-      setExportError(`This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`);
+      setExportError(
+        `This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`,
+      );
       return;
     }
     setExportError(null);
     setIsExportingPdf(true);
     try {
-      const allRows = await fetchAllPages((p, limit) => api.creditBalance.history({ ...historyFilters, page: p, limit }));
-      await downloadCreditBalanceStatementPdf(`credit-balance-statement-${new Date().toISOString().slice(0, 10)}.pdf`, allRows, {
-        filterSummary: filterSummaryLabel(),
-        dateFrom,
-        dateTo,
-        summary,
-      });
+      const allRows = await fetchAllPages((p, limit) =>
+        api.creditBalance.history({ ...historyFilters, page: p, limit }),
+      );
+      await downloadCreditBalanceStatementPdf(
+        `credit-balance-statement-${new Date().toISOString().slice(0, 10)}.pdf`,
+        allRows,
+        {
+          filterSummary: filterSummaryLabel(),
+          dateFrom,
+          dateTo,
+          summary,
+        },
+      );
     } finally {
       setIsExportingPdf(false);
     }
@@ -267,7 +284,11 @@ export default function CreditBalancePage() {
           {summaryLoading ? (
             <Skeleton className="h-10 w-64" />
           ) : summaryError ? (
-            <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} className="items-start py-0 text-left" />
+            <QueryErrorState
+              error={summaryErrorObj}
+              onRetry={() => refetchSummary()}
+              className="items-start py-0 text-left"
+            />
           ) : (
             <p className="text-3xl font-semibold tracking-tight text-foreground tabular-nums sm:text-4xl">
               {formatCurrency(animatedBalance)}
@@ -348,7 +369,8 @@ export default function CreditBalancePage() {
                     </div>
                   </div>
                   <p className="max-w-xs text-xs text-muted-foreground sm:text-right">
-                    Already reduced the balance above — a cheque marked bounced would add this amount back to what&apos;s owed.
+                    Already reduced the balance above — a cheque marked bounced would add this amount back to
+                    what&apos;s owed.
                   </p>
                 </div>
               </div>
@@ -365,18 +387,28 @@ export default function CreditBalancePage() {
           className="pb-3"
           description={
             <>
-              A settlement cheque reduces the balance as soon as it&apos;s recorded, marked with a status badge — only if
-              it&apos;s later returned does the row&apos;s previous and after balance match, showing it never actually
-              settled the debt.
+              A settlement cheque reduces the balance as soon as it&apos;s recorded, marked with a status badge — only
+              if it&apos;s later returned does the row&apos;s previous and after balance match, showing it never
+              actually settled the debt.
             </>
           }
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={history.length === 0 || isExportingCsv}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={history.length === 0 || isExportingCsv}
+              >
                 {isExportingCsv ? <Loader2 className="animate-spin" /> : <Download />}
                 CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={history.length === 0 || !summary || isExportingPdf}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={history.length === 0 || !summary || isExportingPdf}
+              >
                 {isExportingPdf ? <Loader2 className="animate-spin" /> : <FileDown />}
                 PDF
               </Button>
@@ -415,9 +447,21 @@ export default function CreditBalancePage() {
               ))}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => resetPageAnd(setDateTo)(e.target.value)}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Clear filters
@@ -443,7 +487,11 @@ export default function CreditBalancePage() {
                 }
               />
             ) : (
-              <EmptyState icon={HandCoins} title="No history yet" description="Purchases, returns, and settlements will appear here" />
+              <EmptyState
+                icon={HandCoins}
+                title="No history yet"
+                description="Purchases, returns, and settlements will appear here"
+              />
             )
           ) : (
             <>
@@ -491,7 +539,11 @@ export default function CreditBalancePage() {
                           <TableCell
                             className={cn(
                               'whitespace-normal break-words text-right font-medium tabular-nums',
-                              faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
+                              faceAmount > 0
+                                ? 'text-success'
+                                : faceAmount < 0
+                                  ? 'text-destructive'
+                                  : 'text-muted-foreground',
                             )}
                           >
                             {faceAmount >= 0 ? '+' : ''}
@@ -523,7 +575,11 @@ export default function CreditBalancePage() {
                         <span
                           className={cn(
                             'shrink-0 break-words font-medium tabular-nums',
-                            faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
+                            faceAmount > 0
+                              ? 'text-success'
+                              : faceAmount < 0
+                                ? 'text-destructive'
+                                : 'text-muted-foreground',
                           )}
                         >
                           {faceAmount >= 0 ? '+' : ''}
@@ -540,7 +596,8 @@ export default function CreditBalancePage() {
                       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                         <span>{formatDate(row.date)}</span>
                         <span className="tabular-nums">
-                          {formatCurrency(row.balanceBefore)} → <span className="font-semibold text-foreground">{formatCurrency(row.balanceAfter)}</span>
+                          {formatCurrency(row.balanceBefore)} →{' '}
+                          <span className="font-semibold text-foreground">{formatCurrency(row.balanceAfter)}</span>
                         </span>
                       </div>
                     </div>

@@ -374,28 +374,65 @@ export default function RepresentativeDetailPage() {
               ) : !assignedProducts || assignedProducts.length === 0 ? (
                 <EmptyState icon={ShoppingCart} title="No scopes assigned" description="This representative can see the entire active catalog" />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Scope</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Assigned</TableHead>
-                      <TableHead className="w-10" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Scope</TableHead>
+                          <TableHead>Value</TableHead>
+                          <TableHead>Assigned</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedProducts.map((assignment) => (
+                          <TableRow key={assignment.id}>
+                            <TableCell>
+                              <Badge variant="outline">{assignment.scopeType}</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">{assignment.scopeValue}</TableCell>
+                            <TableCell className="tabular-nums text-muted-foreground">{formatDate(assignment.createdAt)}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-destructive hover:text-destructive"
+                                aria-label="Remove assignment"
+                                onClick={() =>
+                                  removeAssignment.mutate(assignment.id, {
+                                    onSuccess: () => toast.success('Assignment removed'),
+                                    onError: (error) => toast.error(getErrorMessage(error)),
+                                  })
+                                }
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {assignedProducts.map((assignment) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell>
-                          <Badge variant="outline">{assignment.scopeType}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{assignment.scopeValue}</TableCell>
-                        <TableCell className="tabular-nums text-muted-foreground">{formatDate(assignment.createdAt)}</TableCell>
-                        <TableCell className="text-right">
+                      <div key={assignment.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="break-words font-medium">{assignment.scopeValue}</div>
+                            <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+                              Assigned {formatDate(assignment.createdAt)}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="shrink-0">
+                            {assignment.scopeType}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex items-center justify-end gap-2 border-t border-border pt-3">
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-destructive hover:text-destructive"
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
                             aria-label="Remove assignment"
                             onClick={() =>
                               removeAssignment.mutate(assignment.id, {
@@ -405,12 +442,13 @@ export default function RepresentativeDetailPage() {
                             }
                           >
                             <Trash2 className="size-4" />
+                            Remove
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -435,27 +473,49 @@ export default function RepresentativeDetailPage() {
                   description="This representative sees the global active banner rotation. Assign banners from the Banners screen."
                 />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Banner</TableHead>
-                      <TableHead className="text-right">Priority</TableHead>
-                      <TableHead>Window</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Banner</TableHead>
+                          <TableHead className="text-right">Priority</TableHead>
+                          <TableHead>Window</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedBanners.map((assignment) => (
+                          <TableRow key={assignment.id}>
+                            <TableCell className="font-medium">{assignment.banner.title ?? assignment.bannerId}</TableCell>
+                            <TableCell className="text-right tabular-nums">{assignment.priority}</TableCell>
+                            <TableCell className="tabular-nums text-muted-foreground">
+                              {assignment.startsAt ? formatDate(assignment.startsAt) : 'Always'} –{' '}
+                              {assignment.expiresAt ? formatDate(assignment.expiresAt) : 'No expiry'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {assignedBanners.map((assignment) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell className="font-medium">{assignment.banner.title ?? assignment.bannerId}</TableCell>
-                        <TableCell className="text-right tabular-nums">{assignment.priority}</TableCell>
-                        <TableCell className="tabular-nums text-muted-foreground">
+                      <div key={assignment.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="min-w-0 break-words font-medium">
+                            {assignment.banner.title ?? assignment.bannerId}
+                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                            Priority <span className="font-medium text-foreground">{assignment.priority}</span>
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground tabular-nums">
                           {assignment.startsAt ? formatDate(assignment.startsAt) : 'Always'} –{' '}
                           {assignment.expiresAt ? formatDate(assignment.expiresAt) : 'No expiry'}
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -476,34 +536,59 @@ export default function RepresentativeDetailPage() {
               ) : !assignedCustomers || assignedCustomers.data.length === 0 ? (
                 <EmptyState icon={Users} title="No customers registered yet" />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Shop</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead className="text-right">Outstanding</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Shop</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead className="text-right">Outstanding</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedCustomers.data.map((customer) => (
+                          <TableRow key={customer.id}>
+                            <TableCell>
+                              <Link href={`/admin/dealers/${customer.id}`} className="font-medium text-primary">
+                                {customer.businessName}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="tabular-nums">{customer.phone}</TableCell>
+                            <TableCell className="text-right font-medium tabular-nums">
+                              {formatCurrency(customer.outstandingBalance)}
+                            </TableCell>
+                            <TableCell>
+                              <AccountStatusBadge status={customer.status} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {assignedCustomers.data.map((customer) => (
-                      <TableRow key={customer.id}>
-                        <TableCell>
-                          <Link href={`/admin/dealers/${customer.id}`} className="font-medium text-primary">
+                      <div key={customer.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <Link
+                            href={`/admin/dealers/${customer.id}`}
+                            className="min-w-0 break-words font-medium text-primary"
+                          >
                             {customer.businessName}
                           </Link>
-                        </TableCell>
-                        <TableCell className="tabular-nums">{customer.phone}</TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(customer.outstandingBalance)}
-                        </TableCell>
-                        <TableCell>
+                          <span className="shrink-0 font-semibold tabular-nums">
+                            {formatCurrency(customer.outstandingBalance)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="tabular-nums">{customer.phone}</span>
                           <AccountStatusBadge status={customer.status} />
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -562,36 +647,63 @@ export default function RepresentativeDetailPage() {
               ) : !settlements || settlements.data.length === 0 ? (
                 <EmptyState icon={Receipt} title="No settlements yet" />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Settlement #</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Settlement #</TableHead>
+                          <TableHead>Period</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {settlements.data.map((settlement) => (
+                          <TableRow key={settlement.id}>
+                            <TableCell>
+                              <Link href={`/admin/commission/settlements/${settlement.id}`} className="font-medium text-primary">
+                                {settlement.settlementNumber}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="tabular-nums text-muted-foreground">
+                              {formatDate(settlement.periodStart)} – {formatDate(settlement.periodEnd)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium tabular-nums">
+                              {formatCurrency(settlement.totalCommission)}
+                            </TableCell>
+                            <TableCell>
+                              <SettlementStatusBadge status={settlement.status} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {settlements.data.map((settlement) => (
-                      <TableRow key={settlement.id}>
-                        <TableCell>
-                          <Link href={`/admin/commission/settlements/${settlement.id}`} className="font-medium text-primary">
+                      <div key={settlement.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <Link
+                            href={`/admin/commission/settlements/${settlement.id}`}
+                            className="min-w-0 break-words font-medium text-primary"
+                          >
                             {settlement.settlementNumber}
                           </Link>
-                        </TableCell>
-                        <TableCell className="tabular-nums text-muted-foreground">
-                          {formatDate(settlement.periodStart)} – {formatDate(settlement.periodEnd)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(settlement.totalCommission)}
-                        </TableCell>
-                        <TableCell>
+                          <span className="shrink-0 font-semibold tabular-nums">
+                            {formatCurrency(settlement.totalCommission)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="tabular-nums">
+                            {formatDate(settlement.periodStart)} – {formatDate(settlement.periodEnd)}
+                          </span>
                           <SettlementStatusBadge status={settlement.status} />
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -612,34 +724,58 @@ export default function RepresentativeDetailPage() {
               ) : !loginHistory || loginHistory.data.length === 0 ? (
                 <EmptyState icon={Lock} title="No login history yet" />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Result</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead className="hidden lg:table-cell">User Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Result</TableHead>
+                          <TableHead>IP Address</TableHead>
+                          <TableHead className="hidden lg:table-cell">User Agent</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loginHistory.data.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="tabular-nums">{formatDate(entry.loginAt)}</TableCell>
+                            <TableCell>
+                              {entry.success ? (
+                                <Badge variant="success">Success</Badge>
+                              ) : (
+                                <Badge variant="destructive">{entry.failureReason ?? 'Failed'}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{entry.ipAddress ?? '—'}</TableCell>
+                            <TableCell className="hidden max-w-xs truncate text-xs text-muted-foreground lg:table-cell">
+                              {entry.userAgent ?? '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {loginHistory.data.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="tabular-nums">{formatDate(entry.loginAt)}</TableCell>
-                        <TableCell>
-                          {entry.success ? (
-                            <Badge variant="success">Success</Badge>
-                          ) : (
-                            <Badge variant="destructive">{entry.failureReason ?? 'Failed'}</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{entry.ipAddress ?? '—'}</TableCell>
-                        <TableCell className="hidden max-w-xs truncate text-xs text-muted-foreground lg:table-cell">
-                          {entry.userAgent ?? '—'}
-                        </TableCell>
-                      </TableRow>
+                      <div key={entry.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium tabular-nums">{formatDate(entry.loginAt)}</span>
+                          <span className="shrink-0">
+                            {entry.success ? (
+                              <Badge variant="success">Success</Badge>
+                            ) : (
+                              <Badge variant="destructive">{entry.failureReason ?? 'Failed'}</Badge>
+                            )}
+                          </span>
+                        </div>
+                        <div className="mt-2 break-all font-mono text-xs text-muted-foreground">
+                          {entry.ipAddress ?? '—'}
+                        </div>
+                        <div className="mt-1 break-words text-xs text-muted-foreground">{entry.userAgent ?? '—'}</div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -672,28 +808,48 @@ export default function RepresentativeDetailPage() {
               ) : !activityLog || activityLog.data.length === 0 ? (
                 <EmptyState icon={ShieldAlert} title="No activity recorded yet" />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead className="hidden lg:table-cell">Details</TableHead>
-                      <TableHead className="hidden lg:table-cell">IP</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden lg:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Action</TableHead>
+                          <TableHead className="hidden lg:table-cell">Details</TableHead>
+                          <TableHead className="hidden lg:table-cell">IP</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activityLog.data.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="tabular-nums">{formatDate(entry.createdAt)}</TableCell>
+                            <TableCell className="font-medium">{entry.action.replaceAll('_', ' ')}</TableCell>
+                            <TableCell className="hidden max-w-xs truncate text-muted-foreground lg:table-cell">
+                              {entry.details ?? '—'}
+                            </TableCell>
+                            <TableCell className="hidden font-mono text-xs lg:table-cell">{entry.ipAddress ?? '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="space-y-3 p-4 lg:hidden">
                     {activityLog.data.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="tabular-nums">{formatDate(entry.createdAt)}</TableCell>
-                        <TableCell className="font-medium">{entry.action.replaceAll('_', ' ')}</TableCell>
-                        <TableCell className="hidden max-w-xs truncate text-muted-foreground lg:table-cell">
-                          {entry.details ?? '—'}
-                        </TableCell>
-                        <TableCell className="hidden font-mono text-xs lg:table-cell">{entry.ipAddress ?? '—'}</TableCell>
-                      </TableRow>
+                      <div key={entry.id} className="rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="min-w-0 break-words font-medium">{entry.action.replaceAll('_', ' ')}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                            {formatDate(entry.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-2 break-words text-xs text-muted-foreground">{entry.details ?? '—'}</div>
+                        <div className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                          {entry.ipAddress ?? '—'}
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </div>
           </div>

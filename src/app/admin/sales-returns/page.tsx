@@ -204,7 +204,7 @@ export default function SalesReturnsPage() {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
@@ -277,7 +277,7 @@ export default function SalesReturnsPage() {
             </div>
 
             {/* Mobile Cards View */}
-            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((salesReturn) => {
                 const isExpanded = expanded.has(salesReturn.id);
                 return (
@@ -286,9 +286,9 @@ export default function SalesReturnsPage() {
                     className="cursor-pointer space-y-2 rounded-lg border border-border bg-card p-4"
                     onClick={() => toggleExpanded(salesReturn.id)}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">{salesReturn.returnNumber}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                        <span className="break-words font-medium">{salesReturn.returnNumber}</span>
                         {salesReturn.order && (
                           <Link
                             href={`/admin/orders/${salesReturn.order.id}`}
@@ -299,18 +299,21 @@ export default function SalesReturnsPage() {
                           </Link>
                         )}
                       </div>
-                      <span className="text-sm font-semibold tabular-nums text-destructive">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-destructive">
                         −{formatCurrency(salesReturn.totalAmount)}
                       </span>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">{salesReturn.reason}</p>
+                    <p className="break-words text-sm text-muted-foreground">{salesReturn.reason}</p>
 
                     <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span className="truncate font-medium text-foreground">
                         {salesReturn.dealer?.businessName ?? '—'}
                       </span>
-                      <span className="shrink-0">{formatDate(salesReturn.returnDate)}</span>
+                      <span className="shrink-0 tabular-nums">
+                        {formatDate(salesReturn.returnDate)} &middot; {salesReturn.items.length} item
+                        {salesReturn.items.length === 1 ? '' : 's'}
+                      </span>
                     </div>
 
                     {isExpanded && <ItemsBreakdownMobile salesReturn={salesReturn} />}

@@ -167,28 +167,43 @@ export default function PurchaseDetailPage() {
           <CardTitle>Line items</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Unit Cost</TableHead>
-                <TableHead className="text-right">Line Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {purchase.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="whitespace-normal break-words font-medium">
-                    {item.product?.name ?? item.productId}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(item.unitCost)}</TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">{formatCurrency(item.lineTotal)}</TableCell>
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Unit Cost</TableHead>
+                  <TableHead className="text-right">Line Total</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {purchase.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="whitespace-normal break-words font-medium">
+                      {item.product?.name ?? item.productId}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatCurrency(item.unitCost)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(item.lineTotal)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <ul className="divide-y divide-border lg:hidden">
+            {purchase.items.map((item) => (
+              <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="break-words font-medium">{item.product?.name ?? item.productId}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                    {item.quantity} &times; {formatCurrency(item.unitCost)}
+                  </div>
+                </div>
+                <span className="shrink-0 font-medium tabular-nums">{formatCurrency(item.lineTotal)}</span>
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
 
@@ -209,62 +224,108 @@ export default function PurchaseDetailPage() {
           ) : !purchaseReturns || purchaseReturns.length === 0 ? (
             <EmptyState icon={Undo2} title="No returns yet" description="Returns sent back to the supplier will appear here" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Return #</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden lg:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Return #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchaseReturns.map((purchaseReturn) => (
+                      <TableRow key={purchaseReturn.id}>
+                        <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
+                        <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
+                        <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums text-destructive">
+                          −{formatCurrency(purchaseReturn.totalAmount)}
+                        </TableCell>
+                        <TableCell>
+                          {canEditPurchaseReturn(purchaseReturn) && (
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-8"
+                                aria-label="Edit return"
+                                onClick={() => setEditingReturn(purchaseReturn)}
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-8 text-destructive hover:text-destructive"
+                                aria-label="Delete return"
+                                onClick={() => setDeletingReturn(purchaseReturn)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/40">
+                      <TableCell colSpan={3} className="font-semibold">
+                        Total returned
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-destructive">
+                        −{formatCurrency(returnedValue)}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="space-y-3 p-4 lg:hidden">
                 {purchaseReturns.map((purchaseReturn) => (
-                  <TableRow key={purchaseReturn.id}>
-                    <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums text-destructive">
-                      −{formatCurrency(purchaseReturn.totalAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {canEditPurchaseReturn(purchaseReturn) && (
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8"
-                            aria-label="Edit return"
-                            onClick={() => setEditingReturn(purchaseReturn)}
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8 text-destructive hover:text-destructive"
-                            aria-label="Delete return"
-                            onClick={() => setDeletingReturn(purchaseReturn)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 break-words font-medium">{purchaseReturn.returnNumber}</span>
+                      <span className="shrink-0 font-semibold tabular-nums text-destructive">
+                        −{formatCurrency(purchaseReturn.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-2 break-words text-xs text-muted-foreground">
+                      {formatDate(purchaseReturn.returnDate)} &middot; {purchaseReturn.reason}
+                    </div>
+                    {canEditPurchaseReturn(purchaseReturn) && (
+                      <div className="mt-3 flex items-center justify-end gap-2 border-t border-border pt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label="Edit return"
+                          onClick={() => setEditingReturn(purchaseReturn)}
+                        >
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          aria-label="Delete return"
+                          onClick={() => setDeletingReturn(purchaseReturn)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 ))}
-                <TableRow className="bg-muted/40">
-                  <TableCell colSpan={3} className="font-semibold">
-                    Total returned
-                  </TableCell>
-                  <TableCell className="text-right font-semibold tabular-nums text-destructive">
-                    −{formatCurrency(returnedValue)}
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-4 py-3 text-sm font-semibold">
+                  <span>Total returned</span>
+                  <span className="tabular-nums text-destructive">−{formatCurrency(returnedValue)}</span>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

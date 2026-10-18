@@ -139,7 +139,13 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
 const ACTION_LABELS = new Map(ACTION_CATALOG.flatMap((m) => m.actions).map((a) => [a.value, a.label]));
 
 function actionLabel(action: string) {
-  return ACTION_LABELS.get(action) ?? action.replaceAll('_', ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
+  return (
+    ACTION_LABELS.get(action) ??
+    action
+      .replaceAll('_', ' ')
+      .toLowerCase()
+      .replace(/^./, (c) => c.toUpperCase())
+  );
 }
 
 function actionTone(action: string): 'success' | 'destructive' | 'warning' | 'muted' {
@@ -188,7 +194,11 @@ export default function ActivityLogPage() {
   );
 
   const actionParam =
-    actionFilter !== 'all' ? actionFilter : moduleFilter !== 'all' ? actionsForModule.map((a) => a.value).join(',') : undefined;
+    actionFilter !== 'all'
+      ? actionFilter
+      : moduleFilter !== 'all'
+        ? actionsForModule.map((a) => a.value).join(',')
+        : undefined;
 
   const { data: admins } = useActivityLogAdmins();
   const { data, isLoading, isFetching, isError, error, refetch } = useActivityLog({
@@ -237,7 +247,11 @@ export default function ActivityLogPage() {
         title="Activity Log"
         description="Audit trail of every admin action."
         actions={
-          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setClearOpen(true)}>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setClearOpen(true)}
+          >
             <Trash2 />
             Clear all
           </Button>
@@ -315,25 +329,27 @@ export default function ActivityLogPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X />
@@ -363,7 +379,7 @@ export default function ActivityLogPage() {
           )
         ) : (
           <>
-            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -375,11 +391,7 @@ export default function ActivityLogPage() {
                 </TableHeader>
                 <TableBody>
                   {data.data.map((log) => (
-                    <TableRow
-                      key={log.id}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedLog(log)}
-                    >
+                    <TableRow key={log.id} className="cursor-pointer" onClick={() => setSelectedLog(log)}>
                       <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
                         {formatDateTime(log.createdAt)}
                       </TableCell>
@@ -396,7 +408,7 @@ export default function ActivityLogPage() {
               </Table>
             </div>
 
-            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((log) => (
                 <button
                   key={log.id}
@@ -469,8 +481,8 @@ export default function ActivityLogPage() {
           <DialogHeader>
             <DialogTitle>Clear the entire activity log?</DialogTitle>
             <DialogDescription>
-              This permanently deletes every audit log entry — across all admins, actions, and dates, regardless of
-              the filters above. A single new entry recording this clear will be added afterward.
+              This permanently deletes every audit log entry — across all admins, actions, and dates, regardless of the
+              filters above. A single new entry recording this clear will be added afterward.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">

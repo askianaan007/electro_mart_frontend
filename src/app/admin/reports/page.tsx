@@ -30,6 +30,8 @@ type ReportColumn<T> = {
   header: string;
   render: (row: T) => React.ReactNode;
   align?: 'right';
+  /** Phone card: show this value top-right, next to the first column. */
+  headline?: boolean;
 };
 
 type ReportQuery<T> = {
@@ -65,29 +67,59 @@ function ReportTable<T>({
   if (!rows || rows.length === 0) {
     return <EmptyState icon={FileBarChart} title="No data for this report" />;
   }
+  const [titleCol, ...restCols] = columns;
+  const headlineCol = restCols.find((col) => col.headline);
+  const detailCols = restCols.filter((col) => col !== headlineCol);
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {columns.map((col) => (
-            <TableHead key={col.header} className={cn(col.align === 'right' && 'text-right')}>
-              {col.header}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row, i) => (
-          <TableRow key={i}>
-            {columns.map((col) => (
-              <TableCell key={col.header} className={cn(col.align === 'right' && 'text-right tabular-nums')}>
-                {col.render(row)}
-              </TableCell>
+    <>
+      <div className="hidden lg:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((col) => (
+                <TableHead key={col.header} className={cn(col.align === 'right' && 'text-right')}>
+                  {col.header}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row, i) => (
+              <TableRow key={i}>
+                {columns.map((col) => (
+                  <TableCell key={col.header} className={cn(col.align === 'right' && 'text-right tabular-nums')}>
+                    {col.render(row)}
+                  </TableCell>
+                ))}
+              </TableRow>
             ))}
-          </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="space-y-3 p-4 lg:hidden">
+        {rows.map((row, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 break-words font-medium">{titleCol.render(row)}</span>
+              {headlineCol && (
+                <span className="shrink-0 font-semibold tabular-nums">{headlineCol.render(row)}</span>
+              )}
+            </div>
+            {detailCols.length > 0 && (
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                {detailCols.map((col) => (
+                  <div key={col.header} className="contents">
+                    <dt className="text-muted-foreground">{col.header}</dt>
+                    <dd className="min-w-0 break-words text-right font-medium tabular-nums">{col.render(row)}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </>
   );
 }
 
@@ -181,7 +213,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Representative', render: (r) => r.representativeName },
               { header: 'Orders', render: (r) => r.orderCount, align: 'right' },
-              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right', headline: true },
             ]}
           />
         </TabsContent>
@@ -194,7 +226,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Representative', render: (r) => r.representativeName },
               { header: 'Confirmed', render: (r) => r.confirmed, align: 'right' },
-              { header: 'Confirmed Amount', render: (r) => formatCurrency(r.confirmedAmount), align: 'right' },
+              { header: 'Confirmed Amount', render: (r) => formatCurrency(r.confirmedAmount), align: 'right', headline: true },
               { header: 'Rejected', render: (r) => r.rejected, align: 'right' },
               { header: 'Pending', render: (r) => r.pending, align: 'right' },
             ]}
@@ -209,7 +241,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Representative', render: (r) => r.representativeName },
               { header: 'Customers', render: (r) => r.customerCount, align: 'right' },
-              { header: 'Outstanding Balance', render: (r) => formatCurrency(r.outstandingBalance), align: 'right' },
+              { header: 'Outstanding Balance', render: (r) => formatCurrency(r.outstandingBalance), align: 'right', headline: true },
             ]}
           />
         </TabsContent>
@@ -237,7 +269,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Status', render: (r) => <SettlementStatusBadge status={r.status} /> },
               { header: 'Count', render: (r) => r.count, align: 'right' },
-              { header: 'Total Commission', render: (r) => formatCurrency(r.totalCommission), align: 'right' },
+              { header: 'Total Commission', render: (r) => formatCurrency(r.totalCommission), align: 'right', headline: true },
             ]}
           />
         </TabsContent>
@@ -252,7 +284,7 @@ export default function ReportsPage() {
               { header: 'Customer', render: (r) => r.customerName },
               { header: 'Representative', render: (r) => r.representativeName },
               { header: 'Invoice', render: (r) => r.invoiceNumber },
-              { header: 'Outstanding', render: (r) => formatCurrency(r.outstandingAmount), align: 'right' },
+              { header: 'Outstanding', render: (r) => formatCurrency(r.outstandingAmount), align: 'right', headline: true },
               { header: 'Days Overdue', render: (r) => <span className="font-medium text-destructive">{r.overdueDays}</span>, align: 'right' },
             ]}
           />
@@ -269,7 +301,7 @@ export default function ReportsPage() {
               { header: 'Representative', render: (r) => r.representativeName ?? '—' },
               { header: 'Cheque #', render: (r) => r.chequeNumber ?? '—' },
               { header: 'Bank', render: (r) => r.bankName ?? '—' },
-              { header: 'Amount', render: (r) => formatCurrency(r.amount), align: 'right' },
+              { header: 'Amount', render: (r) => formatCurrency(r.amount), align: 'right', headline: true },
               { header: 'Returned On', render: (r) => (r.chequeStatusUpdatedAt ? formatDate(r.chequeStatusUpdatedAt) : '—') },
             ]}
           />
@@ -284,7 +316,7 @@ export default function ReportsPage() {
               { header: 'Product', render: (r) => r.productName },
               { header: 'Code', render: (r) => r.productCode },
               { header: 'Quantity Sold', render: (r) => r.quantitySold, align: 'right' },
-              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right', headline: true },
             ]}
           />
         </TabsContent>
@@ -297,7 +329,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Category', render: (r) => r.category },
               { header: 'Quantity Sold', render: (r) => r.quantitySold, align: 'right' },
-              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right', headline: true },
             ]}
           />
         </TabsContent>
@@ -310,7 +342,7 @@ export default function ReportsPage() {
             columns={[
               { header: 'Representative', render: (r) => r.representativeName },
               { header: 'Orders', render: (r) => r.orderCount, align: 'right' },
-              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right', headline: true },
             ]}
           />
         </TabsContent>

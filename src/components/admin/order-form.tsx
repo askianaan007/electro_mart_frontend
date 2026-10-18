@@ -211,26 +211,26 @@ function DealerCombobox({
   const selected = dealers.find((dealer) => dealer.id === value);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative min-w-0" ref={containerRef}>
       <button
         type="button"
         onClick={() => {
           setSearch('');
           setOpen((o) => !o);
         }}
-        className="flex h-10 w-full items-center justify-between gap-3 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 dark:bg-transparent"
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-3 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 dark:bg-transparent"
       >
         {selected ? (
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <div className="min-w-0 text-left">
               <p className="truncate font-medium text-foreground">{selected.businessName}</p>
             </div>
             {selected.ownerName && (
-              <span className="truncate text-xs text-muted-foreground">{selected.ownerName}</span>
+              <span className="min-w-0 shrink-[2] truncate text-xs text-muted-foreground">{selected.ownerName}</span>
             )}
           </div>
         ) : (
-          <span className="text-muted-foreground">Select a dealer for this order...</span>
+          <span className="truncate text-muted-foreground">Select a dealer for this order...</span>
         )}
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
       </button>
@@ -266,7 +266,7 @@ function DealerCombobox({
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium">{dealer.businessName}</p>
-                    {dealer.ownerName && <div className="text-xs text-muted-foreground">{dealer.ownerName}</div>}
+                    {dealer.ownerName && <div className="truncate text-xs text-muted-foreground">{dealer.ownerName}</div>}
                   </div>
                   {dealer.id === value && <Check className="size-4 shrink-0 text-primary" />}
                 </button>
@@ -474,7 +474,7 @@ export function OrderForm({ order }: { order?: Order }) {
                   control={form.control}
                   name="dealerId"
                   render={({ field }) => (
-                    <FormItem className="sm:col-span-1">
+                    <FormItem className="min-w-0 sm:col-span-1">
                       <FormLabel>Dealer</FormLabel>
                       <FormControl>
                         <DealerCombobox value={field.value} onChange={field.onChange} dealers={dealers?.data ?? []} />
@@ -717,11 +717,11 @@ export function OrderForm({ order }: { order?: Order }) {
                       control={form.control}
                       name={`items.${index}.productId`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="min-w-0">
                           <FormLabel>Product</FormLabel>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Select product..." />
                               </SelectTrigger>
                             </FormControl>

@@ -1,29 +1,22 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { MoreHorizontal, Plus, Search, Trash2, Truck, Undo2 } from "lucide-react";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { EmptyState } from "@/components/empty-state";
-import { PaginationBar } from "@/components/pagination-bar";
-import { FilterBar } from "@/components/filter-bar";
-import { SectionHeader } from "@/components/section-header";
-import { QueryErrorState } from "@/components/query-error-state";
-import { PageHeader } from "@/components/page-header";
-import { TableSkeleton } from "@/components/loading-state";
+import { useState } from 'react';
+import Link from 'next/link';
+import { MoreHorizontal, Plus, Search, Trash2, Truck, Undo2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { EmptyState } from '@/components/empty-state';
+import { PaginationBar } from '@/components/pagination-bar';
+import { FilterBar } from '@/components/filter-bar';
+import { SectionHeader } from '@/components/section-header';
+import { QueryErrorState } from '@/components/query-error-state';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,28 +26,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { StandalonePurchaseReturnFormDialog } from "@/components/admin/standalone-purchase-return-form-dialog";
-import { PurchaseReturnsTab } from "@/components/admin/purchase-returns-tab";
-import { useDeletePurchase, usePurchases } from "@/hooks/use-purchases";
-import { useAllSuppliers } from "@/hooks/use-suppliers";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { getErrorMessage } from "@/lib/api/error";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { Purchase } from "@/lib/api/types";
+} from '@/components/ui/dropdown-menu';
+import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
+import { PurchaseReturnsTab } from '@/components/admin/purchase-returns-tab';
+import { useDeletePurchase, usePurchases } from '@/hooks/use-purchases';
+import { useAllSuppliers } from '@/hooks/use-suppliers';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { getErrorMessage } from '@/lib/api/error';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import type { Purchase } from '@/lib/api/types';
 
 function purchaseTotals(purchase: Purchase) {
   const grossValue = Number(purchase.totalValue);
-  const returnedValue = (purchase.purchaseReturns ?? []).reduce(
-    (sum, r) => sum + Number(r.totalAmount),
-    0,
-  );
+  const returnedValue = (purchase.purchaseReturns ?? []).reduce((sum, r) => sum + Number(r.totalAmount), 0);
   const transportCharges = Number(purchase.transportCharges);
   const netValue = grossValue - returnedValue - transportCharges;
   return {
@@ -73,39 +63,25 @@ function purchaseTotals(purchase: Purchase) {
 
 function ReturnedBadge({ isFullyReturned }: { isFullyReturned: boolean }) {
   return (
-    <Badge variant={isFullyReturned ? "destructive" : "warning"}>
-      {isFullyReturned ? "Fully Returned" : "Partially Returned"}
+    <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
+      {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
     </Badge>
   );
 }
 
-function ValueBreakdown({
-  purchase,
-  className,
-}: {
-  purchase: Purchase;
-  className?: string;
-}) {
+function ValueBreakdown({ purchase, className }: { purchase: Purchase; className?: string }) {
   const { grossValue, returnedValue, transportCharges, netValue, hasReturns, hasTransportCharges } =
     purchaseTotals(purchase);
 
   if (!hasReturns && !hasTransportCharges) {
-    return (
-      <span className={cn("font-medium tabular-nums", className)}>
-        {formatCurrency(grossValue)}
-      </span>
-    );
+    return <span className={cn('font-medium tabular-nums', className)}>{formatCurrency(grossValue)}</span>;
   }
 
   return (
-    <div className={cn("flex flex-col gap-0.5 tabular-nums", className)}>
-      <span className="text-xs text-muted-foreground line-through">
-        {formatCurrency(grossValue)}
-      </span>
+    <div className={cn('flex flex-col gap-0.5 tabular-nums', className)}>
+      <span className="text-xs text-muted-foreground line-through">{formatCurrency(grossValue)}</span>
       {hasReturns && (
-        <span className="text-xs font-medium text-destructive">
-          −{formatCurrency(returnedValue)} returned
-        </span>
+        <span className="text-xs font-medium text-destructive">−{formatCurrency(returnedValue)} returned</span>
       )}
       {hasTransportCharges && (
         <span className="text-xs font-medium text-warning-foreground dark:text-warning">
@@ -118,35 +94,33 @@ function ValueBreakdown({
 }
 
 export default function PurchasesPage() {
-  const [tab, setTab] = useState("purchases");
+  const [tab, setTab] = useState('purchases');
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [supplierFilter, setSupplierFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [search, setSearch] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebouncedValue(search);
-  const filtersActive = !!search || supplierFilter !== "all" || !!dateFrom || !!dateTo;
+  const filtersActive = !!search || supplierFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const { data: suppliers } = useAllSuppliers();
   const { data, isLoading, isFetching, isError, error, refetch } = usePurchases({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
-    supplierId: supplierFilter === "all" ? undefined : supplierFilter,
+    supplierId: supplierFilter === 'all' ? undefined : supplierFilter,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   });
-  const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(
-    null,
-  );
+  const [deletingPurchase, setDeletingPurchase] = useState<Purchase | null>(null);
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const deletePurchase = useDeletePurchase();
 
   function clearFilters() {
-    setSearch("");
-    setSupplierFilter("all");
-    setDateFrom("");
-    setDateTo("");
+    setSearch('');
+    setSupplierFilter('all');
+    setDateFrom('');
+    setDateTo('');
     setPage(1);
   }
 
@@ -154,7 +128,7 @@ export default function PurchasesPage() {
     if (!deletingPurchase) return;
     deletePurchase.mutate(deletingPurchase.id, {
       onSuccess: () => {
-        toast.success("Purchase deleted — stock reversed");
+        toast.success('Purchase deleted — stock reversed');
         setDeletingPurchase(null);
       },
       onError: (error) => {
@@ -226,25 +200,27 @@ export default function PurchasesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setPage(1);
-                }}
-                className="w-auto"
-              />
-              <span className="text-sm text-muted-foreground">to</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setPage(1);
-                }}
-                className="w-auto"
-              />
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  className="min-w-0 w-full sm:w-auto"
+                />
+                <span className="text-sm text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(1);
+                  }}
+                  className="min-w-0 w-full sm:w-auto"
+                />
+              </div>
               {filtersActive && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   Clear filters
@@ -276,7 +252,7 @@ export default function PurchasesPage() {
               )
             ) : (
               <>
-                <div className={cn("hidden sm:block", isFetching && "opacity-60 transition-opacity")}>
+                <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -290,15 +266,11 @@ export default function PurchasesPage() {
                     </TableHeader>
                     <TableBody>
                       {data.data.map((purchase) => {
-                        const { hasReturns, isFullyReturned } =
-                          purchaseTotals(purchase);
+                        const { hasReturns, isFullyReturned } = purchaseTotals(purchase);
                         return (
                           <TableRow
                             key={purchase.id}
-                            className={cn(
-                              hasReturns &&
-                                "border-l-4 border-l-warning bg-warning/5",
-                            )}
+                            className={cn(hasReturns && 'border-l-4 border-l-warning bg-warning/5')}
                           >
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-2">
@@ -308,23 +280,16 @@ export default function PurchasesPage() {
                                 >
                                   {purchase.supplier.name}
                                 </Link>
-                                {hasReturns && (
-                                  <ReturnedBadge isFullyReturned={isFullyReturned} />
-                                )}
+                                {hasReturns && <ReturnedBadge isFullyReturned={isFullyReturned} />}
                               </div>
                             </TableCell>
-                            <TableCell className="whitespace-normal break-words">
-                              {purchase.invoiceNumber}
-                            </TableCell>
+                            <TableCell className="whitespace-normal break-words">{purchase.invoiceNumber}</TableCell>
                             <TableCell className="whitespace-normal break-words">
                               {formatDate(purchase.purchaseDate)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{purchase.items.length}</TableCell>
                             <TableCell className="text-right">
-                              <ValueBreakdown
-                                purchase={purchase}
-                                className="items-end"
-                              />
+                              <ValueBreakdown purchase={purchase} className="items-end" />
                             </TableCell>
                             <TableCell>
                               <DropdownMenu>
@@ -335,18 +300,9 @@ export default function PurchasesPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem asChild>
-                                    <Link
-                                      href={`/admin/purchases/${purchase.id}`}
-                                    >
-                                      View details
-                                    </Link>
+                                    <Link href={`/admin/purchases/${purchase.id}`}>View details</Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() =>
-                                      setDeletingPurchase(purchase)
-                                    }
-                                  >
+                                  <DropdownMenuItem variant="destructive" onClick={() => setDeletingPurchase(purchase)}>
                                     <Trash2 />
                                     Delete
                                   </DropdownMenuItem>
@@ -360,16 +316,15 @@ export default function PurchasesPage() {
                   </Table>
                 </div>
 
-                <div className={cn("space-y-3 p-4 sm:hidden", isFetching && "opacity-60 transition-opacity")}>
+                <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
                   {data.data.map((purchase) => {
                     const { hasReturns, isFullyReturned } = purchaseTotals(purchase);
                     return (
                       <div
                         key={purchase.id}
                         className={cn(
-                          "rounded-lg border border-border bg-card p-4",
-                          hasReturns &&
-                            "border-l-4 border-l-warning bg-warning/5",
+                          'rounded-lg border border-border bg-card p-4',
+                          hasReturns && 'border-l-4 border-l-warning bg-warning/5',
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -380,9 +335,7 @@ export default function PurchasesPage() {
                             >
                               {purchase.supplier.name}
                             </Link>
-                            <p className="text-xs text-muted-foreground">
-                              {purchase.invoiceNumber}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{purchase.invoiceNumber}</p>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -397,14 +350,9 @@ export default function PurchasesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link href={`/admin/purchases/${purchase.id}`}>
-                                  View details
-                                </Link>
+                                <Link href={`/admin/purchases/${purchase.id}`}>View details</Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setDeletingPurchase(purchase)}
-                              >
+                              <DropdownMenuItem variant="destructive" onClick={() => setDeletingPurchase(purchase)}>
                                 <Trash2 />
                                 Delete
                               </DropdownMenuItem>
@@ -421,10 +369,7 @@ export default function PurchasesPage() {
                             <p>{formatDate(purchase.purchaseDate)}</p>
                             <p>{purchase.items.length} item(s)</p>
                           </div>
-                          <ValueBreakdown
-                            purchase={purchase}
-                            className="items-end text-right"
-                          />
+                          <ValueBreakdown purchase={purchase} className="items-end text-right" />
                         </div>
                       </div>
                     );
@@ -442,17 +387,13 @@ export default function PurchasesPage() {
         </TabsContent>
       </Tabs>
 
-      <AlertDialog
-        open={!!deletingPurchase}
-        onOpenChange={(open) => !open && setDeletingPurchase(null)}
-      >
+      <AlertDialog open={!!deletingPurchase} onOpenChange={(open) => !open && setDeletingPurchase(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this purchase?</AlertDialogTitle>
             <AlertDialogDescription>
-              This reverses the stock it added (and any returns recorded against
-              it). If that stock has already been sold, deletion will fail
-              rather than go negative.
+              This reverses the stock it added (and any returns recorded against it). If that stock has already been
+              sold, deletion will fail rather than go negative.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -460,7 +401,7 @@ export default function PurchasesPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deletePurchase.isPending}
-              className={buttonVariants({ variant: "destructive" })}
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>
@@ -468,10 +409,7 @@ export default function PurchasesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <StandalonePurchaseReturnFormDialog
-        open={returnFormOpen}
-        onOpenChange={setReturnFormOpen}
-      />
+      <StandalonePurchaseReturnFormDialog open={returnFormOpen} onOpenChange={setReturnFormOpen} />
     </div>
   );
 }

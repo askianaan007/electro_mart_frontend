@@ -1,5 +1,6 @@
 'use client';
 
+import { FitToWidth } from '@/components/fit-to-width';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -169,7 +170,8 @@ export default function SupplierStatementPage() {
     router.replace(`/admin/suppliers/${id}/statement?from=${draftFrom}&to=${draftTo}`);
   }
 
-  const periodLabel = fromMonth === toMonth ? monthLabel(fromMonth) : `${monthLabel(fromMonth)} – ${monthLabel(toMonth)}`;
+  const periodLabel =
+    fromMonth === toMonth ? monthLabel(fromMonth) : `${monthLabel(fromMonth)} – ${monthLabel(toMonth)}`;
 
   return (
     <div className="space-y-6">
@@ -217,13 +219,15 @@ export default function SupplierStatementPage() {
       ) : isLoading || !supplier ? (
         <PageSkeleton cards={0} className="print:hidden" />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
-          <SupplierStatementPrintLayout
-            supplier={supplier}
-            periodLabel={periodLabel}
-            generatedDate={new Date().toLocaleDateString('en-GB')}
-            {...computed}
-          />
+        <div className="rounded-xl border border-border bg-muted/40 p-2.5 print:border-0 print:bg-transparent print:p-0 sm:p-8">
+          <FitToWidth>
+            <SupplierStatementPrintLayout
+              supplier={supplier}
+              periodLabel={periodLabel}
+              generatedDate={new Date().toLocaleDateString('en-GB')}
+              {...computed}
+            />
+          </FitToWidth>
         </div>
       )}
     </div>

@@ -85,7 +85,7 @@ export default function DealerProductDetailPage() {
       {backButton}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Card className="flex aspect-square items-center justify-center overflow-hidden bg-muted/50">
             {mainImage ? (
               <Image src={mainImage} alt={product.name} width={480} height={480} className="size-full object-cover" />
@@ -94,7 +94,7 @@ export default function DealerProductDetailPage() {
             )}
           </Card>
           {galleryImages.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {galleryImages.map((url, index) => (
                 <button
                   key={url}
@@ -113,10 +113,10 @@ export default function DealerProductDetailPage() {
           )}
         </div>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{product.name}</h1>
+              <h1 className="min-w-0 break-words text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{product.name}</h1>
               <StockStatusBadge status={status} />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -128,7 +128,7 @@ export default function DealerProductDetailPage() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-[13px] font-medium text-muted-foreground">Wholesale price</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                <p className="mt-1 break-words text-2xl font-semibold tracking-tight tabular-nums text-foreground">
                   {formatCurrency(product.wholesalePrice)}
                 </p>
               </div>
@@ -167,7 +167,7 @@ export default function DealerProductDetailPage() {
                     <Plus className="size-4" />
                   </button>
                 </div>
-                <Button size="lg" className="flex-1" onClick={handleAdd}>
+                <Button size="lg" className="min-w-0 flex-1" onClick={handleAdd}>
                   <ShoppingCart />
                   Add to Cart
                 </Button>

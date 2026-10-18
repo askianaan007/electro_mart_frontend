@@ -253,43 +253,73 @@ export default function DealerDetailPage() {
               <EmptyState icon={ShoppingCart} title="No orders recorded yet" description="Orders placed by this dealer will display here" />
             ) : (
               <div className={cn('border-t border-border', ordersFetching && 'opacity-60 transition-opacity')}>
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Total Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.data.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary hover:underline">
-                            {order.orderNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(order.totalAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <OrderStatusBadge status={order.status} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/admin/orders/${order.id}`}>
-                              Details
-                              <ArrowUpRight className="size-3.5" />
-                            </Link>
-                          </Button>
-                        </TableCell>
+                <div className="hidden lg:block">
+                  <Table className="min-w-[600px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Total Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.data.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            <Link
+                              href={`/admin/orders/${order.id}`}
+                              className="font-medium text-primary hover:underline"
+                            >
+                              {order.orderNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(order.totalAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <OrderStatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/admin/orders/${order.id}`}>
+                                Details
+                                <ArrowUpRight className="size-3.5" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="space-y-3 p-4 lg:hidden">
+                  {orders.data.map((order) => (
+                    <div key={order.id} className="rounded-lg border border-border bg-card p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className="min-w-0 break-words font-medium text-primary hover:underline"
+                        >
+                          {order.orderNumber}
+                        </Link>
+                        <span className="shrink-0 font-semibold tabular-nums">{formatCurrency(order.totalAmount)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{formatDate(order.createdAt)}</div>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                        <OrderStatusBadge status={order.status} />
+                        <Button asChild size="sm" variant="outline" className="h-9">
+                          <Link href={`/admin/orders/${order.id}`}>
+                            Details
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -311,43 +341,75 @@ export default function DealerDetailPage() {
               <EmptyState icon={Receipt} title="No invoices generated yet" description="Invoices issued for completed orders will display here" />
             ) : (
               <div className={cn('border-t border-border', invoicesFetching && 'opacity-60 transition-opacity')}>
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Grand Total</TableHead>
-                      <TableHead>Payment Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoices.data.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell>
-                          <Link href={`/admin/invoices/${invoice.id}`} className="font-medium text-primary hover:underline">
-                            {invoice.invoiceNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(invoice.createdAt)}</TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(invoice.grandTotal)}
-                        </TableCell>
-                        <TableCell>
-                          <PaymentStatusBadge status={invoice.paymentStatus} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/admin/invoices/${invoice.id}`}>
-                              View
-                              <ArrowUpRight className="size-3.5" />
-                            </Link>
-                          </Button>
-                        </TableCell>
+                <div className="hidden lg:block">
+                  <Table className="min-w-[600px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Grand Total</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.data.map((invoice) => (
+                        <TableRow key={invoice.id}>
+                          <TableCell>
+                            <Link
+                              href={`/admin/invoices/${invoice.id}`}
+                              className="font-medium text-primary hover:underline"
+                            >
+                              {invoice.invoiceNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(invoice.createdAt)}</TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(invoice.grandTotal)}
+                          </TableCell>
+                          <TableCell>
+                            <PaymentStatusBadge status={invoice.paymentStatus} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/admin/invoices/${invoice.id}`}>
+                                View
+                                <ArrowUpRight className="size-3.5" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="space-y-3 p-4 lg:hidden">
+                  {invoices.data.map((invoice) => (
+                    <div key={invoice.id} className="rounded-lg border border-border bg-card p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/admin/invoices/${invoice.id}`}
+                          className="min-w-0 break-words font-medium text-primary hover:underline"
+                        >
+                          {invoice.invoiceNumber}
+                        </Link>
+                        <span className="shrink-0 font-semibold tabular-nums">
+                          {formatCurrency(invoice.grandTotal)}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{formatDate(invoice.createdAt)}</div>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                        <PaymentStatusBadge status={invoice.paymentStatus} />
+                        <Button asChild size="sm" variant="outline" className="h-9">
+                          <Link href={`/admin/invoices/${invoice.id}`}>
+                            View
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -369,30 +431,47 @@ export default function DealerDetailPage() {
               <EmptyState icon={Wallet} title="No payments recorded yet" description="Payments submitted by this dealer will display here" />
             ) : (
               <div className={cn('border-t border-border', paymentsFetching && 'opacity-60 transition-opacity')}>
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Payment Date</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Payment Mode</TableHead>
-                      <TableHead>Reference / Cheque #</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.data.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="text-muted-foreground">{formatDate(payment.paymentDate)}</TableCell>
-                        <TableCell className="text-right font-medium tabular-nums text-success">
-                          {formatCurrency(payment.amount)}
-                        </TableCell>
-                        <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {payment.reference ?? payment.chequeNumber ?? '—'}
-                        </TableCell>
+                <div className="hidden lg:block">
+                  <Table className="min-w-[600px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Payment Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Payment Mode</TableHead>
+                        <TableHead>Reference / Cheque #</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.data.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="text-muted-foreground">{formatDate(payment.paymentDate)}</TableCell>
+                          <TableCell className="text-right font-medium tabular-nums text-success">
+                            {formatCurrency(payment.amount)}
+                          </TableCell>
+                          <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {payment.reference ?? payment.chequeNumber ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <ul className="divide-y divide-border lg:hidden">
+                  {payments.data.map((payment) => (
+                    <li key={payment.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">{formatDate(payment.paymentDate)}</div>
+                        <div className="mt-0.5 break-words text-xs text-muted-foreground">
+                          {payment.mode.replace('_', ' ')} &middot; {payment.reference ?? payment.chequeNumber ?? '—'}
+                        </div>
+                      </div>
+                      <span className="shrink-0 font-semibold tabular-nums text-success">
+                        {formatCurrency(payment.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

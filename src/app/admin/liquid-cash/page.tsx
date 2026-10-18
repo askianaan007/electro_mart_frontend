@@ -109,8 +109,13 @@ function downloadHistoryCsv(filename: string, rows: LiquidCashHistoryEntry[]) {
 }
 
 export default function LiquidCashPage() {
-  const { data: summary, isLoading: summaryLoading, isError: summaryError, error: summaryErrorObj, refetch: refetchSummary } =
-    useLiquidCashSummary();
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    error: summaryErrorObj,
+    refetch: refetchSummary,
+  } = useLiquidCashSummary();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -169,7 +174,9 @@ export default function LiquidCashPage() {
   async function handleExportCsv() {
     if (!historyResult) return;
     if (historyResult.meta.total > EXPORT_CAP) {
-      setExportError(`This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`);
+      setExportError(
+        `This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`,
+      );
       return;
     }
     setExportError(null);
@@ -185,19 +192,25 @@ export default function LiquidCashPage() {
   async function handleExportPdf() {
     if (!historyResult || !summary) return;
     if (historyResult.meta.total > EXPORT_CAP) {
-      setExportError(`This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`);
+      setExportError(
+        `This filter matches ${historyResult.meta.total.toLocaleString()} rows. Narrow the date range to under ${EXPORT_CAP.toLocaleString()} before exporting.`,
+      );
       return;
     }
     setExportError(null);
     setIsExportingPdf(true);
     try {
       const allRows = await fetchAllPages((p, limit) => api.liquidCash.history({ ...historyFilters, page: p, limit }));
-      await downloadLiquidCashStatementPdf(`liquid-cash-statement-${new Date().toISOString().slice(0, 10)}.pdf`, allRows, {
-        filterSummary: filterSummaryLabel(),
-        dateFrom,
-        dateTo,
-        summary,
-      });
+      await downloadLiquidCashStatementPdf(
+        `liquid-cash-statement-${new Date().toISOString().slice(0, 10)}.pdf`,
+        allRows,
+        {
+          filterSummary: filterSummaryLabel(),
+          dateFrom,
+          dateTo,
+          summary,
+        },
+      );
     } finally {
       setIsExportingPdf(false);
     }
@@ -226,7 +239,11 @@ export default function LiquidCashPage() {
         </>
       ) : summaryError ? (
         <Card>
-          <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} title="Couldn't load the cash position" />
+          <QueryErrorState
+            error={summaryErrorObj}
+            onRetry={() => refetchSummary()}
+            title="Couldn't load the cash position"
+          />
         </Card>
       ) : (
         summary && (
@@ -417,9 +434,21 @@ export default function LiquidCashPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => resetPageAnd(setDateTo)(e.target.value)}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Clear filters
@@ -444,7 +473,11 @@ export default function LiquidCashPage() {
               }
             />
           ) : (
-            <EmptyState icon={Landmark} title="No history yet" description="Investments, payments, and expenses will appear here" />
+            <EmptyState
+              icon={Landmark}
+              title="No history yet"
+              description="Investments, payments, and expenses will appear here"
+            />
           )
         ) : (
           <>
@@ -480,7 +513,9 @@ export default function LiquidCashPage() {
                         </TableCell>
                         <TableCell className="whitespace-normal break-words">
                           <div>{row.description}</div>
-                          {row.mode && <div className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</div>}
+                          {row.mode && (
+                            <div className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">
                           {formatCurrency(row.balanceBefore)}
@@ -488,7 +523,11 @@ export default function LiquidCashPage() {
                         <TableCell
                           className={cn(
                             'text-right font-medium tabular-nums',
-                            faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
+                            faceAmount > 0
+                              ? 'text-success'
+                              : faceAmount < 0
+                                ? 'text-destructive'
+                                : 'text-muted-foreground',
                           )}
                         >
                           {faceAmount >= 0 ? '+' : ''}
@@ -525,7 +564,11 @@ export default function LiquidCashPage() {
                       <span
                         className={cn(
                           'shrink-0 break-words font-medium tabular-nums',
-                          faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
+                          faceAmount > 0
+                            ? 'text-success'
+                            : faceAmount < 0
+                              ? 'text-destructive'
+                              : 'text-muted-foreground',
                         )}
                       >
                         {faceAmount >= 0 ? '+' : ''}

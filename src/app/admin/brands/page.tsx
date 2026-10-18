@@ -117,7 +117,7 @@ export default function BrandsPage() {
           <EmptyState icon={Tag} title="No brands found" description="Add your first brand to get started" />
         ) : (
           <>
-            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -168,6 +168,51 @@ export default function BrandsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              {data.data.map((brand) => (
+                <div key={brand.id} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <button onClick={() => openEdit(brand)} className="flex min-w-0 items-center gap-3 text-left">
+                      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                        {brand.logoUrl ? (
+                          <Image src={brand.logoUrl} alt={brand.name} width={36} height={36} className="object-cover" />
+                        ) : (
+                          <Tag className="size-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="min-w-0 break-words font-medium text-foreground hover:text-primary">{brand.name}</p>
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="-mr-2 -mt-1 shrink-0"
+                          aria-label={`Actions for ${brand.name}`}
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(brand)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onClick={() => setDeletingBrand(brand)}>
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="tabular-nums">Sort order {brand.sortOrder}</span>
+                    <div className="flex items-center gap-1.5">
+                      {brand.isFeatured && <Badge variant="purple">Featured</Badge>}
+                      <AccountStatusBadge status={brand.status} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>

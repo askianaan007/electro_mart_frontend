@@ -53,9 +53,9 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">{product.name}</p>
           <p className="truncate text-xs text-muted-foreground">{product.category ?? product.brand ?? ''}</p>
         </Link>
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <p className="text-base font-semibold tabular-nums text-foreground">
+        <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
+          <div className="min-w-0">
+            <p className="break-words text-base font-semibold tabular-nums text-foreground">
               {formatCurrency(product.wholesalePrice)}
             </p>
             <p className="text-xs text-muted-foreground">Wholesale price</p>
@@ -66,32 +66,40 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         {!outOfStock && (
-          <div className="mt-auto flex items-center gap-2">
-            <div className="flex h-8 items-center rounded-md border border-input bg-card shadow-xs dark:bg-muted/40">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                className="flex size-8 items-center justify-center rounded-l-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
+          <div className="@container mt-auto">
+            <div className="flex flex-col gap-2 @[12rem]:flex-row @[12rem]:items-center">
+              <div className="flex h-9 items-center justify-between rounded-md border border-input bg-card shadow-xs @[12rem]:h-8 @[12rem]:justify-start dark:bg-muted/40">
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  className="flex size-9 items-center justify-center rounded-l-md @[12rem]:size-8 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="size-3.5" />
+                </button>
+                <span className="min-w-7 flex-1 text-center text-sm font-medium tabular-nums @[12rem]:w-7 @[12rem]:flex-none">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  className="flex size-9 items-center justify-center rounded-r-md @[12rem]:size-8 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  onClick={() => setQuantity((q) => Math.min(product.currentStock, q + 1))}
+                  disabled={quantity >= product.currentStock}
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+              <Button
+                size="sm"
+                className="h-9 w-full @[12rem]:h-8 @[12rem]:w-auto @[12rem]:flex-1"
+                onClick={handleAdd}
               >
-                <Minus className="size-3.5" />
-              </button>
-              <span className="w-7 text-center text-sm font-medium tabular-nums">{quantity}</span>
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                className="flex size-8 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                onClick={() => setQuantity((q) => Math.min(product.currentStock, q + 1))}
-                disabled={quantity >= product.currentStock}
-              >
-                <Plus className="size-3.5" />
-              </button>
+                <ShoppingCart />
+                Add
+              </Button>
             </div>
-            <Button size="sm" className="flex-1" onClick={handleAdd}>
-              <ShoppingCart />
-              Add
-            </Button>
           </div>
         )}
       </CardContent>

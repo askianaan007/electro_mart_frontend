@@ -27,6 +27,7 @@ import { PaymentStatusBadge } from '@/components/status-badge';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
 import { SalesReturnFormDialog } from '@/components/admin/sales-return-form-dialog';
 import { InvoicePrintLayout } from '@/components/invoice-print-layout';
+import { FitToWidth } from '@/components/fit-to-width';
 import { useInvoice } from '@/hooks/use-invoices';
 import { useDeleteSalesReturn, useSalesReturnsForOrder } from '@/hooks/use-sales-returns';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -78,8 +79,7 @@ export default function InvoiceDetailPage() {
     setDeletingReturn(null);
   }
 
-  const isFullyPaid =
-    invoice.paymentStatus === 'PAID' || Number(invoice.netGrandTotal ?? invoice.grandTotal) <= 0;
+  const isFullyPaid = invoice.paymentStatus === 'PAID' || Number(invoice.netGrandTotal ?? invoice.grandTotal) <= 0;
   const returnedAmount = Number(invoice.returnedAmount ?? 0);
   const hasReturns = returnedAmount > 0;
   const netGrandTotal = invoice.netGrandTotal ?? invoice.grandTotal;
@@ -127,8 +127,10 @@ export default function InvoiceDetailPage() {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
-        <InvoicePrintLayout invoice={invoice} />
+      <div className="rounded-xl border border-border bg-muted/40 p-2.5 print:border-0 print:bg-transparent print:p-0 sm:p-8">
+        <FitToWidth>
+          <InvoicePrintLayout invoice={invoice} />
+        </FitToWidth>
       </div>
 
       {hasReturns && (
@@ -160,28 +162,45 @@ export default function InvoiceDetailPage() {
             <CardDescription>Payments recorded against this invoice.</CardDescription>
           </CardHeader>
           <CardContent className="p-0 sm:p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Reference</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.payments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>{formatDate(payment.paymentDate)}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums text-success">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
-                    <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
-                    <TableCell className="text-muted-foreground">{payment.reference ?? '—'}</TableCell>
+            <div className="hidden lg:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Mode</TableHead>
+                    <TableHead>Reference</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {invoice.payments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>{formatDate(payment.paymentDate)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums text-success">
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
+                      <TableCell className="text-muted-foreground">{payment.reference ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ul className="divide-y divide-border border-t border-border lg:hidden">
+              {invoice.payments.map((payment) => (
+                <li key={payment.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{formatDate(payment.paymentDate)}</div>
+                    <div className="mt-0.5 break-words text-xs text-muted-foreground">
+                      {payment.mode.replace('_', ' ')} &middot; {payment.reference ?? '—'}
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-semibold tabular-nums text-success">
+                    {formatCurrency(payment.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}
@@ -212,52 +231,93 @@ export default function InvoiceDetailPage() {
               description="Goods the dealer sends back will appear here"
             />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Return #</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden lg:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Return #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salesReturns.map((salesReturn) => (
+                      <TableRow key={salesReturn.id}>
+                        <TableCell className="font-medium">{salesReturn.returnNumber}</TableCell>
+                        <TableCell className="whitespace-normal break-words">
+                          {formatDate(salesReturn.returnDate)}
+                        </TableCell>
+                        <TableCell className="whitespace-normal break-words">{salesReturn.reason}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums text-destructive">
+                          −{formatCurrency(salesReturn.totalAmount)}
+                        </TableCell>
+                        <TableCell>
+                          {canEditReturn(salesReturn) && (
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label="Edit return"
+                                onClick={() => setEditingReturn(salesReturn)}
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label="Delete return"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeletingReturn(salesReturn)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="space-y-3 p-4 pt-0 lg:hidden">
                 {salesReturns.map((salesReturn) => (
-                  <TableRow key={salesReturn.id}>
-                    <TableCell className="font-medium">{salesReturn.returnNumber}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{formatDate(salesReturn.returnDate)}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{salesReturn.reason}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums text-destructive">
-                      −{formatCurrency(salesReturn.totalAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {canEditReturn(salesReturn) && (
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label="Edit return"
-                            onClick={() => setEditingReturn(salesReturn)}
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label="Delete return"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeletingReturn(salesReturn)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <div key={salesReturn.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 break-words font-medium">{salesReturn.returnNumber}</span>
+                      <span className="shrink-0 font-semibold tabular-nums text-destructive">
+                        −{formatCurrency(salesReturn.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatDate(salesReturn.returnDate)}</div>
+                    <p className="mt-2 break-words text-sm">{salesReturn.reason}</p>
+                    {canEditReturn(salesReturn) && (
+                      <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Edit return"
+                          onClick={() => setEditingReturn(salesReturn)}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Delete return"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeletingReturn(salesReturn)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -277,8 +337,8 @@ export default function InvoiceDetailPage() {
             <AlertDialogTitle>Delete this return?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently reverses return {deletingReturn?.returnNumber} — removes the{' '}
-              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the dealer
-              credit it created. Only available within 1 day of recording it.
+              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the dealer credit
+              it created. Only available within 1 day of recording it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

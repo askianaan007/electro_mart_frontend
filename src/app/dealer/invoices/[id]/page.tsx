@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import { InvoicePrintLayout } from '@/components/invoice-print-layout';
+import { FitToWidth } from '@/components/fit-to-width';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useInvoice } from '@/hooks/use-invoices';
 
@@ -63,8 +64,10 @@ export default function DealerInvoiceDetailPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
-        <InvoicePrintLayout invoice={invoice} />
+      <div className="rounded-xl border border-border bg-muted/40 p-2.5 print:border-0 print:bg-transparent print:p-0 sm:p-8">
+        <FitToWidth>
+          <InvoicePrintLayout invoice={invoice} />
+        </FitToWidth>
       </div>
     </div>
   );

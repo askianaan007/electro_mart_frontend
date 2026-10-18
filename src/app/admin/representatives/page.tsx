@@ -246,7 +246,7 @@ export default function RepresentativesPage() {
           )
         ) : (
           <>
-            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -289,6 +289,40 @@ export default function RepresentativesPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              {data.data.map((rep) => (
+                <div key={rep.id} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/representatives/${rep.id}`}
+                        className="break-words font-medium text-primary"
+                      >
+                        {rep.name}
+                      </Link>
+                      <div className="break-words text-xs text-muted-foreground">{rep.email}</div>
+                    </div>
+                    <div className="shrink-0">
+                      <RepresentativeStatusBadge status={rep.status} />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground tabular-nums">
+                    {rep.phone} &middot; Joined {new Date(rep.joiningDate).toLocaleDateString()}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(rep)}>
+                      Edit
+                    </Button>
+                    <RepresentativeRowActions
+                      representative={rep}
+                      onPasswordReset={setCredentials}
+                      onDeleteRequest={() => setDeletingRep(rep)}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>

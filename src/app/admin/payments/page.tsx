@@ -104,6 +104,41 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
     setPage(1);
   }
 
+  function invoiceActions(invoice: Invoice, compact = true) {
+    return (
+      <>
+        {invoice.paymentStatus !== 'PAID' && Number(invoice.netGrandTotal ?? invoice.grandTotal) > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className={compact ? 'h-8' : 'h-9'}
+            onClick={() => setPayingInvoice(invoice)}
+          >
+            <Wallet className="size-3.5" />
+            Record payment
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={compact ? 'h-8' : 'h-9'}
+          title="Edit, delete or undo this invoice's payments"
+          onClick={() => onViewPayments({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })}
+        >
+          <ListChecks className="size-3.5" />
+          Payments
+        </Button>
+        <RowActionsMenu
+          label="More invoice actions"
+          groups={[
+            [{ label: 'View invoice', icon: Receipt, href: `/admin/invoices/${invoice.id}` }],
+            [{ label: 'Return goods', icon: Undo2, onSelect: () => setReturnOrderId(invoice.orderId) }],
+          ]}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <SectionHeader title="Invoices" isFetching={isFetching && !isLoading} className="pb-3" />
@@ -157,25 +192,27 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
-        <span className="text-sm text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+        </div>
         {filtersActive && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
@@ -204,7 +241,7 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
         )
       ) : (
         <>
-          <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+          <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -225,7 +262,9 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
                       </Link>
                     </TableCell>
                     <TableCell>{invoice.dealer?.businessName ?? '—'}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(invoice.grandTotal)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(invoice.grandTotal)}
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {invoice.dueDate ? formatDate(invoice.dueDate) : '—'}
                     </TableCell>
@@ -233,37 +272,38 @@ function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: 
                       <PaymentStatusBadge status={invoice.paymentStatus} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        {invoice.paymentStatus !== 'PAID' &&
-                          Number(invoice.netGrandTotal ?? invoice.grandTotal) > 0 && (
-                            <Button size="sm" variant="outline" className="h-8" onClick={() => setPayingInvoice(invoice)}>
-                              <Wallet className="size-3.5" />
-                              Record payment
-                            </Button>
-                          )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8"
-                          title="Edit, delete or undo this invoice's payments"
-                          onClick={() => onViewPayments({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })}
-                        >
-                          <ListChecks className="size-3.5" />
-                          Payments
-                        </Button>
-                        <RowActionsMenu
-                          label="More invoice actions"
-                          groups={[
-                            [{ label: 'View invoice', icon: Receipt, href: `/admin/invoices/${invoice.id}` }],
-                            [{ label: 'Return goods', icon: Undo2, onSelect: () => setReturnOrderId(invoice.orderId) }],
-                          ]}
-                        />
-                      </div>
+                      <div className="flex items-center justify-end gap-1">{invoiceActions(invoice)}</div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            {data.data.map((invoice) => (
+              <div key={invoice.id} className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/admin/invoices/${invoice.id}`}
+                      className="break-words font-medium text-primary hover:underline"
+                    >
+                      {invoice.invoiceNumber}
+                    </Link>
+                    <div className="mt-0.5 break-words text-sm">{invoice.dealer?.businessName ?? '—'}</div>
+                  </div>
+                  <span className="shrink-0 font-semibold tabular-nums">{formatCurrency(invoice.grandTotal)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>Due {invoice.dueDate ? formatDate(invoice.dueDate) : '—'}</span>
+                  <PaymentStatusBadge status={invoice.paymentStatus} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3">
+                  {invoiceActions(invoice, false)}
+                </div>
+              </div>
+            ))}
           </div>
           <PaginationBar meta={data.meta} onPageChange={setPage} />
         </>
@@ -374,8 +414,7 @@ function PaymentHistoryTab({
     if (!deletePayment) return;
     const id = deletePayment.id;
     deletePaymentMutation.mutate(id, {
-      onSuccess: () =>
-        toast.success('Payment deleted — dealer balance restored', undoAction(id, 'Payment restored')),
+      onSuccess: () => toast.success('Payment deleted — dealer balance restored', undoAction(id, 'Payment restored')),
       onError: (error) => toast.error(getErrorMessage(error)),
     });
     setDeletePayment(null);
@@ -440,13 +479,7 @@ function PaymentHistoryTab({
             {UNDO_LABELS[payment.lastChange.action]}
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8"
-          disabled={busy}
-          onClick={() => setEditingPayment(payment)}
-        >
+        <Button size="sm" variant="outline" className="h-8" disabled={busy} onClick={() => setEditingPayment(payment)}>
           <Pencil className="size-3.5" />
           Edit
         </Button>
@@ -550,25 +583,27 @@ function PaymentHistoryTab({
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
-        <span className="text-sm text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+        </div>
         {filtersActive && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
@@ -615,7 +650,9 @@ function PaymentHistoryTab({
                 {data.data.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="whitespace-normal break-words">{formatDate(payment.paymentDate)}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{payment.dealer?.businessName ?? '—'}</TableCell>
+                    <TableCell className="whitespace-normal break-words">
+                      {payment.dealer?.businessName ?? '—'}
+                    </TableCell>
                     <TableCell>
                       {payment.invoice ? (
                         <Link href={`/admin/invoices/${payment.invoice.id}`} className="text-primary hover:underline">
@@ -625,7 +662,9 @@ function PaymentHistoryTab({
                         '—'
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
                     <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
                     <TableCell>{chequeStatusControl(payment)}</TableCell>
                     <TableCell className="whitespace-normal">{chequeDetails(payment) ?? '—'}</TableCell>
@@ -641,7 +680,9 @@ function PaymentHistoryTab({
               <div key={payment.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <span className="break-words font-medium">{payment.dealer?.businessName ?? '—'}</span>
-                  <span className="shrink-0 break-words font-semibold tabular-nums">{formatCurrency(payment.amount)}</span>
+                  <span className="shrink-0 break-words font-semibold tabular-nums">
+                    {formatCurrency(payment.amount)}
+                  </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
@@ -751,9 +792,13 @@ function DeletedPaymentsTab() {
                   <TableRow key={payment.id}>
                     <TableCell>{formatDate(payment.deletedAt)}</TableCell>
                     <TableCell>{formatDate(payment.paymentDate)}</TableCell>
-                    <TableCell className="whitespace-normal break-words">{payment.dealer?.businessName ?? '—'}</TableCell>
+                    <TableCell className="whitespace-normal break-words">
+                      {payment.dealer?.businessName ?? '—'}
+                    </TableCell>
                     <TableCell>{payment.invoice?.invoiceNumber ?? '—'}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
                     <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
                     <TableCell>
                       {payment.chequeStatus ? <ChequeStatusBadge status={payment.chequeStatus} /> : '—'}
@@ -874,8 +919,8 @@ export default function PaymentsPage() {
             <AlertDialogTitle>Reset the sales-return-number counter?</AlertDialogTitle>
             <AlertDialogDescription>
               Realigns the next return number with what&apos;s actually in the table — one past the highest return
-              number still on record, or #00001 if there are no returns left (e.g. after clearing a dealer&apos;s
-              data). Existing return numbers are never changed.
+              number still on record, or #00001 if there are no returns left (e.g. after clearing a dealer&apos;s data).
+              Existing return numbers are never changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

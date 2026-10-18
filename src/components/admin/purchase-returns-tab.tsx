@@ -121,25 +121,27 @@ export function PurchaseReturnsTab() {
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
-        <span className="text-sm text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="w-auto"
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="min-w-0 w-full sm:w-auto"
+          />
+        </div>
         {filtersActive && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
@@ -168,7 +170,7 @@ export function PurchaseReturnsTab() {
         )
       ) : (
         <>
-          <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+          <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -237,7 +239,7 @@ export function PurchaseReturnsTab() {
             </Table>
           </div>
 
-          <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+          <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
             {data.data.map((purchaseReturn) => (
               <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -250,7 +252,10 @@ export function PurchaseReturnsTab() {
                 <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{purchaseReturn.supplier?.name ?? '—'}</span>
                   {purchaseReturn.purchase ? (
-                    <Link href={`/admin/purchases/${purchaseReturn.purchase.id}`} className="text-primary hover:underline">
+                    <Link
+                      href={`/admin/purchases/${purchaseReturn.purchase.id}`}
+                      className="text-primary hover:underline"
+                    >
                       {purchaseReturn.purchase.invoiceNumber}
                     </Link>
                   ) : (
@@ -305,8 +310,8 @@ export function PurchaseReturnsTab() {
             <AlertDialogTitle>Delete this return?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently reverses return {deletingReturn?.returnNumber} — removes the{' '}
-              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the supplier
-              credit it applied. This cannot be undone.
+              {deletingReturn ? formatCurrency(deletingReturn.totalAmount) : ''} restocked units and the supplier credit
+              it applied. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -70,10 +70,10 @@ export default function DealerDashboardPage() {
           )}
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="min-w-0">
               <CardHeader className="flex-row items-center justify-between gap-3 pb-3">
-                <CardTitle>Recent Orders</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
+                <CardTitle className="min-w-0 truncate">Recent Orders</CardTitle>
+                <Button variant="ghost" size="sm" className="shrink-0" asChild>
                   <Link href="/dealer/orders">View all</Link>
                 </Button>
               </CardHeader>
@@ -87,43 +87,65 @@ export default function DealerDashboardPage() {
                     description="Browse products to place your first order"
                   />
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order #</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <>
+                    <div className="hidden lg:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Order #</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.recentOrders.map((order) => (
+                            <TableRow key={order.id}>
+                              <TableCell>
+                                <Link
+                                  href={`/dealer/orders/${order.id}`}
+                                  className="font-medium text-primary hover:underline"
+                                >
+                                  {order.orderNumber}
+                                </Link>
+                              </TableCell>
+                              <TableCell className="text-right font-medium tabular-nums">
+                                {formatCurrency(order.totalAmount)}
+                              </TableCell>
+                              <TableCell>
+                                <OrderStatusBadge status={order.status} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <ul className="divide-y divide-border border-t border-border lg:hidden">
                       {data.recentOrders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell>
+                        <li key={order.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div className="min-w-0 space-y-1">
                             <Link
                               href={`/dealer/orders/${order.id}`}
-                              className="font-medium text-primary hover:underline"
+                              className="block break-words font-medium text-primary hover:underline"
                             >
                               {order.orderNumber}
                             </Link>
-                          </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            {formatCurrency(order.totalAmount)}
-                          </TableCell>
-                          <TableCell>
                             <OrderStatusBadge status={order.status} />
-                          </TableCell>
-                        </TableRow>
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                            {formatCurrency(order.totalAmount)}
+                          </span>
+                        </li>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="min-w-0">
               <CardHeader className="flex-row items-center justify-between gap-3 pb-3">
-                <CardTitle>Recent Invoices</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
+                <CardTitle className="min-w-0 truncate">Recent Invoices</CardTitle>
+                <Button variant="ghost" size="sm" className="shrink-0" asChild>
                   <Link href="/dealer/invoices">View all</Link>
                 </Button>
               </CardHeader>
@@ -137,26 +159,43 @@ export default function DealerDashboardPage() {
                     description="Invoices appear here once your orders are billed"
                   />
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <>
+                    <div className="hidden lg:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Invoice #</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.recentInvoices.map((invoice) => (
+                            <TableRow key={invoice.id}>
+                              <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                              <TableCell className="text-muted-foreground">{formatDate(invoice.createdAt)}</TableCell>
+                              <TableCell>
+                                <PaymentStatusBadge status={invoice.paymentStatus} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <ul className="divide-y divide-border border-t border-border lg:hidden">
                       {data.recentInvoices.map((invoice) => (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell className="text-muted-foreground">{formatDate(invoice.createdAt)}</TableCell>
-                          <TableCell>
+                        <li key={invoice.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="break-words font-medium text-foreground">{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(invoice.createdAt)}</p>
+                          </div>
+                          <div className="shrink-0">
                             <PaymentStatusBadge status={invoice.paymentStatus} />
-                          </TableCell>
-                        </TableRow>
+                          </div>
+                        </li>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </ul>
+                  </>
                 )}
               </CardContent>
             </Card>

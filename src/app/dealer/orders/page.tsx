@@ -57,15 +57,16 @@ export default function DealerOrdersPage() {
         <SectionHeader title="Orders" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <Tabs
+            className="min-w-0"
             value={status}
             onValueChange={(v) => {
               setStatus(v);
               setPage(1);
             }}
           >
-            <TabsList>
+            <TabsList className="h-10 sm:h-9">
               {TABS.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value}>
+                <TabsTrigger key={tab.value} value={tab.value} className="px-3.5 sm:px-3">
                   {tab.label}
                 </TabsTrigger>
               ))}
@@ -83,40 +84,63 @@ export default function DealerOrdersPage() {
             description={status === 'all' ? 'Orders you place will appear here.' : 'No orders match this status.'}
           />
         ) : (
-          <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order #</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.data.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Link href={`/dealer/orders/${order.id}`} className="font-medium text-primary hover:underline">
-                        {order.orderNumber}
-                      </Link>
-                      <div className="text-xs text-muted-foreground sm:hidden">{formatDate(order.createdAt)}</div>
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {formatDate(order.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrency(order.totalAmount)}
-                    </TableCell>
-                    <TableCell>
-                      <OrderStatusBadge status={order.status} />
-                    </TableCell>
+          <>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order #</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.data.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Link href={`/dealer/orders/${order.id}`} className="font-medium text-primary hover:underline">
+                          {order.orderNumber}
+                        </Link>
+                        <div className="text-xs text-muted-foreground sm:hidden">{formatDate(order.createdAt)}</div>
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">
+                        {formatDate(order.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(order.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <OrderStatusBadge status={order.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              {data.data.map((order) => (
+                <div key={order.id} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/dealer/orders/${order.id}`}
+                      className="min-w-0 break-words font-medium text-primary hover:underline"
+                    >
+                      {order.orderNumber}
+                    </Link>
+                    <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                      {formatCurrency(order.totalAmount)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</span>
+                    <OrderStatusBadge status={order.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
-          </div>
+          </>
         )}
       </div>
     </div>

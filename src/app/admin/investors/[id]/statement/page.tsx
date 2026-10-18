@@ -1,5 +1,6 @@
 'use client';
 
+import { FitToWidth } from '@/components/fit-to-width';
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -137,7 +138,8 @@ export default function InvestorStatementPage() {
     router.replace(`/admin/investors/${id}/statement?from=${draftFrom}&to=${draftTo}`);
   }
 
-  const periodLabel = fromMonth === toMonth ? monthLabel(fromMonth) : `${monthLabel(fromMonth)} – ${monthLabel(toMonth)}`;
+  const periodLabel =
+    fromMonth === toMonth ? monthLabel(fromMonth) : `${monthLabel(fromMonth)} – ${monthLabel(toMonth)}`;
   const generatedDate = new Date().toLocaleDateString('en-GB');
 
   function handleExportExcel() {
@@ -184,7 +186,13 @@ export default function InvestorStatementPage() {
     );
   }
 
-  const loadError = investorIsError ? investorError : equityIsError ? equityError : investmentsIsError ? investmentsError : null;
+  const loadError = investorIsError
+    ? investorError
+    : equityIsError
+      ? equityError
+      : investmentsIsError
+        ? investmentsError
+        : null;
   const hasLoadError = investorIsError || equityIsError || investmentsIsError;
 
   return (
@@ -251,13 +259,15 @@ export default function InvestorStatementPage() {
       ) : !ready ? (
         <GeneratingOverlay />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
-          <InvestorStatementPrintLayout
-            investor={investor}
-            periodLabel={periodLabel}
-            generatedDate={generatedDate}
-            {...computed}
-          />
+        <div className="rounded-xl border border-border bg-muted/40 p-2.5 print:border-0 print:bg-transparent print:p-0 sm:p-8">
+          <FitToWidth>
+            <InvestorStatementPrintLayout
+              investor={investor}
+              periodLabel={periodLabel}
+              generatedDate={generatedDate}
+              {...computed}
+            />
+          </FitToWidth>
         </div>
       )}
     </div>

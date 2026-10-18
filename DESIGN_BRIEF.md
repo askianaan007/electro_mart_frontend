@@ -66,3 +66,11 @@ Icons: lucide, `size-4` in buttons (default), `size-[18px]` in tiles.
 
 ## When done
 Run `npx tsc --noEmit` from the frontend root and `npx eslint <your files>`; fix anything you introduced (pre-existing warnings like `react-hooks/incompatible-library` on `form.watch` are fine to leave). Report: files changed, any states you added, anything you deliberately left alone, and anything you needed from shared components.
+
+## Mobile (most users are on phones — 360–430px wide)
+- Nothing may be wider than the screen. Every data table that has more than ~3 columns needs a phone layout: keep the table for `lg` and up (`hidden lg:block` wrapper) and add a card list for small screens (`lg:hidden`). Follow the existing pattern in `src/app/admin/payments/page.tsx` (Payment History tab): `space-y-3 p-4` list of `rounded-lg border border-border bg-card p-4` cards.
+- Card anatomy: top row = primary identifier (bold, may wrap with `break-words`) on the left + amount/status on the right (`shrink-0`, `tabular-nums`); second row = secondary facts in `text-xs text-muted-foreground` joined by `&middot;`; optional `dl` grid `grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs` for extra fields (label `text-muted-foreground`, value `text-right font-medium`); actions row last: `mt-3 flex items-center justify-between gap-2 border-t border-border pt-3`. Put row actions in `RowActionsMenu` (`@/components/row-actions`) when there are more than two.
+- Show EVERY field and action the table row has, in the card — nothing may disappear on mobile. Same handlers, same conditions, same links.
+- Long names: `min-w-0` on flex children + `break-words`/`truncate`. Select triggers and inputs inside grids need `min-w-0`.
+- Touch targets ≥ 36px tall for primary actions.
+- Small item tables inside detail pages (e.g. order items) may instead become a stacked list: each item a row with name + qty × price on the left and line total on the right.

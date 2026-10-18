@@ -4,18 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {
-  ArrowDown,
-  ArrowUp,
-  Coins,
-  HandCoins,
-  Plus,
-  Search,
-  Trash2,
-  Truck,
-  Undo2,
-  Wallet,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Coins, HandCoins, Plus, Search, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -91,7 +80,11 @@ export default function SupplierCreditDetailPage() {
   const [sortBy, setSortBy] = useState<'paymentDate' | 'chequeDepositDate'>('paymentDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const settlementsFiltersActive =
-    !!settlementsSearch || modeFilter !== 'all' || chequeStatusFilter !== 'all' || !!settlementsDateFrom || !!settlementsDateTo; 
+    !!settlementsSearch ||
+    modeFilter !== 'all' ||
+    chequeStatusFilter !== 'all' ||
+    !!settlementsDateFrom ||
+    !!settlementsDateTo;
 
   const {
     data: settlements,
@@ -360,25 +353,27 @@ export default function SupplierCreditDetailPage() {
               <SelectItem value="RETURNED">Returned</SelectItem>
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            value={settlementsDateFrom}
-            onChange={(e) => {
-              setSettlementsDateFrom(e.target.value);
-              setSettlementsPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={settlementsDateTo}
-            onChange={(e) => {
-              setSettlementsDateTo(e.target.value);
-              setSettlementsPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={settlementsDateFrom}
+              onChange={(e) => {
+                setSettlementsDateFrom(e.target.value);
+                setSettlementsPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={settlementsDateTo}
+              onChange={(e) => {
+                setSettlementsDateTo(e.target.value);
+                setSettlementsPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           <Select
             value={sortBy}
             onValueChange={(v) => {
@@ -476,14 +471,18 @@ export default function SupplierCreditDetailPage() {
                 <div key={payment.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium">{payment.mode.replace('_', ' ')}</span>
-                    <span className="shrink-0 break-words font-semibold tabular-nums">{formatCurrency(payment.amount)}</span>
+                    <span className="shrink-0 break-words font-semibold tabular-nums">
+                      {formatCurrency(payment.amount)}
+                    </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>{formatDate(payment.paymentDate)}</span>
                     <span className="break-words text-right">{payment.reference ?? '—'}</span>
                   </div>
                   {payment.chequeDepositDate && (
-                    <p className="mt-1 text-xs text-muted-foreground">Deposit {formatDate(payment.chequeDepositDate)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Deposit {formatDate(payment.chequeDepositDate)}
+                    </p>
                   )}
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
                     {settlementStatusControl(payment)}
@@ -514,25 +513,27 @@ export default function SupplierCreditDetailPage() {
               className="pl-9"
             />
           </div>
-          <Input
-            type="date"
-            value={purchasesDateFrom}
-            onChange={(e) => {
-              setPurchasesDateFrom(e.target.value);
-              setPurchasesPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={purchasesDateTo}
-            onChange={(e) => {
-              setPurchasesDateTo(e.target.value);
-              setPurchasesPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={purchasesDateFrom}
+              onChange={(e) => {
+                setPurchasesDateFrom(e.target.value);
+                setPurchasesPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={purchasesDateTo}
+              onChange={(e) => {
+                setPurchasesDateTo(e.target.value);
+                setPurchasesPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {purchasesFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearPurchasesFilters}>
               Clear filters
@@ -574,9 +575,14 @@ export default function SupplierCreditDetailPage() {
                 <TableBody>
                   {purchases.data.map((purchase) => (
                     <TableRow key={purchase.id}>
-                      <TableCell className="whitespace-normal break-words">{formatDate(purchase.purchaseDate)}</TableCell>
+                      <TableCell className="whitespace-normal break-words">
+                        {formatDate(purchase.purchaseDate)}
+                      </TableCell>
                       <TableCell>
-                        <Link href={`/admin/purchases/${purchase.id}`} className="font-medium text-primary hover:underline">
+                        <Link
+                          href={`/admin/purchases/${purchase.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
                           {purchase.invoiceNumber}
                         </Link>
                       </TableCell>
@@ -607,7 +613,9 @@ export default function SupplierCreditDetailPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium text-primary">{purchase.invoiceNumber}</span>
-                    <span className="shrink-0 break-words font-semibold tabular-nums">{formatCurrency(purchase.totalValue)}</span>
+                    <span className="shrink-0 break-words font-semibold tabular-nums">
+                      {formatCurrency(purchase.totalValue)}
+                    </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{formatDate(purchase.purchaseDate)}</p>
@@ -652,25 +660,27 @@ export default function SupplierCreditDetailPage() {
               className="pl-9"
             />
           </div>
-          <Input
-            type="date"
-            value={returnsDateFrom}
-            onChange={(e) => {
-              setReturnsDateFrom(e.target.value);
-              setReturnsPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={returnsDateTo}
-            onChange={(e) => {
-              setReturnsDateTo(e.target.value);
-              setReturnsPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={returnsDateFrom}
+              onChange={(e) => {
+                setReturnsDateFrom(e.target.value);
+                setReturnsPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={returnsDateTo}
+              onChange={(e) => {
+                setReturnsDateTo(e.target.value);
+                setReturnsPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {returnsFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearReturnsFilters}>
               Clear filters
@@ -712,7 +722,9 @@ export default function SupplierCreditDetailPage() {
                 <TableBody>
                   {purchaseReturns.data.map((purchaseReturn) => (
                     <TableRow key={purchaseReturn.id}>
-                      <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
+                      <TableCell className="whitespace-normal break-words">
+                        {formatDate(purchaseReturn.returnDate)}
+                      </TableCell>
                       <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
                       <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
                       <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums text-destructive">
@@ -784,8 +796,8 @@ export default function SupplierCreditDetailPage() {
             <AlertDialogDescription>
               This permanently removes the {deletePayment?.mode.replace('_', ' ').toLowerCase()} settlement of{' '}
               {deletePayment ? formatCurrency(deletePayment.amount) : ''}
-              {deletePayment?.reference ? ` (${deletePayment.reference})` : ''} and restores the credit balance.
-              Only available within 1 day of recording it.
+              {deletePayment?.reference ? ` (${deletePayment.reference})` : ''} and restores the credit balance. Only
+              available within 1 day of recording it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

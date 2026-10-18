@@ -348,45 +348,73 @@ export default function OrderDetailPage() {
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
         <SectionHeader title={`Line items (${order.items.length})`} className="pb-4" />
         <div className="border-t border-border">
-          <Table className="min-w-[650px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Qty Requested</TableHead>
-                <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Allocated Discount</TableHead>
-                <TableHead className="text-right">Net Unit Price</TableHead>
-                <TableHead className="hidden text-right sm:table-cell">Available Stock</TableHead>
-                <TableHead className="text-right">Line Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {order.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-foreground">{item.product.name}</TableCell>
-                  <TableCell className="text-right tabular-nums">{item.quantity} units</TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {formatCurrency(item.unitPrice)}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right tabular-nums',
-                      Number(item.allocatedDiscount) > 0 ? 'text-destructive' : 'text-muted-foreground',
-                    )}
-                  >
-                    {Number(item.allocatedDiscount) > 0 ? `−${formatCurrency(item.allocatedDiscount)}` : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(item.netUnitPrice)}</TableCell>
-                  <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
-                    {item.product.currentStock} in stock
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums text-foreground">
-                    {formatCurrency(item.netLineTotal)}
-                  </TableCell>
+          <div className="hidden lg:block">
+            <Table className="min-w-[650px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Qty Requested</TableHead>
+                  <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Allocated Discount</TableHead>
+                  <TableHead className="text-right">Net Unit Price</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Available Stock</TableHead>
+                  <TableHead className="text-right">Line Total</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {order.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium text-foreground">{item.product.name}</TableCell>
+                    <TableCell className="text-right tabular-nums">{item.quantity} units</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {formatCurrency(item.unitPrice)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right tabular-nums',
+                        Number(item.allocatedDiscount) > 0 ? 'text-destructive' : 'text-muted-foreground',
+                      )}
+                    >
+                      {Number(item.allocatedDiscount) > 0 ? `−${formatCurrency(item.allocatedDiscount)}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{formatCurrency(item.netUnitPrice)}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
+                      {item.product.currentStock} in stock
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums text-foreground">
+                      {formatCurrency(item.netLineTotal)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <ul className="divide-y divide-border lg:hidden">
+            {order.items.map((item) => (
+              <li key={item.id} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-words font-medium text-foreground">{item.product.name}</div>
+                    <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                      {item.quantity} units &times; {formatCurrency(item.netUnitPrice)}
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                    {formatCurrency(item.netLineTotal)}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
+                  <span>Unit {formatCurrency(item.unitPrice)}</span>
+                  <span>&middot;</span>
+                  <span className={cn(Number(item.allocatedDiscount) > 0 && 'text-destructive')}>
+                    Discount {Number(item.allocatedDiscount) > 0 ? `−${formatCurrency(item.allocatedDiscount)}` : '—'}
+                  </span>
+                  <span>&middot;</span>
+                  <span>{item.product.currentStock} in stock</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Totals */}
@@ -445,53 +473,95 @@ export default function OrderDetailPage() {
               description="Goods returned by the dealer against this order will display here"
             />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Return #</TableHead>
-                  <TableHead>Return Date</TableHead>
-                  <TableHead>Reason / Note</TableHead>
-                  <TableHead className="text-right">Returned Value</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden lg:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Return #</TableHead>
+                      <TableHead>Return Date</TableHead>
+                      <TableHead>Reason / Note</TableHead>
+                      <TableHead className="text-right">Returned Value</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salesReturns.map((salesReturn) => (
+                      <TableRow key={salesReturn.id}>
+                        <TableCell className="font-medium text-foreground">{salesReturn.returnNumber}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(salesReturn.returnDate)}</TableCell>
+                        <TableCell className="max-w-xs whitespace-normal break-words">{salesReturn.reason}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums text-destructive">
+                          −{formatCurrency(salesReturn.totalAmount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {canEditReturn(salesReturn) && (
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label="Edit return"
+                                onClick={() => setEditingReturn(salesReturn)}
+                                className="size-8"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label="Delete return"
+                                className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setDeletingReturn(salesReturn)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="space-y-3 p-4 lg:hidden">
                 {salesReturns.map((salesReturn) => (
-                  <TableRow key={salesReturn.id}>
-                    <TableCell className="font-medium text-foreground">{salesReturn.returnNumber}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(salesReturn.returnDate)}</TableCell>
-                    <TableCell className="max-w-xs whitespace-normal break-words">{salesReturn.reason}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums text-destructive">
-                      −{formatCurrency(salesReturn.totalAmount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {canEditReturn(salesReturn) && (
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Edit return"
-                            onClick={() => setEditingReturn(salesReturn)}
-                            className="size-8"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Delete return"
-                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setDeletingReturn(salesReturn)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <div key={salesReturn.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 break-words font-medium text-foreground">
+                        {salesReturn.returnNumber}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-destructive">
+                        −{formatCurrency(salesReturn.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatDate(salesReturn.returnDate)}</div>
+                    <p className="mt-2 break-words text-sm">{salesReturn.reason}</p>
+                    {canEditReturn(salesReturn) && (
+                      <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Edit return"
+                          onClick={() => setEditingReturn(salesReturn)}
+                          className="size-9"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Delete return"
+                          className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDeletingReturn(salesReturn)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </div>
       </div>

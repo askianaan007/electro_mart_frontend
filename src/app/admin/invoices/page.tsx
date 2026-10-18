@@ -144,25 +144,27 @@ export default function InvoicesPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               Clear filters
@@ -191,7 +193,7 @@ export default function InvoicesPage() {
           )
         ) : (
           <>
-            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
+            <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -206,13 +208,20 @@ export default function InvoicesPage() {
                   {data.data.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell>
-                        <Link href={`/admin/invoices/${invoice.id}`} className="font-medium text-primary hover:underline">
+                        <Link
+                          href={`/admin/invoices/${invoice.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
                           {invoice.invoiceNumber}
                         </Link>
                       </TableCell>
                       <TableCell>{invoice.dealer?.businessName ?? '—'}</TableCell>
-                      <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(invoice.createdAt)}</TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">{formatCurrency(invoice.grandTotal)}</TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">
+                        {formatDate(invoice.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(invoice.grandTotal)}
+                      </TableCell>
                       <TableCell>
                         <PaymentStatusBadge status={invoice.paymentStatus} />
                       </TableCell>
@@ -220,6 +229,29 @@ export default function InvoicesPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+
+            <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              {data.data.map((invoice) => (
+                <div key={invoice.id} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/invoices/${invoice.id}`}
+                        className="break-words font-medium text-primary hover:underline"
+                      >
+                        {invoice.invoiceNumber}
+                      </Link>
+                      <div className="mt-0.5 break-words text-sm">{invoice.dealer?.businessName ?? '—'}</div>
+                    </div>
+                    <span className="shrink-0 font-semibold tabular-nums">{formatCurrency(invoice.grandTotal)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(invoice.createdAt)}</span>
+                    <PaymentStatusBadge status={invoice.paymentStatus} />
+                  </div>
+                </div>
+              ))}
             </div>
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </>

@@ -146,10 +146,30 @@ export default function SalesAnalysisPage() {
               summaryFetching && 'opacity-60 transition-opacity',
             )}
           >
-            <StatCard label="Total sales revenue" value={formatCurrency(summary.totalSales)} icon={ShoppingBag} tone="default" />
-            <StatCard label="Total buying cost" value={formatCurrency(summary.totalBuying)} icon={TrendingDown} tone="purple" />
-            <StatCard label="Gross profit" value={formatCurrency(summary.totalProfit)} icon={TrendingUp} tone="success" />
-            <StatCard label="Total expenses" value={formatCurrency(summary.totalExpenses)} icon={Receipt} tone="warning" />
+            <StatCard
+              label="Total sales revenue"
+              value={formatCurrency(summary.totalSales)}
+              icon={ShoppingBag}
+              tone="default"
+            />
+            <StatCard
+              label="Total buying cost"
+              value={formatCurrency(summary.totalBuying)}
+              icon={TrendingDown}
+              tone="purple"
+            />
+            <StatCard
+              label="Gross profit"
+              value={formatCurrency(summary.totalProfit)}
+              icon={TrendingUp}
+              tone="success"
+            />
+            <StatCard
+              label="Total expenses"
+              value={formatCurrency(summary.totalExpenses)}
+              icon={Receipt}
+              tone="warning"
+            />
             <StatCard
               label="Net profit"
               value={formatCurrency(summary.netProfit)}
@@ -205,27 +225,29 @@ export default function SalesAnalysisPage() {
             </SelectContent>
           </Select>
 
-          <Input
-            type="date"
-            aria-label="From date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            aria-label="To date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="w-auto"
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+            <Input
+              type="date"
+              aria-label="From date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              aria-label="To date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-0 w-full sm:w-auto"
+            />
+          </div>
 
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -280,7 +302,10 @@ export default function SalesAnalysisPage() {
                     return (
                       <TableRow key={row.orderId}>
                         <TableCell>
-                          <Link href={`/admin/orders/${row.orderId}`} className="font-medium text-primary hover:underline">
+                          <Link
+                            href={`/admin/orders/${row.orderId}`}
+                            className="font-medium text-primary hover:underline"
+                          >
                             {row.orderNumber}
                           </Link>
                         </TableCell>
@@ -317,7 +342,10 @@ export default function SalesAnalysisPage() {
                 return (
                   <div key={row.orderId} className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <Link href={`/admin/orders/${row.orderId}`} className="text-sm font-medium text-primary hover:underline">
+                      <Link
+                        href={`/admin/orders/${row.orderId}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
                         {row.orderNumber}
                       </Link>
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">

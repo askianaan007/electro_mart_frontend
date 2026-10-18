@@ -55,43 +55,66 @@ export default function DealerInvoicesPage() {
               description="Invoices appear here once your orders are billed."
             />
           ) : (
-            <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead className="hidden sm:table-cell">Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.data.map((invoice) => (
-                    <TableRow key={invoice.id}>
-                      <TableCell>
-                        <Link
-                          href={`/dealer/invoices/${invoice.id}`}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {invoice.invoiceNumber}
-                        </Link>
-                        <div className="text-xs text-muted-foreground sm:hidden">{formatDate(invoice.createdAt)}</div>
-                      </TableCell>
-                      <TableCell className="hidden text-muted-foreground sm:table-cell">
-                        {formatDate(invoice.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatCurrency(invoice.grandTotal)}
-                      </TableCell>
-                      <TableCell>
-                        <PaymentStatusBadge status={invoice.paymentStatus} />
-                      </TableCell>
+            <>
+              <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead className="hidden sm:table-cell">Date</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.data.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell>
+                          <Link
+                            href={`/dealer/invoices/${invoice.id}`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {invoice.invoiceNumber}
+                          </Link>
+                          <div className="text-xs text-muted-foreground sm:hidden">{formatDate(invoice.createdAt)}</div>
+                        </TableCell>
+                        <TableCell className="hidden text-muted-foreground sm:table-cell">
+                          {formatDate(invoice.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatCurrency(invoice.grandTotal)}
+                        </TableCell>
+                        <TableCell>
+                          <PaymentStatusBadge status={invoice.paymentStatus} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+                {data.data.map((invoice) => (
+                  <div key={invoice.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/dealer/invoices/${invoice.id}`}
+                        className="min-w-0 break-words font-medium text-primary hover:underline"
+                      >
+                        {invoice.invoiceNumber}
+                      </Link>
+                      <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                        {formatCurrency(invoice.grandTotal)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">{formatDate(invoice.createdAt)}</span>
+                      <PaymentStatusBadge status={invoice.paymentStatus} />
+                    </div>
+                  </div>
+                ))}
+              </div>
               <PaginationBar meta={data.meta} onPageChange={setPage} />
-            </div>
+            </>
           )}
         </div>
       </div>

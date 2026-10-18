@@ -89,7 +89,7 @@ export default function CartPage() {
         </div>
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-3">
-          <div className="space-y-3 lg:col-span-2">
+          <div className="min-w-0 space-y-3 lg:col-span-2">
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
               <SectionHeader
                 title="Items"
@@ -170,20 +170,20 @@ export default function CartPage() {
                           </p>
                         )}
                         <div className="mt-2.5 flex items-center gap-2">
-                          <div className="flex h-8 items-center rounded-md border border-input bg-card shadow-xs dark:bg-muted/40">
+                          <div className="flex h-9 items-center rounded-md border border-input bg-card shadow-xs sm:h-8 dark:bg-muted/40">
                             <button
                               type="button"
                               aria-label="Decrease quantity"
-                              className="flex size-8 items-center justify-center rounded-l-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              className="flex size-9 items-center justify-center rounded-l-md sm:size-8 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               onClick={() => updateQuantity(row.productId, row.quantity - 1)}
                             >
                               <Minus className="size-3.5" />
                             </button>
-                            <span className="w-8 text-center text-sm font-medium tabular-nums">{row.quantity}</span>
+                            <span className="w-9 text-center text-sm font-medium tabular-nums sm:w-8">{row.quantity}</span>
                             <button
                               type="button"
                               aria-label="Increase quantity"
-                              className="flex size-8 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                              className="flex size-9 items-center justify-center rounded-r-md sm:size-8 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                               onClick={() => updateQuantity(row.productId, row.quantity + 1)}
                               disabled={row.product ? row.quantity >= row.product.currentStock : false}
                             >
@@ -193,7 +193,7 @@ export default function CartPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8"
+                            className="size-9 sm:size-8"
                             aria-label="Remove item"
                             onClick={() => removeItem(row.productId)}
                           >
@@ -214,7 +214,7 @@ export default function CartPage() {
             </Button>
           </div>
 
-          <Card className="lg:sticky lg:top-20">
+          <Card className="min-w-0 lg:sticky lg:top-20">
             <CardHeader className="pb-3">
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>

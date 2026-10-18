@@ -14,13 +14,7 @@ import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { PageHeader } from '@/components/page-header';
 import { TableSkeleton } from '@/components/loading-state';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,7 +83,8 @@ export default function InvestmentsPage() {
     );
   });
 
-  const ledgerFiltersActive = !!ledgerSearch || investorFilter !== 'all' || typeFilter !== 'all' || !!dateFrom || !!dateTo;
+  const ledgerFiltersActive =
+    !!ledgerSearch || investorFilter !== 'all' || typeFilter !== 'all' || !!dateFrom || !!dateTo;
 
   const {
     data: investments,
@@ -151,7 +146,12 @@ export default function InvestmentsPage() {
   const investorActions = (investor: Investor, className?: string) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn('size-8', className)} aria-label={`Actions for ${investor.name}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('size-8', className)}
+          aria-label={`Actions for ${investor.name}`}
+        >
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -259,7 +259,11 @@ export default function InvestmentsPage() {
         ) : investorsError ? (
           <QueryErrorState error={investorsErrorObj} onRetry={() => refetchInvestors()} />
         ) : !investors || investors.data.length === 0 ? (
-          <EmptyState icon={TrendingUp} title="No investors yet" description="Add an investor to start tracking equity" />
+          <EmptyState
+            icon={TrendingUp}
+            title="No investors yet"
+            description="Add an investor to start tracking equity"
+          />
         ) : filteredInvestors.length === 0 ? (
           <EmptyState
             icon={Search}
@@ -383,25 +387,27 @@ export default function InvestmentsPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
-            />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="min-w-0 w-full sm:w-auto"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                className="min-w-0 w-full sm:w-auto"
+              />
+            </div>
           </div>
           {ledgerFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearLedgerFilters}>
@@ -427,7 +433,11 @@ export default function InvestmentsPage() {
               }
             />
           ) : (
-            <EmptyState icon={TrendingUp} title="No investment entries" description="Record a contribution or withdrawal" />
+            <EmptyState
+              icon={TrendingUp}
+              title="No investment entries"
+              description="Record a contribution or withdrawal"
+            />
           )
         ) : (
           <>
@@ -510,7 +520,11 @@ export default function InvestmentsPage() {
         onOpenChange={(open) => !open && setStatementInvestor(null)}
         investor={statementInvestor}
       />
-      <InvestmentFormDialog open={investmentFormOpen} onOpenChange={setInvestmentFormOpen} investment={editingInvestment} />
+      <InvestmentFormDialog
+        open={investmentFormOpen}
+        onOpenChange={setInvestmentFormOpen}
+        investment={editingInvestment}
+      />
 
       <AlertDialog open={!!deletingInvestor} onOpenChange={(open) => !open && setDeletingInvestor(null)}>
         <AlertDialogContent>

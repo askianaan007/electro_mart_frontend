@@ -92,7 +92,13 @@ function downloadHistoryCsv(filename: string, rows: EquityHistoryEntry[]) {
   downloadCsv(
     filename,
     header,
-    rows.map((row) => [formatDate(row.date), TYPE_META[row.type].label, row.description, row.investorName ?? '—', row.amount]),
+    rows.map((row) => [
+      formatDate(row.date),
+      TYPE_META[row.type].label,
+      row.description,
+      row.investorName ?? '—',
+      row.amount,
+    ]),
   );
 }
 
@@ -554,9 +560,21 @@ export default function EquityPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)}
+                className="min-w-0 w-full sm:w-auto"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => resetPageAnd(setDateTo)(e.target.value)}
+                className="min-w-0 w-full sm:w-auto"
+              />
+            </div>
           </div>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -582,7 +600,11 @@ export default function EquityPage() {
               }
             />
           ) : (
-            <EmptyState icon={PieChart} title="No history yet" description="Investments and expenses will appear here" />
+            <EmptyState
+              icon={PieChart}
+              title="No history yet"
+              description="Investments and expenses will appear here"
+            />
           )
         ) : (
           <>
