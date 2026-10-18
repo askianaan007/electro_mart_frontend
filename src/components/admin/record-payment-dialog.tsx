@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreatePayment, useUpdatePayment } from '@/hooks/use-payments';
+import { useCreatePayment, useUndoPayment, useUpdatePayment } from '@/hooks/use-payments';
 import { getErrorMessage } from '@/lib/api/error';
 import { formatCurrency } from '@/lib/utils';
 import type { Invoice, Payment } from '@/lib/api/types';
@@ -76,10 +76,17 @@ export function RecordPaymentDialog({
   const effectiveInvoice = payment?.invoice ?? invoice ?? null;
   const createPayment = useCreatePayment();
   const updatePayment = useUpdatePayment();
+  const undoPayment = useUndoPayment();
   const pending = createPayment.isPending || updatePayment.isPending;
 
-  const alreadyPaid = (effectiveInvoice?.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
-  const ownAmount = payment ? Number(payment.amount) : 0;
+  // A RETURNED (bounced) cheque never paid anything, so it doesn't eat into
+  // what's left on the invoice — mirrors isEffectivePayment on the backend.
+  const counts = (p: Pick<Payment, 'mode' | 'chequeStatus'>) => !(p.mode === 'CHEQUE' && p.chequeStatus === 'RETURNED');
+  const alreadyPaid = (effectiveInvoice?.payments ?? []).reduce(
+    (sum, p) => (counts(p) ? sum + Number(p.amount) : sum),
+    0,
+  );
+  const ownAmount = payment && counts(payment) ? Number(payment.amount) : 0;
   // netGrandTotal (grandTotal minus any sales returns) is what's actually
   // owed — falling back to grandTotal only for the rare case a caller
   // didn't include it, not because gross is ever the right default.
@@ -123,7 +130,16 @@ export function RecordPaymentDialog({
         { id: payment.id, ...payload },
         {
           onSuccess: () => {
-            toast.success('Payment updated');
+            toast.success('Payment updated', {
+              action: {
+                label: 'Undo',
+                onClick: () =>
+                  undoPayment.mutate(payment.id, {
+                    onSuccess: () => toast.success('Edit undone'),
+                    onError: (error) => toast.error(getErrorMessage(error)),
+                  }),
+              },
+            });
             onOpenChange(false);
           },
           onError: (error) => toast.error(getErrorMessage(error)),

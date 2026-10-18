@@ -9,6 +9,7 @@ type PaymentParams = PaginationParams & {
   mode?: PaymentMode;
   chequeStatus?: ChequeStatus;
   dealerId?: string;
+  invoiceId?: string;
   dateFrom?: string;
   dateTo?: string;
   sortBy?: 'createdAt' | 'chequeDate';
@@ -78,6 +79,24 @@ export function useReturnPayment() {
   return useMutation({
     mutationFn: (id: string) => api.payments.remove(id),
     onSuccess: () => invalidatePaymentRelated(queryClient),
+  });
+}
+
+/** Undoes a payment's latest edit / cheque-status change, or restores it if deleted. */
+export function useUndoPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.payments.undo(id),
+    onSuccess: () => invalidatePaymentRelated(queryClient),
+  });
+}
+
+export function useDeletedPayments(params: PaginationParams, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [...paymentKeys.all, 'deleted', params] as const,
+    queryFn: () => api.payments.listDeleted(params),
+    placeholderData: (prev) => prev,
+    enabled: options?.enabled,
   });
 }
 

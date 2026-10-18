@@ -329,6 +329,18 @@ export interface Payment {
   chequeDate: string | null;
   collectedDate: string | null;
   remarks: string | null;
+  /** Admin list only: the newest change that can still be undone. */
+  lastChange?: { action: PaymentChangeAction; createdAt: string } | null;
+}
+
+export type PaymentChangeAction = 'UPDATED' | 'CHEQUE_STATUS' | 'DELETED';
+
+/** A deleted payment kept for restore — the payment as it was when deleted. */
+export interface DeletedPayment
+  extends Omit<Payment, 'invoice' | 'dealer' | 'lastChange'> {
+  deletedAt: string;
+  dealer: { id: string; businessName: string } | null;
+  invoice: { id: string; invoiceNumber: string; orderId: string } | null;
 }
 
 export interface Investor {

@@ -29,6 +29,7 @@ import type {
   OrderStatus,
   Paginated,
   PaginationParams,
+  DeletedPayment,
   Payment,
   PaymentMode,
   PaymentStatus,
@@ -256,6 +257,7 @@ export const api = {
       params: PaginationParams & {
         status?: OrderStatus;
         dealerId?: string;
+        invoiceId?: string;
         dateFrom?: string;
         dateTo?: string;
       },
@@ -346,6 +348,9 @@ export const api = {
       },
     ) => apiClient.patch<Payment>(`/payments/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/payments/${id}`).then((r) => r.data),
+    undo: (id: string) => apiClient.post<Payment>(`/payments/${id}/undo`).then((r) => r.data),
+    listDeleted: (params: PaginationParams) =>
+      apiClient.get<Paginated<DeletedPayment>>('/payments/deleted', { params: buildParams(params) }).then((r) => r.data),
     updateChequeStatus: (id: string, status: ChequeStatus) =>
       apiClient.patch<Payment>(`/payments/${id}/cheque-status`, { status }).then((r) => r.data),
   },

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Pencil, Receipt, RotateCcw, Search, Trash2, Undo2, Wallet } from 'lucide-react';
+import { ArchiveRestore, History, ListChecks, Pencil, Receipt, RotateCcw, Search, Trash2, Undo2, Wallet, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,31 +29,35 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useInvoices } from '@/hooks/use-invoices';
-import { usePayments, useReturnPayment, useUpdatePaymentChequeStatus } from '@/hooks/use-payments';
+import {
+  useDeletedPayments,
+  usePayments,
+  useReturnPayment,
+  useUndoPayment,
+  useUpdatePaymentChequeStatus,
+} from '@/hooks/use-payments';
 import { useResetSalesReturnCounter } from '@/hooks/use-sales-returns';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { ChequeStatus, Invoice, Payment, PaymentMode, PaymentStatus } from '@/lib/api/types';
+import type { ChequeStatus, Invoice, Payment, PaymentChangeAction, PaymentMode, PaymentStatus } from '@/lib/api/types';
 
-const CHEQUE_REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;
-const PAYMENT_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CHEQUE_STATUS_ACTIONS: { status: ChequeStatus; label: string; destructive?: boolean }[] = [
+  { status: 'PENDING', label: 'Mark Pending' },
+  { status: 'CLEARED', label: 'Mark Cleared' },
+  { status: 'RETURNED', label: 'Mark Returned', destructive: true },
+];
 
-function canRevertToPending(payment: Payment) {
-  if (payment.mode !== 'CHEQUE') return false;
-  if (payment.chequeStatus !== 'CLEARED' && payment.chequeStatus !== 'RETURNED') return false;
-  if (!payment.chequeStatusUpdatedAt) return false;
-  return Date.now() - new Date(payment.chequeStatusUpdatedAt).getTime() <= CHEQUE_REVERT_WINDOW_MS;
-}
+const UNDO_LABELS: Record<PaymentChangeAction, string> = {
+  UPDATED: 'Undo edit',
+  CHEQUE_STATUS: 'Undo status',
+  DELETED: 'Restore',
+};
 
-function canEditPayment(payment: Payment) {
-  if (Date.now() - new Date(payment.createdAt).getTime() > PAYMENT_EDIT_WINDOW_MS) return false;
-  if (payment.mode === 'CHEQUE' && payment.chequeStatus !== 'PENDING') return false;
-  return true;
-}
+type InvoiceFilter = { id: string; invoiceNumber: string };
 
-function OutstandingInvoicesTab() {
+function OutstandingInvoicesTab({ onViewPayments }: { onViewPayments: (invoice: InvoiceFilter) => void }) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('all');
@@ -227,6 +231,14 @@ function OutstandingInvoicesTab() {
                               Record
                             </Button>
                           )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onViewPayments({ id: invoice.id, invoiceNumber: invoice.invoiceNumber })}
+                        >
+                          <ListChecks />
+                          Payments
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => setReturnOrderId(invoice.orderId)}>
                           <Undo2 />
                           Return Goods
@@ -256,7 +268,13 @@ function OutstandingInvoicesTab() {
   );
 }
 
-function PaymentHistoryTab() {
+function PaymentHistoryTab({
+  invoiceFilter,
+  onClearInvoiceFilter,
+}: {
+  invoiceFilter: InvoiceFilter | null;
+  onClearInvoiceFilter: () => void;
+}) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState('all');
@@ -267,15 +285,21 @@ function PaymentHistoryTab() {
   const debouncedSearch = useDebouncedValue(search);
 
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
-  const [revertPayment, setRevertPayment] = useState<Payment | null>(null);
-  const [returnPayment, setReturnPayment] = useState<Payment | null>(null);
+  const [deletePayment, setDeletePayment] = useState<Payment | null>(null);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
   const updateChequeStatus = useUpdatePaymentChequeStatus();
-  const returnPaymentMutation = useReturnPayment();
+  const deletePaymentMutation = useReturnPayment();
+  const undoPayment = useUndoPayment();
 
   const { data: dealers } = useAllCustomer();
   const filtersActive =
-    !!search || mode !== 'all' || chequeStatusFilter !== 'all' || dealerFilter !== 'all' || !!dateFrom || !!dateTo;
+    !!search ||
+    mode !== 'all' ||
+    chequeStatusFilter !== 'all' ||
+    dealerFilter !== 'all' ||
+    !!dateFrom ||
+    !!dateTo ||
+    !!invoiceFilter;
 
   const { data, isLoading, isFetching, isError, error, refetch } = usePayments({
     page,
@@ -284,11 +308,13 @@ function PaymentHistoryTab() {
     mode: mode === 'all' ? undefined : (mode as PaymentMode),
     chequeStatus: chequeStatusFilter === 'all' ? undefined : chequeStatusFilter,
     dealerId: dealerFilter === 'all' ? undefined : dealerFilter,
+    invoiceId: invoiceFilter?.id,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   });
 
   function clearFilters() {
+    onClearInvoiceFilter();
     setSearch('');
     setMode('all');
     setChequeStatusFilter('all');
@@ -298,33 +324,46 @@ function PaymentHistoryTab() {
     setPage(1);
   }
 
+  function undo(paymentId: string, doneMessage = 'Change undone') {
+    undoPayment.mutate(paymentId, {
+      onSuccess: () => toast.success(doneMessage),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
+  // Every change can be taken back: the toast carries an Undo, and the row
+  // keeps an "Undo" button until the change is undone.
+  const undoAction = (paymentId: string, doneMessage?: string) => ({
+    action: { label: 'Undo', onClick: () => undo(paymentId, doneMessage) },
+  });
+
   function markCheque(paymentId: string, status: ChequeStatus) {
     updateChequeStatus.mutate(
       { id: paymentId, status },
       {
         onSuccess: () => {
-          if (status === 'CLEARED') toast.success('Cheque marked cleared — now counted in Liquid Cash');
-          else if (status === 'RETURNED') toast.success('Cheque marked returned — dealer balance restored');
-          else toast.success('Cheque reverted to pending');
+          const message =
+            status === 'CLEARED'
+              ? 'Cheque marked cleared — now counted in Liquid Cash'
+              : status === 'RETURNED'
+                ? 'Cheque marked returned — dealer balance restored'
+                : 'Cheque set back to pending';
+          toast.success(message, undoAction(paymentId, 'Cheque status change undone'));
         },
         onError: (error) => toast.error(getErrorMessage(error)),
       },
     );
   }
 
-  function confirmRevert() {
-    if (!revertPayment) return;
-    markCheque(revertPayment.id, 'PENDING');
-    setRevertPayment(null);
-  }
-
-  function confirmReturn() {
-    if (!returnPayment) return;
-    returnPaymentMutation.mutate(returnPayment.id, {
-      onSuccess: () => toast.success('Payment returned — dealer balance restored'),
+  function confirmDelete() {
+    if (!deletePayment) return;
+    const id = deletePayment.id;
+    deletePaymentMutation.mutate(id, {
+      onSuccess: () =>
+        toast.success('Payment deleted — dealer balance restored', undoAction(id, 'Payment restored')),
       onError: (error) => toast.error(getErrorMessage(error)),
     });
-    setReturnPayment(null);
+    setDeletePayment(null);
   }
 
   function chequeDetails(payment: Payment) {
@@ -346,46 +385,48 @@ function PaymentHistoryTab() {
     const wrapClass = layout === 'row' ? 'flex flex-wrap gap-1' : 'mt-3 flex flex-wrap gap-2';
     // Only disable the row actually being mutated — other rows should stay
     // interactive while one cheque's status change is in flight.
-    const thisRowPending = updateChequeStatus.isPending && updateChequeStatus.variables?.id === payment.id;
+    const thisRowPending =
+      (updateChequeStatus.isPending && updateChequeStatus.variables?.id === payment.id) ||
+      (undoPayment.isPending && undoPayment.variables === payment.id);
     return (
       <div className={wrapClass}>
-        {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
-          <>
+        {payment.mode === 'CHEQUE' &&
+          CHEQUE_STATUS_ACTIONS.filter((a) => a.status !== payment.chequeStatus).map((a) => (
             <Button
+              key={a.status}
               size="sm"
               variant="outline"
+              className={cn(a.destructive && 'text-destructive')}
               disabled={thisRowPending}
-              onClick={() => markCheque(payment.id, 'CLEARED')}
+              onClick={() => markCheque(payment.id, a.status)}
             >
-              Mark Cleared
+              {a.label}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive"
-              disabled={thisRowPending}
-              onClick={() => markCheque(payment.id, 'RETURNED')}
-            >
-              Mark Returned
-            </Button>
-          </>
-        )}
-        {payment.mode === 'CHEQUE' && canRevertToPending(payment) && (
-          <Button size="sm" variant="outline" onClick={() => setRevertPayment(payment)}>
-            <Undo2 className="size-3.5" />
-            Revert to Pending
-          </Button>
-        )}
-        {canEditPayment(payment) && (
-          <Button size="sm" variant="outline" onClick={() => setEditingPayment(payment)}>
-            <Pencil className="size-3.5" />
-            Edit
-          </Button>
-        )}
-        {canEditPayment(payment) && (
-          <Button size="sm" variant="outline" className="text-destructive" onClick={() => setReturnPayment(payment)}>
-            <Trash2 className="size-3.5" />
-            Return
+          ))}
+        <Button size="sm" variant="outline" disabled={thisRowPending} onClick={() => setEditingPayment(payment)}>
+          <Pencil className="size-3.5" />
+          Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-destructive"
+          disabled={thisRowPending}
+          onClick={() => setDeletePayment(payment)}
+        >
+          <Trash2 className="size-3.5" />
+          Delete
+        </Button>
+        {payment.lastChange && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={thisRowPending}
+            title={`Last change ${formatDate(payment.lastChange.createdAt)}`}
+            onClick={() => undo(payment.id)}
+          >
+            <History className="size-3.5" />
+            {UNDO_LABELS[payment.lastChange.action]}
           </Button>
         )}
         {payment.invoice && (
@@ -402,6 +443,12 @@ function PaymentHistoryTab() {
     <div className="rounded-xl border border-border bg-card">
       <SectionHeader title="Payment history" isFetching={isFetching && !isLoading} />
       <FilterBar>
+        {invoiceFilter && (
+          <Button variant="secondary" size="sm" onClick={onClearInvoiceFilter} title="Show all invoices">
+            Invoice {invoiceFilter.invoiceNumber}
+            <X className="size-3.5" />
+          </Button>
+        )}
         <div className="relative flex-1 sm:max-w-[12rem]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -596,43 +643,24 @@ function PaymentHistoryTab() {
         payment={editingPayment}
       />
 
-      <AlertDialog open={!!revertPayment} onOpenChange={(open) => !open && setRevertPayment(null)}>
+      <AlertDialog open={!!deletePayment} onOpenChange={(open) => !open && setDeletePayment(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revert cheque to pending?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this payment?</AlertDialogTitle>
             <AlertDialogDescription>
-              This cheque{revertPayment?.reference ? ` (${revertPayment.reference})` : ''} was marked{' '}
-              {revertPayment?.chequeStatus?.toLowerCase()}. Reverting sets it back to pending so it can be marked
-              cleared or returned again. Available only within 1 day of the last status change.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevert} disabled={updateChequeStatus.isPending}>
-              Revert to Pending
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!returnPayment} onOpenChange={(open) => !open && setReturnPayment(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Return this payment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently reverses the {returnPayment?.mode.replace('_', ' ').toLowerCase()} payment of{' '}
-              {returnPayment ? formatCurrency(returnPayment.amount) : ''} and restores the dealer&apos;s outstanding
-              balance. Only available within 1 day of recording it.
+              This removes the {deletePayment?.mode.replace('_', ' ').toLowerCase()} payment of{' '}
+              {deletePayment ? formatCurrency(deletePayment.amount) : ''} and restores the dealer&apos;s outstanding
+              balance and the invoice status. Nothing is lost — you can restore it any time from the Deleted tab.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmReturn}
-              disabled={returnPaymentMutation.isPending}
+              onClick={confirmDelete}
+              disabled={deletePaymentMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Return payment
+              Delete payment
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -647,7 +675,121 @@ function PaymentHistoryTab() {
   );
 }
 
+function DeletedPaymentsTab() {
+  const [page, setPage] = useState(1);
+  const undoPayment = useUndoPayment();
+  const { data, isLoading, isFetching, isError, error, refetch } = useDeletedPayments({ page, limit: 20 });
+
+  function restore(paymentId: string) {
+    undoPayment.mutate(paymentId, {
+      onSuccess: () => toast.success('Payment restored — dealer balance and invoice status updated'),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card">
+      <SectionHeader title="Deleted payments" isFetching={isFetching && !isLoading} />
+      <p className="px-6 pb-4 text-sm text-muted-foreground">
+        Deleted payments are kept here and can be restored exactly as they were, with the dealer balance and invoice
+        status re-applied.
+      </p>
+
+      {isLoading ? (
+        <div className="space-y-2 p-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : isError ? (
+        <QueryErrorState error={error} onRetry={() => refetch()} />
+      ) : !data || data.data.length === 0 ? (
+        <EmptyState icon={Trash2} title="No deleted payments" />
+      ) : (
+        <>
+          <div className={cn('hidden lg:block', isFetching && 'opacity-60 transition-opacity')}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Deleted</TableHead>
+                  <TableHead>Payment Date</TableHead>
+                  <TableHead>Dealer</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Cheque Status</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.data.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{formatDate(payment.deletedAt)}</TableCell>
+                    <TableCell>{formatDate(payment.paymentDate)}</TableCell>
+                    <TableCell className="whitespace-normal break-words">{payment.dealer?.businessName ?? '—'}</TableCell>
+                    <TableCell>{payment.invoice?.invoiceNumber ?? '—'}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
+                    <TableCell>
+                      {payment.chequeStatus ? <ChequeStatusBadge status={payment.chequeStatus} /> : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={undoPayment.isPending && undoPayment.variables === payment.id}
+                        onClick={() => restore(payment.id)}
+                      >
+                        <ArchiveRestore className="size-3.5" />
+                        Restore
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className={cn('space-y-3 p-4 lg:hidden', isFetching && 'opacity-60 transition-opacity')}>
+            {data.data.map((payment) => (
+              <div key={payment.id} className="rounded-lg border border-border p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="break-words font-medium">{payment.dealer?.businessName ?? '—'}</span>
+                  <span className="shrink-0 font-semibold">{formatCurrency(payment.amount)}</span>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {formatDate(payment.paymentDate)} &middot; {payment.mode.replace('_', ' ')}
+                  {payment.invoice ? <> &middot; {payment.invoice.invoiceNumber}</> : null} &middot; deleted{' '}
+                  {formatDate(payment.deletedAt)}
+                </div>
+                {payment.chequeStatus && (
+                  <div className="mt-2">
+                    <ChequeStatusBadge status={payment.chequeStatus} />
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  disabled={undoPayment.isPending && undoPayment.variables === payment.id}
+                  onClick={() => restore(payment.id)}
+                >
+                  <ArchiveRestore className="size-3.5" />
+                  Restore
+                </Button>
+              </div>
+            ))}
+          </div>
+          <PaginationBar meta={data.meta} onPageChange={setPage} />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function PaymentsPage() {
+  const [tab, setTab] = useState('outstanding');
+  const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilter | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const resetCounter = useResetSalesReturnCounter();
 
@@ -671,7 +813,9 @@ export default function PaymentsPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold">Payments &amp; Collections</h1>
-          <p className="text-sm text-muted-foreground">Track dues and record payments against invoices</p>
+          <p className="text-sm text-muted-foreground">
+            Track dues and record payments against invoices — edit, delete or undo them under Payment History
+          </p>
         </div>
         <Button variant="outline" onClick={() => setResetOpen(true)}>
           <RotateCcw />
@@ -679,16 +823,25 @@ export default function PaymentsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="outstanding">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="outstanding">Invoices</TabsTrigger>
           <TabsTrigger value="history">Payment History</TabsTrigger>
+          <TabsTrigger value="deleted">Deleted</TabsTrigger>
         </TabsList>
         <TabsContent value="outstanding">
-          <OutstandingInvoicesTab />
+          <OutstandingInvoicesTab
+            onViewPayments={(invoice) => {
+              setInvoiceFilter(invoice);
+              setTab('history');
+            }}
+          />
         </TabsContent>
         <TabsContent value="history">
-          <PaymentHistoryTab />
+          <PaymentHistoryTab invoiceFilter={invoiceFilter} onClearInvoiceFilter={() => setInvoiceFilter(null)} />
+        </TabsContent>
+        <TabsContent value="deleted">
+          <DeletedPaymentsTab />
         </TabsContent>
       </Tabs>
 

@@ -42,7 +42,16 @@ const ACTION_CATALOG: { module: string; actions: { value: string; label: string 
       { value: 'ORDER_COMPLETED', label: 'Completed order' },
     ],
   },
-  { module: 'Payments', actions: [{ value: 'RECORDED_PAYMENT', label: 'Recorded payment' }] },
+  {
+    module: 'Payments',
+    actions: [
+      { value: 'RECORDED_PAYMENT', label: 'Recorded payment' },
+      { value: 'UPDATED_PAYMENT', label: 'Edited payment' },
+      { value: 'UPDATED_PAYMENT_CHEQUE_STATUS', label: 'Changed cheque status' },
+      { value: 'RETURNED_PAYMENT', label: 'Deleted payment' },
+      { value: 'UNDID_PAYMENT_CHANGE', label: 'Undid / restored payment' },
+    ],
+  },
   {
     module: 'Purchases',
     actions: [
