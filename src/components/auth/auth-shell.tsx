@@ -166,7 +166,8 @@ export function AuthShell({
 
           {/* Mobile tagline under the card */}
           <p className="mt-6 text-center text-sm text-white/75 lg:hidden">
-            Electro <span className="font-semibold text-brand-red">Mart</span> · ERP &amp; Dealer Portal
+            Electro <span className="font-semibold text-brand-red">Mart</span>{' '}
+            · ERP &amp; Dealer Portal
           </p>
         </main>
       </div>
