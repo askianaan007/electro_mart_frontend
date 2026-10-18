@@ -20,8 +20,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-svh bg-background text-foreground print:block">
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar print:hidden lg:flex xl:w-64">
-        <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-5">
-          <Brand subtitle="Admin console" />
+        <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border bg-gradient-to-b from-brand-navy/[0.04] to-transparent px-4 dark:from-white/[0.03]">
+          <Brand subtitle="Admin console" href="/admin/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <SidebarNav groups={adminNavGroups} />
@@ -30,8 +30,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" title="Admin navigation" className="w-72 max-w-[85vw] gap-0 bg-sidebar p-0">
-          <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-5">
-            <Brand subtitle="Admin console" />
+          <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border bg-gradient-to-b from-brand-navy/[0.04] to-transparent px-4 dark:from-white/[0.03]">
+            <Brand subtitle="Admin console" href="/admin/dashboard" />
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <SidebarNav groups={adminNavGroups} onNavigate={() => setMobileNavOpen(false)} />

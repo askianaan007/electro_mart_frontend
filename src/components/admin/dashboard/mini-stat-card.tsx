@@ -3,17 +3,24 @@
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowDownRight, ArrowUpRight, ChevronRight } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const TONES = {
-  primary: 'bg-primary/10 text-primary',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/10 text-warning',
-  destructive: 'bg-destructive/10 text-destructive',
-  purple: 'bg-purple/10 text-purple',
+  primary: { chip: 'bg-primary/10 text-primary', stripe: 'bg-primary', hover: 'group-hover/stat:border-primary/40' },
+  success: { chip: 'bg-success/10 text-success', stripe: 'bg-success', hover: 'group-hover/stat:border-success/40' },
+  warning: { chip: 'bg-warning/10 text-warning', stripe: 'bg-warning', hover: 'group-hover/stat:border-warning/40' },
+  destructive: {
+    chip: 'bg-destructive/10 text-destructive',
+    stripe: 'bg-destructive',
+    hover: 'group-hover/stat:border-destructive/40',
+  },
+  purple: { chip: 'bg-purple/10 text-purple', stripe: 'bg-purple', hover: 'group-hover/stat:border-purple/40' },
 } as const;
 
+/**
+ * Secondary metric tile. Phones: compact stacked tile (two per row).
+ * From sm: icon beside the value. A coloured stripe on the left keys the tone.
+ */
 export function MiniStatCard({
   label,
   value,
@@ -34,21 +41,38 @@ export function MiniStatCard({
   onClick?: () => void;
 }) {
   const interactive = Boolean(href || onClick);
+  const t = TONES[tone];
 
   const content = (
-    <Card
+    <div
       className={cn(
-        'flex h-full items-center gap-3.5 p-4',
-        interactive && 'transition-colors group-hover/stat:border-primary/40 group-hover/stat:bg-muted/30',
+        'relative flex h-full flex-col gap-2.5 overflow-hidden rounded-xl border border-border bg-card p-3.5 shadow-xs transition-[transform,box-shadow,border-color] duration-200 ease-out sm:flex-row sm:items-center sm:gap-3.5 sm:p-4',
+        interactive &&
+          cn(
+            'group-hover/stat:-translate-y-0.5 group-hover/stat:shadow-md group-active/stat:translate-y-0 group-active/stat:scale-[0.99]',
+            t.hover,
+          ),
       )}
     >
-      <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', TONES[tone])}>
-        <Icon className="size-[18px]" />
+      <span aria-hidden className={cn('absolute inset-y-3 left-0 w-[3px] rounded-r-full', t.stripe)} />
+
+      <div className="flex items-center justify-between gap-2 sm:contents">
+        <div
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover/stat:scale-105 sm:size-10',
+            t.chip,
+          )}
+        >
+          <Icon className="size-[18px]" />
+        </div>
+        {interactive && (
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-[color,transform] duration-200 group-hover/stat:translate-x-0.5 group-hover/stat:text-foreground sm:order-last" />
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-muted-foreground">{label}</p>
-        <p className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground tabular-nums">
+        <p className="truncate text-xs font-medium text-muted-foreground sm:text-[13px]">{label}</p>
+        <p className="break-words text-base font-semibold leading-tight tracking-tight text-foreground tabular-nums sm:text-lg">
           {value}
         </p>
         {typeof change === 'number' && (
@@ -67,11 +91,7 @@ export function MiniStatCard({
           </div>
         )}
       </div>
-
-      {interactive && (
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-colors group-hover/stat:text-primary" />
-      )}
-    </Card>
+    </div>
   );
 
   if (href) {

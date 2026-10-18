@@ -27,7 +27,8 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
         >
           <defs>
             <linearGradient id="revenueAreaFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.18} />
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.32} />
+              <stop offset="60%" stopColor="var(--chart-1)" stopOpacity={0.08} />
               <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -67,8 +68,9 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
               return null;
             }}
             cursor={{
-              stroke: 'var(--border)',
+              stroke: 'var(--chart-1)',
               strokeWidth: 1,
+              strokeDasharray: '4 4',
             }}
           />
 
@@ -77,16 +79,16 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
             dataKey="revenue"
             name="Revenue"
             stroke="var(--chart-1)"
-            strokeWidth={2}
+            strokeWidth={2.5}
             fill="url(#revenueAreaFill)"
             activeDot={{
-              r: 4,
-              strokeWidth: 2,
+              r: 5,
+              strokeWidth: 2.5,
               stroke: 'var(--chart-1)',
               fill: 'var(--card)',
             }}
             isAnimationActive={true}
-            animationDuration={800}
+            animationDuration={1200}
             animationEasing="ease-out"
           />
         </AreaChart>

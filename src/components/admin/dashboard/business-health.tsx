@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowDownRight, ArrowUpRight, Landmark, HandCoins, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, Landmark, HandCoins, type LucideIcon } from 'lucide-react';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -116,7 +117,7 @@ function QuickLink({
       target="_blank"
       rel="noopener noreferrer"
       title={title}
-      className="group flex items-center gap-3 rounded-lg border border-border p-3 outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      className="group flex items-center gap-3 rounded-lg border border-border p-3 outline-none transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/40 hover:shadow-sm active:translate-y-0 focus-visible:ring-[3px] focus-visible:ring-ring/30"
     >
       <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', iconClassName)}>
         <Icon className="size-[18px]" />
@@ -147,7 +148,11 @@ export function BusinessHealth({ data }: { data: AdminDashboardSummary }) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-row items-center justify-between gap-3">
-        <CardTitle>Business Health Index</CardTitle>
+        <CardTitle>
+          <PanelTitle icon={Activity} tone="success">
+            Business Health Index
+          </PanelTitle>
+        </CardTitle>
         <Badge variant={status.badge}>{status.label}</Badge>
       </CardHeader>
 

@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   ClipboardList,
   CreditCard,
+  History,
   HandCoins,
   Package,
   Package2,
@@ -20,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SectionHeader } from '@/components/section-header';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import { cn, formatDateTime } from '@/lib/utils';
 import type { ActivityLog } from '@/lib/api/types';
 
@@ -97,8 +99,12 @@ export function ActivityTimeline({
   return (
     <div className="h-full overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <SectionHeader
-        title="Recent Audit Trail"
-        description="System audit trail & admin operations"
+        title={
+          <PanelTitle icon={History} tone="info">
+            Recent Audit Trail
+          </PanelTitle>
+        }
+        description={<span className="sm:pl-[42px]">System audit trail &amp; admin operations</span>}
         isFetching={isFetching && !isLoading}
         className="pb-4"
         actions={
@@ -124,7 +130,11 @@ export function ActivityTimeline({
             const tone = toneFor(log.action);
             const isLast = index === items.length - 1;
             return (
-              <li key={log.id} className="relative flex gap-3 pb-4 last:pb-0">
+              <li
+                key={log.id}
+                className="relative flex gap-3 pb-4 last:pb-0 motion-safe:animate-ui-rise-in"
+                style={{ animationDelay: `${index * 60}ms` }}
+              >
                 {!isLast && <span aria-hidden className="absolute bottom-0 left-4 top-9 w-px bg-border" />}
                 <div className={cn('relative flex size-8 shrink-0 items-center justify-center rounded-lg', TONE_CLASSES[tone])}>
                   <Icon className="size-4" />

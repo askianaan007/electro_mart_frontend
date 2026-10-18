@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowDownRight, ArrowUpRight, IndianRupee, Landmark, Truck, Undo2, Wallet } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, BarChart3, IndianRupee, Landmark, Truck, Undo2, Wallet } from 'lucide-react';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,8 +31,8 @@ function MetricTile({
   tone?: keyof typeof TONES;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
-      <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', TONES[tone])}>
+    <div className="flex flex-col items-start gap-2 rounded-lg border border-border bg-gradient-to-br from-muted/60 to-card p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:flex-row sm:gap-3">
+      <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', TONES[tone])}>
         <Icon className="size-4" />
       </div>
       <div className="min-w-0 flex-1">
@@ -59,14 +60,18 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
     <Card className="h-full">
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="space-y-1">
-          <CardTitle>Financial &amp; Operational Metrics</CardTitle>
-          <CardDescription className="text-xs">Change shown vs last month where available</CardDescription>
+          <CardTitle>
+            <PanelTitle icon={BarChart3} tone="primary">
+              Financial &amp; Operational Metrics
+            </PanelTitle>
+          </CardTitle>
+          <CardDescription className="pl-[42px] text-xs">Change shown vs last month where available</CardDescription>
         </div>
         <Badge variant="muted">Live Summary</Badge>
       </CardHeader>
 
       <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <MetricTile
             label="Net Sales"
             value={formatCurrency(data.netSales)}

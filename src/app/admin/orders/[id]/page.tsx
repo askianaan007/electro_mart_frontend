@@ -238,7 +238,11 @@ export default function OrderDetailPage() {
                   </Link>
                 </Button>
               )}
-              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteOpen(true)}
+                className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
                 <Trash2 />
                 Delete
               </Button>

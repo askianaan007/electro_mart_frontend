@@ -29,6 +29,7 @@ import { RecentOrdersCard } from '@/components/admin/dashboard/recent-orders-car
 import { ActivityTimeline } from '@/components/admin/dashboard/activity-timeline';
 import { QuickActionsPanel } from '@/components/admin/dashboard/quick-actions-panel';
 import { QueryErrorState } from '@/components/query-error-state';
+import { Rise } from '@/components/admin/dashboard/rise';
 import { useAdminDashboard } from '@/hooks/use-dashboard';
 import { useActivityLog } from '@/hooks/use-activity-log';
 import { formatCurrency } from '@/lib/utils';
@@ -73,123 +74,172 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <HeroKpiCard
-            label="Liquid Cash"
-            value={data.liquidCash}
-            formatValue={(n) => formatCurrency(n)}
-            icon={Wallet}
-            gradient="orange"
-            mask="CASH"
-            subtitle="Investments + collections − supplier payments − expenses"
-            href="/admin/liquid-cash"
-          />
-          <HeroKpiCard
-            label="Credit Balance"
-            value={creditBalance}
-            formatValue={(n) => formatCurrency(n)}
-            icon={HandCoins}
-            gradient="red"
-            mask="DEBT"
-            subtitle="Outstanding balance owed to suppliers"
-            progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
-            href="/admin/credit-balance"
-          />
-          <HeroKpiCard
-            label="Today's Sales"
-            value={Number(data.todaysSales)}
-            formatValue={(n) => formatCurrency(n)}
-            icon={IndianRupee}
-            gradient="green"
-            mask="SALE"
-            subtitle="Sales recorded today"
-          />
 
-          <HeroKpiCard
-            label="Total Sales"
-            value={data.netSales}
-            formatValue={(n) => formatCurrency(n)}
-            icon={BadgeDollarSign}
-            gradient="purple"
-            mask="REVN"
-            subtitle="All-time net sales from completed orders, after returns"
-            href="/admin/sales-analysis"
-          />
-          <HeroKpiCard
-            label="Total Collected"
-            value={data.totalCollected}
-            formatValue={(n) => formatCurrency(n)}
-            icon={Landmark}
-            gradient="teal"
-            mask="PAID"
-            subtitle="All-time dealer payments collected (cheques counted once cleared)"
-            href="/admin/payments"
-          />
-          <HeroKpiCard
-            label="Pending Dealer Cheques"
-            value={data.pendingDealerCheques}
-            formatValue={(n) => formatCurrency(n)}
-            icon={Clock}
-            gradient="blue"
-            mask="CHQ"
-            subtitle="Cheque payments recorded but not yet cleared by the bank"
-            onClick={() => setPendingChequesDialogOpen(true)}
-          />
+          <Rise step={1} className="h-full">
+            <HeroKpiCard
+              label="Liquid Cash"
+              value={data.liquidCash}
+              formatValue={(n) => formatCurrency(n)}
+              icon={Wallet}
+              gradient="orange"
+              featured
+              mask="CASH"
+              subtitle="Investments + collections − supplier payments − expenses"
+              href="/admin/liquid-cash"
+            />
+
+          </Rise>
+
+          <Rise step={2} className="h-full">
+            <HeroKpiCard
+              label="Credit Balance"
+              value={creditBalance}
+              formatValue={(n) => formatCurrency(n)}
+              icon={HandCoins}
+              gradient="red"
+              mask="DEBT"
+              subtitle="Outstanding balance owed to suppliers"
+              progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
+              href="/admin/credit-balance"
+            />
+
+          </Rise>
+
+          <Rise step={3} className="h-full">
+            <HeroKpiCard
+              label="Today's Sales"
+              value={Number(data.todaysSales)}
+              formatValue={(n) => formatCurrency(n)}
+              icon={IndianRupee}
+              gradient="green"
+              mask="SALE"
+              subtitle="Sales recorded today"
+            />
+
+          </Rise>
+
+
+          <Rise step={4} className="h-full">
+            <HeroKpiCard
+              label="Total Sales"
+              value={data.netSales}
+              formatValue={(n) => formatCurrency(n)}
+              icon={BadgeDollarSign}
+              gradient="purple"
+              mask="REVN"
+              subtitle="All-time net sales from completed orders, after returns"
+              href="/admin/sales-analysis"
+            />
+
+          </Rise>
+
+          <Rise step={5} className="h-full">
+            <HeroKpiCard
+              label="Total Collected"
+              value={data.totalCollected}
+              formatValue={(n) => formatCurrency(n)}
+              icon={Landmark}
+              gradient="teal"
+              mask="PAID"
+              subtitle="All-time dealer payments collected (cheques counted once cleared)"
+              href="/admin/payments"
+            />
+
+          </Rise>
+
+          <Rise step={6} className="h-full">
+            <HeroKpiCard
+              label="Pending Dealer Cheques"
+              value={data.pendingDealerCheques}
+              formatValue={(n) => formatCurrency(n)}
+              icon={Clock}
+              gradient="blue"
+              mask="CHQ"
+              subtitle="Cheque payments recorded but not yet cleared by the bank"
+              onClick={() => setPendingChequesDialogOpen(true)}
+            />
+
+          </Rise>
         </div>
       )}
 
       {isLoading || !data ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3" aria-busy="true" aria-label="Loading">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[84px] w-full rounded-xl" />
+            <Skeleton key={i} className="h-[104px] w-full rounded-xl sm:h-[84px]" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <MiniStatCard
-            label="Outstanding Payments"
-            value={formatCurrency(data.outstandingPayments)}
-            icon={Wallet}
-            tone="primary"
-            onClick={() => setOutstandingDialogOpen(true)}
-          />
-          <MiniStatCard
-            label="Invoice Due"
-            value={formatCurrency(data.invoiceDue)}
-            icon={Receipt}
-            tone="primary"
-            href="/admin/invoices"
-          />
-          <MiniStatCard
-            label="Total Expenses"
-            value={formatCurrency(data.totalExpenses)}
-            icon={CreditCard}
-            tone="warning"
-            change={data.totalExpensesChangePct}
-            changeLabel="vs Last Month"
-            href="/admin/expenses"
-          />
-          <MiniStatCard
-            label="Profit"
-            value={formatCurrency(data.profit)}
-            icon={TrendingUp}
-            tone="success"
-            change={data.profitChangePct}
-            changeLabel="vs Last Month"
-            href="/admin/equity"
-          />
-          <MiniStatCard
-            label="Pending Approvals"
-            value={data.pendingApprovals}
-            icon={ClipboardCheck}
-            tone={data.pendingApprovals > 0 ? 'warning' : 'primary'}
-          />
-          <MiniStatCard
-            label="Out of Stock Items"
-            value={data.outOfStockItems}
-            icon={AlertTriangle}
-            tone={data.outOfStockItems > 0 ? 'destructive' : 'primary'}
-            href="/admin/inventory"
-          />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+
+          <Rise step={4} className="h-full">
+            <MiniStatCard
+              label="Outstanding Payments"
+              value={formatCurrency(data.outstandingPayments)}
+              icon={Wallet}
+              tone="primary"
+              onClick={() => setOutstandingDialogOpen(true)}
+            />
+
+          </Rise>
+
+          <Rise step={5} className="h-full">
+            <MiniStatCard
+              label="Invoice Due"
+              value={formatCurrency(data.invoiceDue)}
+              icon={Receipt}
+              tone="primary"
+              href="/admin/invoices"
+            />
+
+          </Rise>
+
+          <Rise step={6} className="h-full">
+            <MiniStatCard
+              label="Total Expenses"
+              value={formatCurrency(data.totalExpenses)}
+              icon={CreditCard}
+              tone="warning"
+              change={data.totalExpensesChangePct}
+              changeLabel="vs Last Month"
+              href="/admin/expenses"
+            />
+
+          </Rise>
+
+          <Rise step={7} className="h-full">
+            <MiniStatCard
+              label="Profit"
+              value={formatCurrency(data.profit)}
+              icon={TrendingUp}
+              tone="success"
+              change={data.profitChangePct}
+              changeLabel="vs Last Month"
+              href="/admin/equity"
+            />
+
+          </Rise>
+
+          <Rise step={8} className="h-full">
+            <MiniStatCard
+              label="Pending Approvals"
+              value={data.pendingApprovals}
+              icon={ClipboardCheck}
+              tone={data.pendingApprovals > 0 ? 'warning' : 'primary'}
+            />
+
+          </Rise>
+
+          <Rise step={9} className="h-full">
+            <MiniStatCard
+              label="Out of Stock Items"
+              value={data.outOfStockItems}
+              icon={AlertTriangle}
+              tone={data.outOfStockItems > 0 ? 'destructive' : 'primary'}
+              href="/admin/inventory"
+            />
+
+          </Rise>
         </div>
       )}
 
@@ -200,12 +250,12 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+          <Rise step={10} className="h-full lg:col-span-2">
             <BusinessHealth data={data} />
-          </div>
-          <div className="lg:col-span-3">
+          </Rise>
+          <Rise step={11} className="h-full lg:col-span-3">
             <MoreMetricsStrip data={data} />
-          </div>
+          </Rise>
         </div>
       )}
 
@@ -216,17 +266,21 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <Rise step={12} className="h-full lg:col-span-2">
             <RevenueAnalyticsCard data={data.monthlyRevenue} />
-          </div>
-          <TopProductsCard items={data.topProducts} />
+          </Rise>
+          <Rise step={13} className="h-full">
+            <TopProductsCard items={data.topProducts} />
+          </Rise>
         </div>
       )}
 
       {isLoading || !data ? (
         <Skeleton className="h-56 w-full rounded-xl" />
       ) : (
-        <UpcomingChequesCard cheques={data.upcomingCheques} />
+        <Rise step={14}>
+          <UpcomingChequesCard cheques={data.upcomingCheques} />
+        </Rise>
       )}
 
       {isLoading || !data ? (
@@ -236,17 +290,19 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <Rise step={15} className="h-full lg:col-span-2">
             <RecentOrdersCard orders={data.recentOrders} />
-          </div>
-          <ActivityTimeline
-            items={activity?.data ?? []}
-            isLoading={activityLoading}
-            isFetching={activityFetching}
-            isError={activityIsError}
-            error={activityError}
-            onRetry={() => refetchActivity()}
-          />
+          </Rise>
+          <Rise step={16} className="h-full">
+            <ActivityTimeline
+              items={activity?.data ?? []}
+              isLoading={activityLoading}
+              isFetching={activityFetching}
+              isError={activityIsError}
+              error={activityError}
+              onRetry={() => refetchActivity()}
+            />
+          </Rise>
         </div>
       )}
 

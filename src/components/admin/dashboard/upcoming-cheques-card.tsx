@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { ArrowUpRight, Banknote, Plus } from 'lucide-react';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { EmptyState } from '@/components/empty-state';
 import { SectionHeader } from '@/components/section-header';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { UpcomingCheque } from '@/lib/api/types';
@@ -32,8 +32,12 @@ export function UpcomingChequesCard({ cheques }: { cheques: UpcomingCheque[] }) 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <SectionHeader
-        title="Upcoming Cheques"
-        description="Supplier cheques queued for bank clearance"
+        title={
+          <PanelTitle icon={Banknote} tone="info">
+            Upcoming Cheques
+          </PanelTitle>
+        }
+        description={<span className="sm:pl-[42px]">Supplier cheques queued for bank clearance</span>}
         className="pb-3"
         actions={
           <Button variant="ghost" size="sm" asChild className="text-primary hover:text-primary">
@@ -46,19 +50,25 @@ export function UpcomingChequesCard({ cheques }: { cheques: UpcomingCheque[] }) 
       />
 
       {cheques.length === 0 ? (
-        <EmptyState
-          icon={Banknote}
-          title="No pending cheques due"
-          description="Supplier cheques queued for bank deposit will display here automatically."
-          action={
-            <Button size="sm" asChild>
-              <Link href="/admin/credits">
-                <Plus />
-                Record a Cheque
-              </Link>
-            </Button>
-          }
-        />
+        <div className="m-4 mt-1 flex flex-col items-start gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-4 sm:m-5 sm:mt-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground shadow-xs">
+              <Banknote className="size-[18px]" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-foreground">No pending cheques due</p>
+              <p className="text-xs text-muted-foreground">
+                Supplier cheques queued for bank deposit will display here automatically.
+              </p>
+            </div>
+          </div>
+          <Button size="sm" asChild className="shrink-0">
+            <Link href="/admin/credits">
+              <Plus />
+              Record a Cheque
+            </Link>
+          </Button>
+        </div>
       ) : (
         <>
           {/* Desktop table */}

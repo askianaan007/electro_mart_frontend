@@ -31,8 +31,9 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between', className)}>
-      <div className="min-w-0 space-y-1">
+    // Actions wrap below the title (instead of squeezing it) when they don't fit beside it.
+    <div className={cn('flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between', className)}>
+      <div className="min-w-0 space-y-1 sm:flex-[1_1_20rem]">
         {onBack ? (
           <button type="button" onClick={onBack} className={BACK_CLASS}>
             <ChevronLeft className="size-4" />

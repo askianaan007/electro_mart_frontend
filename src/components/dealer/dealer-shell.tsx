@@ -15,8 +15,8 @@ export function DealerShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-svh bg-background print:block">
       <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar print:hidden lg:flex">
-        <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-5">
-          <Brand subtitle="Dealer portal" />
+        <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border bg-gradient-to-b from-brand-navy/[0.04] to-transparent px-4 dark:from-white/[0.03]">
+          <Brand subtitle="Dealer portal" href="/dealer/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <SidebarNav groups={[{ items: dealerNavItems }]} />

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, ChevronDown, Table as TableIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronDown, LineChart, Table as TableIcon } from 'lucide-react';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import { RevenueChart } from '@/components/admin/revenue-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ function monthLabel(month: string) {
 
 function SummaryTile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border px-3 py-2.5">
+    <div className="rounded-lg border border-border bg-gradient-to-br from-muted/60 to-card px-3 py-2.5 transition-colors hover:border-primary/30">
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-0.5">{children}</div>
     </div>
@@ -50,8 +51,12 @@ export function RevenueAnalyticsCard({ data }: { data: RevenuePoint[] }) {
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <CardTitle>Revenue Analytics</CardTitle>
-          {rangeLabel && <CardDescription className="text-xs">{rangeLabel}</CardDescription>}
+          <CardTitle>
+            <PanelTitle icon={LineChart} tone="primary">
+              Revenue Analytics
+            </PanelTitle>
+          </CardTitle>
+          {rangeLabel && <CardDescription className="pl-[42px] text-xs">{rangeLabel}</CardDescription>}
         </div>
         <Badge variant="outline" className="tabular-nums">
           {formatCurrency(total)} Total

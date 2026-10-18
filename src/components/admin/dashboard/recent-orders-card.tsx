@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, PackageSearch } from 'lucide-react';
+import { ArrowUpRight, PackageSearch, ShoppingBag } from 'lucide-react';
+import { PanelTitle } from '@/components/admin/dashboard/panel-icon';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,8 +16,12 @@ export function RecentOrdersCard({ orders }: { orders: Order[] }) {
   return (
     <div className="h-full overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <SectionHeader
-        title="Recent Orders"
-        description="Latest dealer orders and fulfillment state"
+        title={
+          <PanelTitle icon={ShoppingBag} tone="purple">
+            Recent Orders
+          </PanelTitle>
+        }
+        description={<span className="sm:pl-[42px]">Latest dealer orders and fulfillment state</span>}
         className="pb-3"
         actions={
           <Button variant="ghost" size="sm" asChild className="text-primary hover:text-primary">
@@ -46,7 +51,7 @@ export function RecentOrdersCard({ orders }: { orders: Order[] }) {
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow key={order.id} className="group/row">
                     <TableCell>
                       <Link href={`/admin/orders/${order.id}`} className="font-mono text-xs font-medium text-primary hover:underline">
                         {order.orderNumber}
@@ -67,7 +72,12 @@ export function RecentOrdersCard({ orders }: { orders: Order[] }) {
                       <OrderStatusBadge status={order.status} />
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="size-8" asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 transition-transform group-hover/row:translate-x-0.5 group-hover/row:text-primary"
+                        asChild
+                      >
                         <Link href={`/admin/orders/${order.id}`} aria-label={`View order ${order.orderNumber}`}>
                           <ArrowUpRight className="size-4" />
                         </Link>
@@ -85,7 +95,7 @@ export function RecentOrdersCard({ orders }: { orders: Order[] }) {
               <Link
                 key={order.id}
                 href={`/admin/orders/${order.id}`}
-                className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                className="block rounded-lg border border-border bg-card p-4 transition-[colors,transform] hover:border-primary/40 hover:bg-muted/40 active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-mono text-xs font-medium text-primary">{order.orderNumber}</span>
