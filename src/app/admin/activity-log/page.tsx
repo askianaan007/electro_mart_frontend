@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
@@ -22,10 +21,14 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { FilterBar } from '@/components/filter-bar';
+import { TableSkeleton } from '@/components/loading-state';
 import { useActivityLog, useActivityLogAdmins, useClearActivityLog } from '@/hooks/use-activity-log';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatDateTime } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import type { ActivityLog } from '@/lib/api/types';
 
 const ACTION_CATALOG: { module: string; actions: { value: string; label: string }[] }[] = [
@@ -188,7 +191,7 @@ export default function ActivityLogPage() {
     actionFilter !== 'all' ? actionFilter : moduleFilter !== 'all' ? actionsForModule.map((a) => a.value).join(',') : undefined;
 
   const { data: admins } = useActivityLogAdmins();
-  const { data, isLoading, isError, error, refetch } = useActivityLog({
+  const { data, isLoading, isFetching, isError, error, refetch } = useActivityLog({
     page,
     limit: 20,
     search: debouncedSearch || undefined,
@@ -230,25 +233,26 @@ export default function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ClipboardList className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Activity Log</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Audit trail of every admin action.</p>
-          </div>
-        </div>
-        <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setClearOpen(true)}>
-          <Trash2 />
-          Clear all
-        </Button>
-      </div>
+      <PageHeader
+        title="Activity Log"
+        description="Audit trail of every admin action."
+        actions={
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setClearOpen(true)}>
+            <Trash2 />
+            Clear all
+          </Button>
+        }
+      />
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative flex-1 sm:min-w-[14rem]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="Entries"
+          description="Click an entry to see its full detail."
+          isFetching={isFetching && !isLoading}
+          className="pb-3"
+        />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-xs sm:min-w-[14rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search details or action..."
@@ -311,8 +315,6 @@ export default function ActivityLogPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
           <Input
             type="date"
             value={dateFrom}
@@ -338,16 +340,10 @@ export default function ActivityLogPage() {
               Clear filters
             </Button>
           )}
-        </div>
-      </div>
+        </FilterBar>
 
-      <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={8} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -367,7 +363,7 @@ export default function ActivityLogPage() {
           )
         ) : (
           <>
-            <div className="hidden sm:block">
+            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -384,7 +380,7 @@ export default function ActivityLogPage() {
                       className="cursor-pointer"
                       onClick={() => setSelectedLog(log)}
                     >
-                      <TableCell className="whitespace-normal break-words text-sm text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
                         {formatDateTime(log.createdAt)}
                       </TableCell>
                       <TableCell className="whitespace-normal break-words font-medium">{log.admin.name}</TableCell>
@@ -400,13 +396,13 @@ export default function ActivityLogPage() {
               </Table>
             </div>
 
-            <div className="space-y-3 p-4 sm:hidden">
+            <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((log) => (
                 <button
                   key={log.id}
                   type="button"
                   onClick={() => setSelectedLog(log)}
-                  className="w-full rounded-lg border border-border p-4 text-left"
+                  className="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <ActionBadge action={log.action} />
@@ -477,7 +473,7 @@ export default function ActivityLogPage() {
               the filters above. A single new entry recording this clear will be added afterward.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">
             <AlertTriangle className="size-4 shrink-0" />
             This cannot be undone. Enter your admin password to confirm.
           </div>

@@ -6,10 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/page-header';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,7 +44,7 @@ function LineTotal({ control, index }: { control: ReturnType<typeof useForm<Form
   const quantity = useWatch({ control, name: `items.${index}.quantity` });
   const unitCost = useWatch({ control, name: `items.${index}.unitCost` });
   const total = (Number(quantity) || 0) * (Number(unitCost) || 0);
-  return <span className="font-medium">{formatCurrency(total)}</span>;
+  return <span className="font-medium tabular-nums">{formatCurrency(total)}</span>;
 }
 
 function defaultValuesFor(purchase?: Purchase): FormValues {
@@ -148,25 +149,22 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
-      </Button>
-
-      <div>
-        <h1 className="text-2xl font-semibold">{isEdit ? 'Edit purchase' : 'Record a purchase'}</h1>
-        <p className="text-sm text-muted-foreground">
-          {isEdit
+      <PageHeader
+        title={isEdit ? 'Edit purchase' : 'Record a purchase'}
+        description={
+          isEdit
             ? 'Changes here reconcile stock — quantities already sold cannot be reduced'
-            : 'Logging a purchase increases stock immediately'}
-        </p>
-      </div>
+            : 'Logging a purchase increases stock immediately'
+        }
+        onBack={() => router.back()}
+      />
 
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Purchase details</CardTitle>
+              <CardDescription>Supplier, invoice reference and date of this purchase.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <FormField
@@ -239,8 +237,11 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
           </Card>
 
           <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle>Line items</CardTitle>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>Line items</CardTitle>
+                <CardDescription>Products received on this invoice and what each cost.</CardDescription>
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => openQuickAdd(null)}>
                   <Plus />
@@ -257,15 +258,15 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="hidden sm:block">
+            <CardContent className="space-y-4 p-0 sm:p-0">
+              <div className="hidden border-y border-border sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-2/5">Product</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Cost</TableHead>
-                      <TableHead>Line Total</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit Cost</TableHead>
+                      <TableHead className="text-right">Line Total</TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
@@ -297,29 +298,38 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                               variant="outline"
                               size="icon"
                               title="Create new product"
+                              aria-label="Create new product"
                               onClick={() => openQuickAdd(index)}
                             >
-                              <Plus className="size-4" />
+                              <Plus />
                             </Button>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           <FormField
                             control={form.control}
                             name={`items.${index}.quantity`}
-                            render={({ field }) => <Input type="number" min={1} className="w-24" {...field} />}
+                            render={({ field }) => (
+                              <Input type="number" min={1} className="ml-auto w-24 text-right tabular-nums" {...field} />
+                            )}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           <FormField
                             control={form.control}
                             name={`items.${index}.unitCost`}
                             render={({ field }) => (
-                              <Input type="number" min={0} step="0.01" className="w-28" {...field} />
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className="ml-auto w-28 text-right tabular-nums"
+                                {...field}
+                              />
                             )}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           <LineTotal control={form.control} index={index} />
                         </TableCell>
                         <TableCell>
@@ -327,10 +337,12 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                             type="button"
                             variant="ghost"
                             size="icon"
+                            className="size-8 text-muted-foreground hover:text-destructive"
+                            aria-label="Remove line item"
                             disabled={fields.length === 1}
                             onClick={() => remove(index)}
                           >
-                            <Trash2 className="size-4" />
+                            <Trash2 />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -339,19 +351,21 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 </Table>
               </div>
 
-              <div className="space-y-4 sm:hidden">
+              <div className="space-y-3 px-4 sm:hidden">
                 {fields.map((rowField, index) => (
-                  <div key={rowField.id} className="space-y-3 rounded-lg border border-border p-3">
+                  <div key={rowField.id} className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Item {index + 1}</span>
+                      <span className="text-sm font-semibold">Item {index + 1}</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove line item"
                         disabled={fields.length === 1}
                         onClick={() => remove(index)}
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 />
                       </Button>
                     </div>
                     <FormField
@@ -380,9 +394,10 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                               variant="outline"
                               size="icon"
                               title="Create new product"
+                              aria-label="Create new product"
                               onClick={() => openQuickAdd(index)}
                             >
-                              <Plus className="size-4" />
+                              <Plus />
                             </Button>
                           </div>
                         </FormItem>
@@ -422,13 +437,24 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 ))}
               </div>
 
-              <div className="flex justify-end border-t border-border pt-4">
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Total Purchase Value</p>
-                  <p className="text-xl font-semibold">{formatCurrency(grandTotal)}</p>
+              <div className="flex justify-end px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="w-full space-y-2 rounded-lg border border-border bg-muted/40 p-4 sm:max-w-sm">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Line items</span>
+                    <span className="font-medium tabular-nums">{fields.length}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 border-t border-border pt-2">
+                    <span className="text-sm font-semibold">Total Purchase Value</span>
+                    <span className="text-xl font-semibold tracking-tight tabular-nums">
+                      {formatCurrency(grandTotal)}
+                    </span>
+                  </div>
                   {transportChargesValue > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      −{formatCurrency(transportChargesValue)} transport charges deducted from supplier credit
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium tabular-nums text-warning-foreground dark:text-warning">
+                        −{formatCurrency(transportChargesValue)}
+                      </span>{' '}
+                      transport charges deducted from supplier credit
                     </p>
                   )}
                 </div>
@@ -436,7 +462,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>

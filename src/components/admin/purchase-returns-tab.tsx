@@ -6,8 +6,8 @@ import { Pencil, Search, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { TableSkeleton } from '@/components/loading-state';
 import { EmptyState } from '@/components/empty-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
@@ -87,8 +87,8 @@ export function PurchaseReturnsTab() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <SectionHeader title="All returns" isFetching={isFetching && !isLoading} />
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <SectionHeader title="All returns" isFetching={isFetching && !isLoading} className="pb-3" />
       <FilterBar>
         <div className="relative flex-1 sm:max-w-[12rem]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -148,11 +148,7 @@ export function PurchaseReturnsTab() {
       </FilterBar>
 
       {isLoading ? (
-        <div className="space-y-2 p-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <TableSkeleton rows={6} />
       ) : isError ? (
         <QueryErrorState error={error} onRetry={() => refetch()} />
       ) : !data || data.data.length === 0 ? (
@@ -199,7 +195,7 @@ export function PurchaseReturnsTab() {
                       {purchaseReturn.purchase ? (
                         <Link
                           href={`/admin/purchases/${purchaseReturn.purchase.id}`}
-                          className="text-primary hover:underline"
+                          className="font-medium text-primary hover:underline"
                         >
                           {purchaseReturn.purchase.invoiceNumber}
                         </Link>
@@ -208,19 +204,26 @@ export function PurchaseReturnsTab() {
                       )}
                     </TableCell>
                     <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
-                    <TableCell className="text-right font-medium text-destructive">
+                    <TableCell className="text-right font-medium tabular-nums text-destructive">
                       −{formatCurrency(purchaseReturn.totalAmount)}
                     </TableCell>
                     <TableCell>
                       {canEditPurchaseReturn(purchaseReturn) && (
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => setEditingReturn(purchaseReturn)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8"
+                            aria-label="Edit return"
+                            onClick={() => setEditingReturn(purchaseReturn)}
+                          >
                             <Pencil className="size-3.5" />
                           </Button>
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="ghost"
-                            className="text-destructive"
+                            className="size-8 text-destructive hover:text-destructive"
+                            aria-label="Delete return"
                             onClick={() => setDeletingReturn(purchaseReturn)}
                           >
                             <Trash2 className="size-3.5" />
@@ -236,10 +239,10 @@ export function PurchaseReturnsTab() {
 
           <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
             {data.data.map((purchaseReturn) => (
-              <div key={purchaseReturn.id} className="rounded-lg border border-border p-4">
+              <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <span className="break-words font-medium">{purchaseReturn.returnNumber}</span>
-                  <span className="shrink-0 break-words font-semibold text-destructive">
+                  <span className="shrink-0 break-words font-semibold tabular-nums text-destructive">
                     −{formatCurrency(purchaseReturn.totalAmount)}
                   </span>
                 </div>
@@ -311,7 +314,7 @@ export function PurchaseReturnsTab() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deletePurchaseReturn.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

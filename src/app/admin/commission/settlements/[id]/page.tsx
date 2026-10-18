@@ -2,17 +2,18 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Banknote, CheckCircle2, Receipt, XCircle } from 'lucide-react';
+import { Banknote, CheckCircle2, Receipt, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SettlementStatusBadge, CommissionLineStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { PageSkeleton } from '@/components/loading-state';
 import { PaySettlementDialog } from '@/components/admin/pay-settlement-dialog';
 import { RejectReasonDialog } from '@/components/admin/reject-reason-dialog';
 import {
@@ -36,20 +37,18 @@ export default function SettlementDetailPage() {
   const updateChequeStatus = useUpdateSettlementChequeStatus(id);
 
   if (isError) {
-    return <QueryErrorState error={error} onRetry={() => refetch()} />;
-  }
-
-  if (isLoading || !settlement) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
+      <div className="space-y-6">
+        <PageHeader title="Settlement" onBack={() => router.back()} />
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         </div>
       </div>
     );
+  }
+
+  if (isLoading || !settlement) {
+    return <PageSkeleton cards={3} />;
   }
 
   function handleApprove() {
@@ -83,82 +82,106 @@ export default function SettlementDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
-      </Button>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{settlement.settlementNumber}</h1>
+      <PageHeader
+        title={settlement.settlementNumber}
+        onBack={() => router.back()}
+        meta={
+          <>
             <SettlementStatusBadge status={settlement.status} />
-            {settlement.chequeStatus && <Badge variant="outline">Cheque: {settlement.chequeStatus}</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground">
+            {settlement.chequeStatus && (
+              <Badge
+                variant={
+                  settlement.chequeStatus === 'CLEARED'
+                    ? 'success'
+                    : settlement.chequeStatus === 'RETURNED'
+                      ? 'destructive'
+                      : 'warning'
+                }
+              >
+                Cheque: {settlement.chequeStatus}
+              </Badge>
+            )}
+          </>
+        }
+        description={
+          <span className="tabular-nums">
             {settlement.representative?.name} &middot; {formatDate(settlement.periodStart)} –{' '}
             {formatDate(settlement.periodEnd)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canApprove && (
-            <Button onClick={handleApprove} loading={approveSettlement.isPending}>
-              <CheckCircle2 />
-              Approve
-            </Button>
-          )}
-          {canPay && (
-            <Button onClick={() => setPayOpen(true)}>
-              <Banknote />
-              Record payment
-            </Button>
-          )}
-          {canUpdateCheque && (
-            <>
-              <Button variant="outline" onClick={() => handleChequeStatus('CLEARED')} loading={updateChequeStatus.isPending}>
-                Mark Cleared
-              </Button>
+          </span>
+        }
+        actions={
+          <>
+            {canReject && (
               <Button
                 variant="outline"
                 className="text-destructive hover:text-destructive"
-                onClick={() => handleChequeStatus('RETURNED')}
-                loading={updateChequeStatus.isPending}
+                onClick={() => setRejectOpen(true)}
               >
-                Mark Returned
+                <XCircle />
+                Reject
               </Button>
-            </>
-          )}
-          {canReject && (
-            <Button
-              variant="outline"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setRejectOpen(true)}
-            >
-              <XCircle />
-              Reject
-            </Button>
-          )}
-        </div>
-      </div>
+            )}
+            {canUpdateCheque && (
+              <>
+                <Button variant="outline" onClick={() => handleChequeStatus('CLEARED')} loading={updateChequeStatus.isPending}>
+                  Mark Cleared
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleChequeStatus('RETURNED')}
+                  loading={updateChequeStatus.isPending}
+                >
+                  Mark Returned
+                </Button>
+              </>
+            )}
+            {canApprove && (
+              <Button onClick={handleApprove} loading={approveSettlement.isPending}>
+                <CheckCircle2 />
+                Approve
+              </Button>
+            )}
+            {canPay && (
+              <Button onClick={() => setPayOpen(true)}>
+                <Banknote />
+                Record payment
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Total Commission" value={formatCurrency(settlement.totalCommission)} icon={Banknote} />
-        <StatCard label="Line Items" value={settlement.lines?.length ?? 0} icon={Receipt} />
+        <StatCard label="Line Items" value={settlement.lines?.length ?? 0} icon={Receipt} tone="info" />
         <StatCard
           label="Payment Mode"
           value={settlement.mode ? settlement.mode.replace('_', ' ') : 'Not yet paid'}
           icon={Banknote}
+          tone={settlement.mode ? 'success' : 'default'}
         />
       </div>
 
       {settlement.status === 'REJECTED' && settlement.rejectedReason && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Rejected: {settlement.rejectedReason}
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <XCircle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <span className="font-medium">Rejected:</span> {settlement.rejectedReason}
+          </span>
         </div>
       )}
 
-      <Card>
-        <CardContent className="p-0 sm:p-0">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="Commission lines"
+          description="Order lines batched into this settlement"
+          className="pb-3"
+        />
+        <div className="border-t border-border">
           {!settlement.lines || settlement.lines.length === 0 ? (
             <EmptyState icon={Receipt} title="No commission lines" />
           ) : (
@@ -167,26 +190,37 @@ export default function SettlementDetailPage() {
                 <TableRow>
                   <TableHead>Order</TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {settlement.lines.map((line) => (
                   <TableRow key={line.id}>
-                    <TableCell>{line.order?.orderNumber ?? line.orderId}</TableCell>
+                    <TableCell className="font-medium">{line.order?.orderNumber ?? line.orderId}</TableCell>
                     <TableCell>{line.product?.name ?? line.productId}</TableCell>
-                    <TableCell>{formatCurrency(line.amount)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{formatCurrency(line.amount)}</TableCell>
                     <TableCell>
                       <CommissionLineStatusBadge status={line.status} />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
+              <TableFooter>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={2} className="font-semibold">
+                    Total commission
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {formatCurrency(settlement.totalCommission)}
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableFooter>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <PaySettlementDialog open={payOpen} onOpenChange={setPayOpen} settlementId={id} />
       <RejectReasonDialog

@@ -167,9 +167,16 @@ export function RecordPaymentDialog({
           <DialogTitle>{isEdit ? 'Edit payment' : 'Record a payment'}</DialogTitle>
         </DialogHeader>
         {effectiveInvoice && (
-          <p className="-mt-2 text-sm text-muted-foreground">
-            Invoice {effectiveInvoice.invoiceNumber} &middot; Remaining balance: {formatCurrency(Math.max(remaining, 0))}
-          </p>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Invoice</p>
+              <p className="truncate font-medium">{effectiveInvoice.invoiceNumber}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Remaining balance</p>
+              <p className="font-semibold tabular-nums">{formatCurrency(Math.max(remaining, 0))}</p>
+            </div>
+          </div>
         )}
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -186,7 +193,7 @@ export function RecordPaymentDialog({
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="mode"
@@ -237,8 +244,9 @@ export function RecordPaymentDialog({
             />
 
             {mode === 'CHEQUE' && (
-              <div className="space-y-4 rounded-lg border border-border p-3">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold">Cheque details</p>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="bankName"
@@ -266,7 +274,7 @@ export function RecordPaymentDialog({
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="collectedDate"

@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
@@ -24,6 +23,8 @@ import { Label } from '@/components/ui/label';
 import { RejectReasonDialog } from '@/components/admin/reject-reason-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import { useCollections, useConfirmCollection, useRejectCollection } from '@/hooks/use-collections';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -67,7 +68,7 @@ function ConfirmCollectionDialog({
         </DialogHeader>
         {submission && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Customer</p>
                 <p className="font-medium">{submission.customer?.businessName ?? submission.customerId}</p>
@@ -82,7 +83,7 @@ function ConfirmCollectionDialog({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Collection date</p>
-                <p className="font-medium">{formatDate(submission.collectionDate)}</p>
+                <p className="font-medium tabular-nums">{formatDate(submission.collectionDate)}</p>
               </div>
               {submission.notes && (
                 <div className="col-span-2">
@@ -92,13 +93,14 @@ function ConfirmCollectionDialog({
               )}
             </div>
             {submission.invoice ? (
-              <div className="rounded-lg border border-border p-3 text-sm">
-                Applying against invoice <strong>{submission.invoice.invoiceNumber}</strong>
+              <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-foreground">
+                Applying against invoice <span className="font-semibold">{submission.invoice.invoiceNumber}</span>
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>Invoice ID</Label>
+                <Label htmlFor="collection-invoice-id">Invoice ID</Label>
                 <Input
+                  id="collection-invoice-id"
                   placeholder="This collection was not submitted against a specific invoice"
                   value={invoiceId}
                   onChange={(e) => setInvoiceId(e.target.value)}
@@ -154,15 +156,13 @@ export default function CollectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Collections</h1>
-        <p className="text-sm text-muted-foreground">
-          Review payments representatives collected in the field before they post to accounting
-        </p>
-      </div>
+      <PageHeader
+        title="Collections"
+        description="Review payments representatives collected in the field before they post to accounting."
+      />
 
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="Collection queue" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Collection queue" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <Select
             value={status}
@@ -184,15 +184,15 @@ export default function CollectionsPage() {
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
-          <EmptyState icon={Search} title="No collections found" />
+          data && status === 'PENDING_VERIFICATION' ? (
+            <EmptyState icon={HandCoins} title="Nothing pending review" description="All caught up" />
+          ) : (
+            <EmptyState icon={Search} title="No collections found" />
+          )
         ) : (
           <>
             <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
@@ -201,11 +201,11 @@ export default function CollectionsPage() {
                   <TableRow>
                     <TableHead>Customer</TableHead>
                     <TableHead>Representative</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Mode</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-32" />
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -213,20 +213,31 @@ export default function CollectionsPage() {
                     <TableRow key={submission.id}>
                       <TableCell className="font-medium">{submission.customer?.businessName ?? submission.customerId}</TableCell>
                       <TableCell>{submission.representative?.name ?? submission.representativeId}</TableCell>
-                      <TableCell>{formatCurrency(submission.amount)}</TableCell>
-                      <TableCell>{submission.mode.replace('_', ' ')}</TableCell>
-                      <TableCell>{formatDate(submission.collectionDate)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(submission.amount)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{submission.mode.replace('_', ' ')}</TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">
+                        {formatDate(submission.collectionDate)}
+                      </TableCell>
                       <TableCell>
                         <CollectionStatusBadge status={submission.status} />
                       </TableCell>
                       <TableCell>
                         {submission.status === 'PENDING_VERIFICATION' && (
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setConfirmingSubmission(submission)}>
-                              <CheckCircle2 className="size-4 text-success" />
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="outline" size="sm" onClick={() => setConfirmingSubmission(submission)}>
+                              <CheckCircle2 className="text-success" />
+                              Confirm
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setRejectingSubmission(submission)}>
-                              <XCircle className="size-4 text-destructive" />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setRejectingSubmission(submission)}
+                            >
+                              <XCircle />
+                              Reject
                             </Button>
                           </div>
                         )}
@@ -240,10 +251,6 @@ export default function CollectionsPage() {
           </>
         )}
       </div>
-
-      {data && data.data.length === 0 && status === 'PENDING_VERIFICATION' && (
-        <EmptyState icon={HandCoins} title="Nothing pending review" description="All caught up" />
-      )}
 
       <ConfirmCollectionDialog submission={confirmingSubmission} onOpenChange={(open) => !open && setConfirmingSubmission(null)} />
       <RejectReasonDialog

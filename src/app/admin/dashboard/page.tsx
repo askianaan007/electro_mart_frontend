@@ -35,7 +35,14 @@ import { formatCurrency } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
   const { data, isLoading, isError, error, refetch } = useAdminDashboard();
-  const { data: activity, isLoading: activityLoading } = useActivityLog({ page: 1, limit: 6 });
+  const {
+    data: activity,
+    isLoading: activityLoading,
+    isFetching: activityFetching,
+    isError: activityIsError,
+    error: activityError,
+    refetch: refetchActivity,
+  } = useActivityLog({ page: 1, limit: 6 });
   const [outstandingDialogOpen, setOutstandingDialogOpen] = useState(false);
   const [pendingChequesDialogOpen, setPendingChequesDialogOpen] = useState(false);
 
@@ -47,7 +54,9 @@ export default function AdminDashboardPage() {
     return (
       <div className="space-y-6">
         <GreetingHeader />
-        <QueryErrorState error={error} onRetry={() => refetch()} />
+        <div className="rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState error={error} onRetry={() => refetch()} title="Couldn't load the dashboard" />
+        </div>
       </div>
     );
   }
@@ -57,13 +66,13 @@ export default function AdminDashboardPage() {
       <GreetingHeader />
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[168px] w-full rounded-[22px]" />
+            <Skeleton key={i} className="h-[136px] w-full rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <HeroKpiCard
             label="Liquid Cash"
             value={data.liquidCash}
@@ -126,17 +135,16 @@ export default function AdminDashboardPage() {
             onClick={() => setPendingChequesDialogOpen(true)}
           />
         </div>
-
       )}
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
+            <Skeleton key={i} className="h-[84px] w-full rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <MiniStatCard
             label="Outstanding Payments"
             value={formatCurrency(data.outstandingPayments)}
@@ -186,12 +194,12 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid gap-5 lg:grid-cols-5">
-          <Skeleton className="h-72 rounded-2xl lg:col-span-2" />
-          <Skeleton className="h-72 rounded-2xl lg:col-span-3" />
+        <div className="grid gap-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-72 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-72 rounded-xl lg:col-span-3" />
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-5">
+        <div className="grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <BusinessHealth data={data} />
           </div>
@@ -202,12 +210,12 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <div className="grid gap-5 lg:grid-cols-3">
-          <Skeleton className="h-80 rounded-2xl lg:col-span-2" />
-          <Skeleton className="h-80 rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-3" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-[520px] rounded-xl lg:col-span-2" />
+          <Skeleton className="h-[520px] rounded-xl" />
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <RevenueAnalyticsCard data={data.monthlyRevenue} />
           </div>
@@ -216,26 +224,29 @@ export default function AdminDashboardPage() {
       )}
 
       {isLoading || !data ? (
-        <Skeleton className="h-56 w-full rounded-2xl" />
+        <Skeleton className="h-56 w-full rounded-xl" />
       ) : (
         <UpcomingChequesCard cheques={data.upcomingCheques} />
       )}
 
       {isLoading || !data ? (
-        <div className="grid gap-5 lg:grid-cols-3">
-          <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
-          <Skeleton className="h-96 rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-3" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-96 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-96 rounded-xl" />
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <RecentOrdersCard orders={data.recentOrders} />
           </div>
-          {activityLoading ? (
-            <Skeleton className="h-96 rounded-2xl" />
-          ) : (
-            <ActivityTimeline items={activity?.data ?? []} />
-          )}
+          <ActivityTimeline
+            items={activity?.data ?? []}
+            isLoading={activityLoading}
+            isFetching={activityFetching}
+            isError={activityIsError}
+            error={activityError}
+            onRetry={() => refetchActivity()}
+          />
         </div>
       )}
 

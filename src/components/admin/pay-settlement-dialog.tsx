@@ -6,7 +6,14 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -77,6 +84,7 @@ export function PaySettlementDialog({
       <DialogContent title="Record settlement payment">
         <DialogHeader>
           <DialogTitle>Record settlement payment</DialogTitle>
+          <DialogDescription>Record how this approved settlement was paid out to the representative.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -161,7 +169,7 @@ export function PaySettlementDialog({
             )}
 
             {mode === 'CHEQUE' && (
-              <p className="text-xs text-muted-foreground">
+              <p className="rounded-lg border border-info/20 bg-info/10 p-3 text-xs text-info">
                 The commission expense is recorded once this cheque is marked cleared, not immediately.
               </p>
             )}

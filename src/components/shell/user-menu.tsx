@@ -38,10 +38,11 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Avatar>
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-0.5 outline-none transition-colors hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/30 sm:pr-2">
+        <Avatar className="size-8">
           <AvatarFallback>{initials(displayName)}</AvatarFallback>
         </Avatar>
+        <span className="hidden max-w-32 truncate text-[13px] font-medium md:inline">{displayName}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
@@ -58,7 +59,7 @@ export function UserMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+        <DropdownMenuItem variant="destructive" disabled={logout.isPending} onClick={handleLogout}>
           <LogOut />
           Log out
         </DropdownMenuItem>

@@ -1,10 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, Coins, Phone, User } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, Coins, Phone } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/empty-state';
 import { formatCurrency } from '@/lib/utils';
 import type { AdminDashboardSummary } from '@/lib/api/types';
+
+function DealerMonogram({ name }: { name: string }) {
+  return (
+    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+      {name.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
 
 export function OutstandingPaymentsDialog({
   open,
@@ -19,156 +31,125 @@ export function OutstandingPaymentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Outstanding payments breakdown" className="sm:max-w-2xl rounded-3xl border border-border/60 bg-card/95 backdrop-blur-2xl p-6 shadow-2xl select-none overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Specular Shimmer Top Curve Overlay */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 rounded-t-3xl bg-gradient-to-b from-white/20 via-white/5 to-transparent dark:from-white/10" />
-
-        {/* Dialog Header */}
-        <DialogHeader className="relative z-10 space-y-1 shrink-0">
+      <DialogContent
+        title="Outstanding payments breakdown"
+        className="flex max-h-[90vh] flex-col gap-4 overflow-hidden sm:max-w-2xl"
+      >
+        <DialogHeader className="shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shadow-xs">
-              <Coins className="size-4.5" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+              <Coins className="size-4" />
             </div>
-            <DialogTitle className="text-lg sm:text-xl font-extrabold tracking-tight">
-              Outstanding Dealer Payments
-            </DialogTitle>
+            <DialogTitle>Outstanding Dealer Payments</DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-muted-foreground font-medium">
+          <DialogDescription>
             Detailed breakdown of unsettled accounts receivable grouped by dealer
           </DialogDescription>
         </DialogHeader>
 
-        {/* Total Outstanding Hero Banner */}
-        <div className="relative z-10 my-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 shadow-2xs">
-          <div className="space-y-0.5">
-            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
-              Total Combined Receivables
-            </p>
-            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {formatCurrency(total)}
-            </p>
+        {/* Total summary */}
+        <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Total Combined Receivables</p>
+            <p className="text-xl font-semibold tracking-tight text-foreground tabular-nums">{formatCurrency(total)}</p>
           </div>
-
-          <div className="text-right">
-            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-background/60 px-3 py-1 text-xs font-extrabold text-foreground backdrop-blur-md">
-              {dealers.length} {dealers.length === 1 ? 'Dealer' : 'Dealers'}
-            </span>
-          </div>
+          <Badge variant="outline" className="tabular-nums">
+            {dealers.length} {dealers.length === 1 ? 'Dealer' : 'Dealers'}
+          </Badge>
         </div>
 
-        {/* Dealers Breakdown List */}
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pr-1">
+        {/* Dealer list */}
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           {dealers.length === 0 ? (
-            <div className="rounded-2xl border border-border/60 bg-muted/40 p-8 text-center backdrop-blur-md">
-              <p className="text-sm font-bold text-foreground">No Outstanding Payments</p>
-              <p className="text-xs text-muted-foreground mt-1">All dealer accounts are currently fully settled.</p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No Outstanding Payments"
+              description="All dealer accounts are currently fully settled."
+              className="py-10"
+            />
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className="hidden sm:block overflow-x-auto rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md">
-                <table className="w-full min-w-[550px] text-xs">
-                  <thead className="bg-muted/60 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground border-b border-border/60">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Dealer / Owner</th>
-                      <th className="px-4 py-3 text-left">Contact Phone</th>
-                      <th className="px-4 py-3 text-right">Outstanding Amount</th>
-                      <th className="px-4 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
+              {/* Desktop table */}
+              <div className="hidden overflow-hidden rounded-lg border border-border sm:block">
+                <Table className="min-w-[550px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Dealer / Owner</TableHead>
+                      <TableHead>Contact Phone</TableHead>
+                      <TableHead className="text-right">Outstanding Amount</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {dealers.map((dealer) => (
-                      <tr key={dealer.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
+                      <TableRow key={dealer.id}>
+                        <TableCell>
                           <div className="flex items-center gap-2.5">
-                            <div className="flex size-8 items-center justify-center rounded-full bg-muted border border-border/60 text-muted-foreground font-bold text-xs shrink-0">
-                              {dealer.businessName.slice(0, 2).toUpperCase()}
-                            </div>
+                            <DealerMonogram name={dealer.businessName} />
                             <div className="min-w-0">
-                              <p className="font-bold text-foreground truncate text-xs sm:text-sm">
-                                {dealer.businessName}
-                              </p>
-                              {dealer.ownerName && (
-                                <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                                  <User className="size-3 text-muted-foreground/70" />
-                                  <span>{dealer.ownerName}</span>
-                                </p>
-                              )}
+                              <p className="truncate font-medium text-foreground">{dealer.businessName}</p>
+                              {dealer.ownerName && <div className="text-xs text-muted-foreground">{dealer.ownerName}</div>}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
                           {dealer.phone ? (
                             <span className="inline-flex items-center gap-1">
-                              <Phone className="size-3 text-muted-foreground/70" />
+                              <Phone className="size-3" />
                               {dealer.phone}
                             </span>
                           ) : (
                             '—'
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-black text-amber-600 dark:text-amber-400">
-                            {formatCurrency(dealer.outstandingBalance)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/admin/dealers/${dealer.id}`}
-                            onClick={() => onOpenChange(false)}
-                            className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-extrabold text-primary border border-primary/20 hover:bg-primary/20 transition-all"
-                          >
-                            <span>Profile</span>
-                            <ArrowUpRight className="size-3" />
-                          </Link>
-                        </td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatCurrency(dealer.outstandingBalance)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/dealers/${dealer.id}`} onClick={() => onOpenChange(false)}>
+                              Profile
+                              <ArrowUpRight className="size-3.5" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
-              {/* Mobile Cards View */}
+              {/* Mobile cards */}
               <div className="space-y-3 sm:hidden">
                 {dealers.map((dealer) => (
-                  <div
-                    key={dealer.id}
-                    className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md space-y-3 shadow-2xs"
-                  >
+                  <div key={dealer.id} className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex size-8 items-center justify-center rounded-full bg-muted border border-border/60 text-muted-foreground font-bold text-xs shrink-0">
-                          {dealer.businessName.slice(0, 2).toUpperCase()}
-                        </div>
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <DealerMonogram name={dealer.businessName} />
                         <div className="min-w-0">
-                          <p className="font-bold text-xs text-foreground truncate">{dealer.businessName}</p>
-                          {dealer.ownerName && (
-                            <p className="text-[10px] text-muted-foreground">{dealer.ownerName}</p>
-                          )}
+                          <p className="truncate text-sm font-medium text-foreground">{dealer.businessName}</p>
+                          {dealer.ownerName && <p className="text-xs text-muted-foreground">{dealer.ownerName}</p>}
                         </div>
                       </div>
 
-                      <Link
-                        href={`/admin/dealers/${dealer.id}`}
-                        onClick={() => onOpenChange(false)}
-                        className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-extrabold text-primary border border-primary/20 shrink-0"
-                      >
-                        <span>View</span>
-                        <ArrowUpRight className="size-3" />
-                      </Link>
+                      <Button variant="outline" size="sm" asChild className="shrink-0">
+                        <Link href={`/admin/dealers/${dealer.id}`} onClick={() => onOpenChange(false)}>
+                          View
+                          <ArrowUpRight className="size-3.5" />
+                        </Link>
+                      </Button>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                    <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
                       {dealer.phone ? (
-                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                          <Phone className="size-3 text-muted-foreground/70" />
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Phone className="size-3" />
                           {dealer.phone}
                         </span>
                       ) : (
                         <span />
                       )}
-
-                      <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-black text-amber-600 dark:text-amber-400">
+                      <span className="text-sm font-medium text-foreground tabular-nums">
                         {formatCurrency(dealer.outstandingBalance)}
                       </span>
                     </div>

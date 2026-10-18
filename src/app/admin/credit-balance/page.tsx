@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   ArrowDownLeft,
-  ArrowLeft,
   ArrowUpRight,
   Clock,
   Download,
@@ -25,6 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { FilterBar } from '@/components/filter-bar';
+import { TableSkeleton } from '@/components/loading-state';
 import { useCreditBalanceSummary, useCreditBalanceHistory } from '@/hooks/use-credit-balance';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { api } from '@/lib/api/endpoints';
@@ -80,6 +82,55 @@ function useCountUp(target: number, durationMs = 900) {
   }, [target, durationMs]);
 
   return value;
+}
+
+const FLOW_TONES = {
+  default: 'bg-primary/10 text-primary',
+  success: 'bg-success/10 text-success',
+  warning: 'bg-warning/10 text-warning',
+  info: 'bg-info/10 text-info',
+  purple: 'bg-purple/10 text-purple',
+} as const;
+
+/** One tile in the payable-flow breakdown: label, figure, direction badge and a short footnote. */
+function FlowTile({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  direction,
+  footnote,
+  footnoteLabel,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Package;
+  tone: keyof typeof FLOW_TONES;
+  direction: 'adds' | 'reduces';
+  footnote: string;
+  footnoteLabel: string;
+}) {
+  return (
+    <div className="flex flex-col rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
+        <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', FLOW_TONES[tone])}>
+          <Icon className="size-[18px]" />
+        </div>
+      </div>
+      <p className="mt-1 text-2xl font-semibold leading-tight tracking-tight tabular-nums">{value}</p>
+      <div className="mt-2 flex-1">
+        <Badge variant={direction === 'adds' ? 'info' : 'muted'}>
+          {direction === 'adds' ? <ArrowUpRight /> : <ArrowDownLeft />}
+          {direction === 'adds' ? 'Adds to balance' : 'Reduces balance'}
+        </Badge>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+        <span>{footnote}</span>
+        <span className="font-medium text-foreground">{footnoteLabel}</span>
+      </div>
+    </div>
+  );
 }
 
 function downloadHistoryCsv(filename: string, rows: CreditBalanceHistoryEntry[]) {
@@ -196,40 +247,29 @@ export default function CreditBalancePage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <HandCoins className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Credit Balance</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Every event that changes what&apos;s owed to suppliers — purchases, transport charges, returns, and
-              settlements — with a running balance so you can see exactly how the current figure was reached.
-            </p>
-          </div>
-        </div>
-        <Link href="/admin/dashboard" className="shrink-0">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft />
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Credit Balance"
+        description={
+          <>
+            Every event that changes what&apos;s owed to suppliers — purchases, transport charges, returns, and
+            settlements — with a running balance so you can see exactly how the current figure was reached.
+          </>
+        }
+        backHref="/admin/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
-      {/* Headline balance — futuristic gradient card with animated count-up */}
-      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-6 shadow-sm sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 size-56 rounded-full bg-destructive/10 blur-3xl" />
-        <div className="relative flex flex-col gap-2">
-          <p className="text-sm font-medium text-muted-foreground">Current Credit Balance</p>
+      {/* Headline balance with animated count-up */}
+      <section className="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-medium text-muted-foreground">Current Credit Balance</p>
           {summaryLoading ? (
-            <Skeleton className="h-11 w-64" />
+            <Skeleton className="h-10 w-64" />
           ) : summaryError ? (
             <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} className="items-start py-0 text-left" />
           ) : (
-            <p className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+            <p className="text-3xl font-semibold tracking-tight text-foreground tabular-nums sm:text-4xl">
               {formatCurrency(animatedBalance)}
             </p>
           )}
@@ -240,129 +280,69 @@ export default function CreditBalancePage() {
       </section>
 
       {/* Breakdown */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Payable Flow Breakdown</h2>
-        </div>
+      <section className="space-y-3">
+        <h2 className="text-[15px] font-semibold tracking-tight">Payable Flow Breakdown</h2>
 
         {summaryLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-36 rounded-2xl" />
+              <Skeleton key={i} className="h-36 rounded-xl" />
             ))}
-            <Skeleton className="h-44 rounded-2xl md:col-span-2" />
+            <Skeleton className="h-24 rounded-xl sm:col-span-2 xl:col-span-4" />
           </div>
         ) : summaryError ? null : (
           summary && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {/* 1. Purchases */}
-              <div className="group relative overflow-hidden rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-blue-500/10 blur-2xl transition-all duration-300 group-hover:bg-blue-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shadow-inner">
-                    <Package className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                    <ArrowUpRight className="size-3" /> ADDS TO BALANCE
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Purchases</p>
-                  <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                    {formatCurrency(summary.totalPurchases)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-blue-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Goods bought on credit</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">All-Time Purchases</span>
-                </div>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <FlowTile
+                label="Purchases"
+                value={formatCurrency(summary.totalPurchases)}
+                icon={Package}
+                tone="default"
+                direction="adds"
+                footnote="Goods bought on credit"
+                footnoteLabel="All-Time Purchases"
+              />
+              <FlowTile
+                label="Settlements Paid"
+                value={`−${formatCurrency(summary.totalSettled)}`}
+                icon={HandCoins}
+                tone="success"
+                direction="reduces"
+                footnote="Cash, bank & cheque settlements"
+                footnoteLabel="Debt Paid Down"
+              />
+              <FlowTile
+                label="Purchase Returns"
+                value={`−${formatCurrency(summary.totalReturns)}`}
+                icon={Undo2}
+                tone="warning"
+                direction="reduces"
+                footnote="Goods sent back to suppliers"
+                footnoteLabel="Credited Back"
+              />
+              <FlowTile
+                label="Transport Charges"
+                value={`−${formatCurrency(summary.totalTransportCharges)}`}
+                icon={Truck}
+                tone="info"
+                direction="reduces"
+                footnote="Freight offset against payable"
+                footnoteLabel="Purchase Adjustment"
+              />
 
-              {/* 2. Settlements Paid */}
-              <div className="group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-emerald-500/10 blur-2xl transition-all duration-300 group-hover:bg-emerald-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-inner">
-                    <HandCoins className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <ArrowDownLeft className="size-3" /> REDUCES BALANCE
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Settlements Paid</p>
-                  <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-3xl">
-                    −{formatCurrency(summary.totalSettled)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-emerald-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Cash, bank &amp; cheque settlements</span>
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">Debt Paid Down</span>
-                </div>
-              </div>
-
-              {/* 3. Purchase Returns */}
-              <div className="group relative overflow-hidden rounded-2xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-teal-500/10 blur-2xl transition-all duration-300 group-hover:bg-teal-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 shadow-inner">
-                    <Undo2 className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/10 px-2.5 py-0.5 text-xs font-semibold text-teal-600 dark:text-teal-400">
-                    <ArrowDownLeft className="size-3" /> REDUCES BALANCE
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Purchase Returns</p>
-                  <p className="text-2xl font-bold tracking-tight text-teal-600 dark:text-teal-400 sm:text-3xl">
-                    −{formatCurrency(summary.totalReturns)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-teal-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Goods sent back to suppliers</span>
-                  <span className="font-medium text-teal-600 dark:text-teal-400">Credited Back</span>
-                </div>
-              </div>
-
-              {/* 4. Transport Charges */}
-              <div className="group relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-cyan-500/10 blur-2xl transition-all duration-300 group-hover:bg-cyan-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 shadow-inner">
-                    <Truck className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 px-2.5 py-0.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400">
-                    <ArrowDownLeft className="size-3" /> REDUCES BALANCE
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transport Charges</p>
-                  <p className="text-2xl font-bold tracking-tight text-cyan-600 dark:text-cyan-400 sm:text-3xl">
-                    −{formatCurrency(summary.totalTransportCharges)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-cyan-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Freight offset against payable</span>
-                  <span className="font-medium text-cyan-600 dark:text-cyan-400">Purchase Adjustment</span>
-                </div>
-              </div>
-
-              {/* 5. Pending Cheque Settlements - Featured Card taking 2 columns */}
-              <div className="group relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-md md:col-span-2">
-                <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-purple-500/10 blur-3xl transition-all duration-300 group-hover:bg-purple-500/20" />
+              {/* Pending Cheque Settlements — full-width */}
+              <div className="rounded-xl border border-border bg-card p-4 shadow-xs sm:col-span-2 sm:p-5 xl:col-span-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shadow-inner">
-                      <Clock className="size-6" />
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple/10 text-purple">
+                      <Clock className="size-[18px]" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending Cheque Settlements</p>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-600 dark:text-purple-400">
-                          AT RISK IF RETURNED
-                        </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[13px] font-medium text-muted-foreground">Pending Cheque Settlements</p>
+                        <Badge variant="purple">At risk if returned</Badge>
                       </div>
-                      <p className="mt-0.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                      <p className="mt-0.5 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
                         {formatCurrency(summary.pendingChequeSettlements)}
                       </p>
                     </div>
@@ -378,14 +358,20 @@ export default function CreditBalancePage() {
       </section>
 
       {/* History */}
-      <section className="space-y-3 rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-3 p-4 sm:p-6 sm:pb-0">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-medium">History</h2>
-              {historyFetching && !historyLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="History"
+          isFetching={historyFetching && !historyLoading}
+          className="pb-3"
+          description={
+            <>
+              A settlement cheque reduces the balance as soon as it&apos;s recorded, marked with a status badge — only if
+              it&apos;s later returned does the row&apos;s previous and after balance match, showing it never actually
+              settled the debt.
+            </>
+          }
+          actions={
+            <>
               <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={history.length === 0 || isExportingCsv}>
                 {isExportingCsv ? <Loader2 className="animate-spin" /> : <Download />}
                 CSV
@@ -394,62 +380,54 @@ export default function CreditBalancePage() {
                 {isExportingPdf ? <Loader2 className="animate-spin" /> : <FileDown />}
                 PDF
               </Button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            A settlement cheque reduces the balance as soon as it&apos;s recorded, marked with a status badge — only if it&apos;s
-            later returned does the row&apos;s previous and after balance match, showing it never actually settled the debt.
-          </p>
+            </>
+          }
+        />
 
-          {exportError && (
-            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        {exportError && (
+          <div className="px-4 pb-3 sm:px-5">
+            <p className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground dark:text-warning">
               {exportError}
             </p>
-          )}
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative flex-1 sm:min-w-[12rem]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search description, supplier, invoice..."
-                value={search}
-                onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={(value) => resetPageAnd(setTypeFilter)(value as TypeFilter)}>
-              <SelectTrigger className="sm:w-48">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {(Object.keys(TYPE_META) as CreditBalanceEntryType[]).map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {TYPE_META[type].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
-            {filtersActive && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
-          </div>
-        </div>
+        )}
 
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          {historyLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+        <FilterBar className="border-t">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search description, supplier, invoice..."
+              value={search}
+              onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={(value) => resetPageAnd(setTypeFilter)(value as TypeFilter)}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {(Object.keys(TYPE_META) as CreditBalanceEntryType[]).map((type) => (
+                <SelectItem key={type} value={type}>
+                  {TYPE_META[type].label}
+                </SelectItem>
               ))}
-            </div>
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
+
+        <div>
+          {historyLoading ? (
+            <TableSkeleton rows={6} />
           ) : historyError ? (
             <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
           ) : history.length === 0 ? (
@@ -507,19 +485,19 @@ export default function CreditBalancePage() {
                             <p>{row.description}</p>
                             {row.mode && <p className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</p>}
                           </TableCell>
-                          <TableCell className="whitespace-normal break-words text-right text-muted-foreground">
+                          <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
                             {formatCurrency(row.balanceBefore)}
                           </TableCell>
                           <TableCell
                             className={cn(
-                              'whitespace-normal break-words text-right font-medium',
+                              'whitespace-normal break-words text-right font-medium tabular-nums',
                               faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
                             )}
                           >
                             {faceAmount >= 0 ? '+' : ''}
                             {formatCurrency(faceAmount)}
                           </TableCell>
-                          <TableCell className="whitespace-normal break-words text-right font-semibold">
+                          <TableCell className="whitespace-normal break-words text-right font-semibold tabular-nums">
                             {formatCurrency(row.balanceAfter)}
                           </TableCell>
                         </TableRow>
@@ -529,14 +507,14 @@ export default function CreditBalancePage() {
                 </Table>
               </div>
 
-              <div className={cn('space-y-3 lg:hidden', historyFetching && 'opacity-60 transition-opacity')}>
+              <div className={cn('space-y-3 p-4 lg:hidden', historyFetching && 'opacity-60 transition-opacity')}>
                 {history.map((row) => {
                   const meta = TYPE_META[row.type];
                   const Icon = meta.icon;
                   const faceAmount = Number(row.faceAmount);
                   const statusMeta = row.status ? STATUS_META[row.status] : null;
                   return (
-                    <div key={row.id} className="rounded-lg border border-border p-4">
+                    <div key={row.id} className="rounded-lg border border-border bg-card p-4">
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.tone)}>
                           <Icon className="size-4 shrink-0" />
@@ -544,7 +522,7 @@ export default function CreditBalancePage() {
                         </span>
                         <span
                           className={cn(
-                            'shrink-0 break-words font-medium',
+                            'shrink-0 break-words font-medium tabular-nums',
                             faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
                           )}
                         >
@@ -561,7 +539,7 @@ export default function CreditBalancePage() {
                       {row.mode && <p className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</p>}
                       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                         <span>{formatDate(row.date)}</span>
-                        <span>
+                        <span className="tabular-nums">
                           {formatCurrency(row.balanceBefore)} → <span className="font-semibold text-foreground">{formatCurrency(row.balanceAfter)}</span>
                         </span>
                       </div>

@@ -14,7 +14,7 @@ const STEP_LABEL: Record<string, string> = {
 export function OrderTimeline({ order }: { order: Order }) {
   if (order.status === 'REJECTED') {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+      <div className="flex items-center gap-2 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">
         <X className="size-4 shrink-0" />
         <div>
           <p className="font-medium">Order rejected</p>

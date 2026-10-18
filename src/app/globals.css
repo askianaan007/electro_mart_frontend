@@ -2,61 +2,92 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens. Light is the primary theme; dark is a full, equal-quality
+ * secondary theme. Pages should only ever use these semantic tokens
+ * (bg-card, text-muted-foreground, bg-success/10 text-success, …) — never
+ * raw palette colours — so both themes stay correct automatically.
+ */
 :root {
-  --background: #F6F8FC;
-  --foreground: #111827;
-  --card: #FFFFFF;
-  --card-foreground: #111827;
-  --popover: #FFFFFF;
-  --popover-foreground: #111827;
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  --secondary: #EEF2FA;
-  --secondary-foreground: #111827;
-  --muted: #EEF2FA;
-  --muted-foreground: #6B7280;
-  --accent: #EAF0FE;
-  --accent-foreground: #111827;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --success: #10B981;
-  --success-foreground: #FFFFFF;
-  --warning: #F59E0B;
-  --warning-foreground: #78350F;
-  --purple: #7C3AED;
-  --purple-foreground: #FFFFFF;
-  --border: #E8ECF3;
-  --input: #E8ECF3;
-  --ring: #2563EB;
-  --radius: 0.875rem;
+  --background: #f5f7fa;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #2357e6;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f7;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f4f8;
+  --muted-foreground: #64748b;
+  --accent: #edf2fe;
+  --accent-foreground: #1d47c2;
+  --destructive: #d92d20;
+  --destructive-foreground: #ffffff;
+  --success: #079455;
+  --success-foreground: #ffffff;
+  --warning: #dc6803;
+  --warning-foreground: #93370d;
+  --info: #0b7bc4;
+  --info-foreground: #ffffff;
+  --purple: #6941c6;
+  --purple-foreground: #ffffff;
+  --border: #e3e8ef;
+  --input: #d5dce6;
+  --ring: #2357e6;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #334155;
+  --sidebar-border: #e3e8ef;
+  --chart-1: #2357e6;
+  --chart-2: #079455;
+  --chart-3: #dc6803;
+  --chart-4: #6941c6;
+  --chart-5: #0b7bc4;
+  --radius: 0.625rem;
+  --shadow-color: 220 40% 20%;
+  /* Logo colours — fixed in both themes, for brand surfaces only. */
+  --brand-navy: #001c4a;
+  --brand-red: #e8202a;
 }
 
 .dark {
-  --background: #0B1220;
-  --foreground: #E5E9F0;
-  --card: #111827;
-  --card-foreground: #E5E9F0;
-  --popover: #111827;
-  --popover-foreground: #E5E9F0;
-  --primary: #3B82F6;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1B2436;
-  --secondary-foreground: #E5E9F0;
-  --muted: #1B2436;
-  --muted-foreground: #8A93A6;
-  --accent: #1E2A42;
-  --accent-foreground: #E5E9F0;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --success: #10B981;
-  --success-foreground: #FFFFFF;
-  --warning: #F59E0B;
-  --warning-foreground: #FCD34D;
-  --purple: #8B5CF6;
-  --purple-foreground: #FFFFFF;
-  --border: #1E293B;
-  --input: #1E293B;
-  --ring: #3B82F6;
+  --background: #0a0e16;
+  --foreground: #e6eaf2;
+  --card: #111620;
+  --card-foreground: #e6eaf2;
+  --popover: #141a26;
+  --popover-foreground: #e6eaf2;
+  --primary: #4d7cff;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2130;
+  --secondary-foreground: #dbe1ec;
+  --muted: #171d2a;
+  --muted-foreground: #8b95a8;
+  --accent: #19233a;
+  --accent-foreground: #a9c1ff;
+  --destructive: #f2554a;
+  --destructive-foreground: #ffffff;
+  --success: #2fbf7f;
+  --success-foreground: #04150d;
+  --warning: #f59f3a;
+  --warning-foreground: #fcc98a;
+  --info: #3aa8ec;
+  --info-foreground: #03131f;
+  --purple: #9b7bf0;
+  --purple-foreground: #ffffff;
+  --border: #222a39;
+  --input: #2a3345;
+  --ring: #4d7cff;
+  --sidebar: #0d121b;
+  --sidebar-foreground: #b6bfcf;
+  --sidebar-border: #1c2331;
+  --chart-1: #4d7cff;
+  --chart-2: #2fbf7f;
+  --chart-3: #f59f3a;
+  --chart-4: #9b7bf0;
+  --chart-5: #3aa8ec;
+  --shadow-color: 220 60% 2%;
 }
 
 @theme inline {
@@ -80,28 +111,109 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-purple: var(--purple);
   --color-purple-foreground: var(--purple-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-red: var(--brand-red);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-inter), sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.07), 0 1px 2px -1px hsl(var(--shadow-color) / 0.06);
+  --shadow-md: 0 4px 10px -2px hsl(var(--shadow-color) / 0.08), 0 2px 4px -2px hsl(var(--shadow-color) / 0.05);
+  --shadow-lg: 0 12px 24px -6px hsl(var(--shadow-color) / 0.12), 0 4px 8px -4px hsl(var(--shadow-color) / 0.06);
+  --shadow-xl: 0 24px 48px -12px hsl(var(--shadow-color) / 0.22);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --animate-ui-fade-in: ui-fade-in 150ms ease-out;
+  --animate-ui-pop-in: ui-pop-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-ui-slide-in-left: ui-slide-in-left 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-ui-slide-in-right: ui-slide-in-right 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-ui-slide-in-bottom: ui-slide-in-bottom 240ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes ui-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes ui-pop-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes ui-slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes ui-slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes ui-slide-in-bottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
-    font-family: var(--font-inter), sans-serif;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
   }
   body {
     background: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-inter), sans-serif;
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /* Money and counts line up in tables and stat cards. */
+  table,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 22%, transparent);
+  }
+  :focus-visible {
+    outline: none;
+  }
+  input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

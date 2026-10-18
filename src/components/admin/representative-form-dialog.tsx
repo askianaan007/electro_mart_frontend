@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -131,10 +132,16 @@ export function RepresentativeFormDialog({
       <DialogContent title={isEdit ? 'Edit representative' : 'Add representative'} className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit representative' : 'Add a new representative'}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? 'Update contact details and account status.'
+              : 'Create a Representative Portal account. The email becomes the login username.'}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={onSubmit} className="space-y-5">
+            <h3 className="text-sm font-semibold">Details</h3>
+            <div className="-mt-2 grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="name"
@@ -242,7 +249,7 @@ export function RepresentativeFormDialog({
             </div>
 
             {!isEdit && (
-              <div className="space-y-3 rounded-lg border border-border p-3">
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
                 <FormField
                   control={form.control}
                   name="setPassword"

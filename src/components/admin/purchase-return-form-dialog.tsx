@@ -166,8 +166,9 @@ export function PurchaseReturnFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
+            <h3 className="text-sm font-semibold">Items to return</h3>
             {returnableItems.length === 0 ? (
-              <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                 Every item on this purchase has already been fully returned.
               </p>
             ) : (
@@ -212,12 +213,12 @@ export function PurchaseReturnFormDialog({
                                 type="number"
                                 min={1}
                                 max={remaining ?? undefined}
-                                className="w-24"
+                                className="w-24 tabular-nums"
                                 {...field}
                               />
                             </FormControl>
                             {remaining !== null && (
-                              <p className="text-xs text-muted-foreground">{remaining} returnable</p>
+                              <p className="text-xs tabular-nums text-muted-foreground">{remaining} returnable</p>
                             )}
                             <FormMessage />
                           </FormItem>
@@ -227,11 +228,12 @@ export function PurchaseReturnFormDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="mt-6"
+                        className="mt-6 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove item"
                         disabled={fields.length === 1}
                         onClick={() => remove(index)}
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 />
                       </Button>
                     </div>
                   );
@@ -250,6 +252,8 @@ export function PurchaseReturnFormDialog({
               </Button>
             )}
 
+            <h3 className="border-t border-border pt-4 text-sm font-semibold">Return details</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="reason"
@@ -276,6 +280,7 @@ export function PurchaseReturnFormDialog({
                 </FormItem>
               )}
             />
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

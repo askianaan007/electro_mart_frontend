@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { ShieldCheck, Store } from 'lucide-react';
+import { AlertCircle, Boxes, ShieldCheck, Store, TrendingUp, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface AuthShellProps {
@@ -15,31 +15,43 @@ export interface AuthShellProps {
   showRoleToggle?: boolean;
 }
 
+const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
+  { icon: Boxes, title: 'Smart Inventory', description: 'Real-time stock and product tracking' },
+  { icon: TrendingUp, title: 'Business Insights', description: 'Sales, collections and dealer performance' },
+  { icon: ShieldCheck, title: 'Secure & Reliable', description: 'Role-based access, encrypted sessions' },
+];
+
+/** Inline error banner shown above an auth form's submit button. */
+export function AuthErrorAlert({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+    >
+      <AlertCircle className="mt-0.5 size-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+/**
+ * Frame shared by every unauthenticated page (login, forgot/reset password):
+ * the showroom photo full-bleed under a navy brand overlay, the brand story
+ * on the left (desktop), and the form in a floating card on the right.
+ */
 export function AuthShell({
   title,
   description,
   children,
   footer,
-  role = 'DEALER',
+  role = 'ADMIN',
   onRoleChange,
   showRoleToggle = false,
 }: AuthShellProps) {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [internalRole, setInternalRole] = useState<'ADMIN' | 'DEALER'>(role);
 
   const activeRole = role || internalRole;
   const isAdmin = activeRole === 'ADMIN';
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
-    const y = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
-    setMousePos({ x, y });
-  };
-
-  const handleMouseLeave = () => {
-    setMousePos({ x: 0, y: 0 });
-  };
 
   const handleToggle = (newRole: 'ADMIN' | 'DEALER') => {
     setInternalRole(newRole);
@@ -49,176 +61,115 @@ export function AuthShell({
   };
 
   return (
-    <div
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative flex min-h-svh w-full flex-col items-center justify-center overflow-hidden bg-[#030712] px-4 py-8 sm:px-6 sm:py-12 select-none"
-    >
-      {/* Dynamic 3D Liquid Background Glow Orbs */}
-      {/* Liquid Orb 1: Primary Accent */}
-      <div
-        className={cn(
-          'absolute -top-24 -left-24 size-[380px] sm:size-[500px] blur-[100px] sm:blur-[130px] opacity-70 pointer-events-none transition-all duration-1000 ease-in-out',
-          isAdmin
-            ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-900'
-            : 'bg-gradient-to-br from-blue-600 via-sky-500 to-blue-800'
-        )}
-        style={{ animation: 'liquid-float-1 14s infinite ease-in-out' }}
+    <div className="relative isolate flex min-h-svh w-full overflow-hidden bg-brand-navy">
+      {/* Background photo + brand overlay */}
+      <Image
+        src="/login-bg.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="-z-20 scale-105 object-cover object-center blur-[1.5px]"
       />
-
-      {/* Liquid Orb 2: Secondary Accent */}
       <div
-        className={cn(
-          'absolute -bottom-24 -right-24 size-[350px] sm:size-[480px] blur-[90px] sm:blur-[120px] opacity-65 pointer-events-none transition-all duration-1000 ease-in-out',
-          isAdmin
-            ? 'bg-gradient-to-tl from-red-500 via-rose-700 to-indigo-900'
-            : 'bg-gradient-to-tl from-sky-400 via-blue-600 to-indigo-900'
-        )}
-        style={{ animation: 'liquid-float-2 16s infinite ease-in-out' }}
-      />
-
-      {/* Background Radial Light Grid Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(3,7,18,0.75)_100%)] pointer-events-none" />
-
-      {/* 3D Perspective Scene Viewport */}
-      <div
-        className="relative z-10 flex w-full max-w-md flex-col items-center justify-center transition-transform duration-300 ease-out"
+        aria-hidden
+        className="absolute inset-0 -z-10"
         style={{
-          perspective: '1200px',
-          transformStyle: 'preserve-3d',
-          transform: `rotateX(${mousePos.y * -8}deg) rotateY(${mousePos.x * 8}deg)`,
+          background:
+            'linear-gradient(100deg, rgba(0,12,34,0.97) 0%, rgba(0,16,44,0.93) 34%, rgba(0,22,58,0.62) 58%, rgba(0,22,58,0.38) 78%, rgba(0,16,42,0.6) 100%)',
         }}
-      >
-        {/* Header Branding Container */}
-        <div
-          className="mb-6 flex flex-col items-center gap-3 text-center"
-          style={{ transform: 'translateZ(30px)' }}
-        >
-          {/* Glassmorphic Logo Container */}
-          <div className="relative flex items-center justify-center p-3 rounded-2xl border border-white/20 bg-slate-900/60 shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none" />
-            <Image
-              src="/logo-icon.png"
-              alt="ElectroMart Logo"
-              width={48}
-              height={48}
-              className="size-10 sm:size-12 shrink-0 drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]"
-              priority
-            />
+      />
+      <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-1/3 bg-gradient-to-t from-black/50 to-transparent" />
+
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] items-center gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16 lg:px-12 xl:px-16">
+        {/* Brand story — desktop */}
+        <section className="hidden flex-col text-white lg:flex">
+          <h2 className="text-5xl font-bold leading-[1.05] tracking-tight xl:text-6xl">
+            Electro <span className="text-brand-red">Mart</span>
+          </h2>
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-white/95 xl:text-4xl">ERP &amp; Dealer Portal</p>
+
+          <div className="mt-7 flex h-[3px] w-24 overflow-hidden rounded-full" aria-hidden>
+            <span className="w-1/3 bg-white/40" />
+            <span className="w-1/4 bg-brand-red" />
+            <span className="flex-1 bg-white/80" />
           </div>
 
-          <div className="leading-tight">
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-              <span className="text-blue-400">Electro</span> <span className="text-red-500">Mart</span>
-            </h1>
-            <p className="text-xs font-medium tracking-wide text-slate-400">
-              ERP &amp; Dealer Ecosystem
+          <p className="mt-7 max-w-md text-lg leading-relaxed text-white/80">
+            Powering your business with smart ERP solutions and seamless dealer management.
+          </p>
+
+          <ul className="mt-14 grid max-w-2xl grid-cols-3 gap-6">
+            {FEATURES.map((feature) => (
+              <li key={feature.title}>
+                <div className="flex size-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] shadow-lg shadow-black/20">
+                  <feature.icon className="size-[22px] text-brand-red" />
+                </div>
+                <p className="mt-4 text-[15px] font-semibold">{feature.title}</p>
+                <p className="mt-1 text-sm leading-snug text-white/65">{feature.description}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Form card */}
+        <main className="mx-auto w-full max-w-[460px]">
+          <div className="rounded-2xl border border-white/10 bg-card px-6 py-8 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] sm:px-10 sm:py-10">
+            <div className="flex flex-col items-center text-center">
+              <Image
+                src="/logo-full-transparent.png"
+                alt="Electro Mart"
+                width={908}
+                height={531}
+                priority
+                className="h-auto w-44 dark:brightness-0 dark:invert sm:w-48"
+              />
+              <h1 className="mt-6 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+              {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
+            </div>
+
+            {showRoleToggle && (
+              <div className="mt-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted/60 p-1">
+                {(
+                  [
+                    { value: 'ADMIN', label: 'Admin Portal', icon: ShieldCheck },
+                    { value: 'DEALER', label: 'Dealer Portal', icon: Store },
+                  ] as const
+                ).map((option) => {
+                  const active = (option.value === 'ADMIN') === isAdmin;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleToggle(option.value)}
+                      className={cn(
+                        'flex h-9 items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors',
+                        active ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <option.icon className="size-4" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-6">{children}</div>
+
+            {footer && <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>}
+
+            <p className="mt-8 border-t border-border pt-5 text-center text-xs text-muted-foreground">
+              &copy; {new Date().getFullYear()} Electro Mart. All rights reserved.
             </p>
           </div>
 
-          {/* Interactive Role Badge Pill */}
-          <div
-            className={cn(
-              'mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold tracking-wider uppercase backdrop-blur-md transition-all duration-500 shadow-md',
-              isAdmin
-                ? 'border-red-500/40 bg-red-950/50 text-rose-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-                : 'border-blue-500/40 bg-blue-950/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
-            )}
-          >
-            {isAdmin ? (
-              <>
-                <ShieldCheck className="size-3.5 text-red-400" />
-                <span>Admin Workspace</span>
-              </>
-            ) : (
-              <>
-                <Store className="size-3.5 text-blue-400" />
-                <span>Dealer Workspace</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Role Toggle Selector (if enabled) */}
-        {showRoleToggle && (
-          <div
-            className="mb-4 flex w-full p-1 rounded-xl border border-white/10 bg-slate-900/70 backdrop-blur-md shadow-inner"
-            style={{ transform: 'translateZ(20px)' }}
-          >
-            <button
-              type="button"
-              onClick={() => handleToggle('DEALER')}
-              className={cn(
-                'flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5',
-                !isAdmin
-                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)]'
-                  : 'text-slate-400 hover:text-white'
-              )}
-            >
-              <Store className="size-3.5" />
-              Dealer Portal
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggle('ADMIN')}
-              className={cn(
-                'flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5',
-                isAdmin
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-[0_2px_10px_rgba(239,68,68,0.4)]'
-                  : 'text-slate-400 hover:text-white'
-              )}
-            >
-              <ShieldCheck className="size-3.5" />
-              Admin Portal
-            </button>
-          </div>
-        )}
-
-        {/* Liquid Glass Card Container */}
-        <div
-          className={cn(
-            'relative w-full rounded-3xl border p-6 sm:p-8 backdrop-blur-2xl sm:backdrop-blur-3xl transition-all duration-700 ease-out',
-            isAdmin
-              ? 'border-red-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(239,68,68,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
-              : 'border-blue-500/30 bg-slate-950/65 shadow-[0_20px_60px_rgba(59,130,246,0.25),inset_0_1px_1px_rgba(255,255,255,0.35)]'
-          )}
-          style={{ transform: 'translateZ(20px)' }}
-        >
-          {/* iOS Liquid Glass Specular Shimmer Top Reflection */}
-          <div className="absolute inset-x-0 top-0 h-24 rounded-t-3xl bg-gradient-to-b from-white/10 via-white/5 to-transparent pointer-events-none" />
-
-          <div className="relative z-10 mb-6 space-y-1.5 text-center">
-            <h2
-              className={cn(
-                'text-xl sm:text-2xl font-bold tracking-tight text-transparent bg-clip-text',
-                isAdmin
-                  ? 'bg-gradient-to-r from-purple-300 via-violet-200 to-indigo-300'
-                  : 'bg-gradient-to-r from-cyan-300 via-blue-200 to-teal-300'
-              )}
-            >
-              {title}
-            </h2>
-            {description && (
-              <p className="text-xs sm:text-sm text-slate-300/80 leading-relaxed font-normal">
-                {description}
-              </p>
-            )}
-          </div>
-
-          <div className="relative z-10 text-white">{children}</div>
-        </div>
-
-        {/* Footer Container */}
-        {footer && (
-          <div
-            className="mt-6 text-center text-xs sm:text-sm text-slate-400 font-medium hover:text-white transition-colors"
-            style={{ transform: 'translateZ(15px)' }}
-          >
-            {footer}
-          </div>
-        )}
+          {/* Mobile tagline under the card */}
+          <p className="mt-6 text-center text-sm text-white/75 lg:hidden">
+            Electro <span className="font-semibold text-brand-red">Mart</span> · ERP &amp; Dealer Portal
+          </p>
+        </main>
       </div>
     </div>
   );
-} 
-
+}

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useCreateExpense, useUpdateExpense } from '@/hooks/use-expenses';
@@ -77,6 +77,7 @@ export function ExpenseFormDialog({
       <DialogContent title={isEdit ? 'Edit expense' : 'Add expense'}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit expense' : 'Record an expense'}</DialogTitle>
+          <DialogDescription>Shared business expenses are split equally across investors.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -101,7 +102,7 @@ export function ExpenseFormDialog({
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0.01} step="0.01" {...field} />
+                      <Input type="number" min={0.01} step="0.01" className="tabular-nums" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

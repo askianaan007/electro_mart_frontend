@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -86,6 +86,7 @@ export function InvestmentFormDialog({
       <DialogContent title={isEdit ? 'Edit investment entry' : 'Add investment entry'}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit investment entry' : 'Record an investment entry'}</DialogTitle>
+          <DialogDescription>Positive amounts are capital contributions; negative amounts are withdrawals.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -121,7 +122,7 @@ export function InvestmentFormDialog({
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} />
+                      <Input type="number" step="0.01" className="tabular-nums" {...field} />
                     </FormControl>
                     <FormDescription>Negative for a withdrawal</FormDescription>
                     <FormMessage />

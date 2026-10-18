@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { ImageIcon, MoreHorizontal, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { AccountStatusBadge } from '@/components/status-badge';
+import { PageHeader } from '@/components/page-header';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,20 +56,20 @@ function BannerCard({
 
   return (
     <Card className="overflow-hidden">
-      <div className="relative aspect-[16/7] w-full bg-muted">
+      <div className="relative aspect-[16/7] w-full border-b border-border bg-muted">
         <Image src={banner.imageUrl} alt={banner.title ?? 'Banner'} fill className="object-cover" />
         <div className="absolute right-2 top-2">
           <AccountStatusBadge status={banner.status} />
         </div>
       </div>
-      <CardContent className="flex items-center justify-between gap-2 p-4">
+      <CardContent className="flex items-center justify-between gap-2 p-4 sm:p-4">
         <div className="min-w-0">
-          <p className="truncate font-medium">{banner.title ?? 'Untitled banner'}</p>
+          <p className="truncate text-sm font-medium text-foreground">{banner.title ?? 'Untitled banner'}</p>
           <p className="truncate text-xs text-muted-foreground">{banner.subtitle ?? `Sort order ${banner.sortOrder}`}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Banner actions" className="shrink-0">
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -127,31 +128,35 @@ export default function BannersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Banners</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage the homepage banner rotation for the Representative Portal
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus />
-          Add Banner
-        </Button>
-      </div>
+      <PageHeader
+        title="Banners"
+        description="Manage the homepage banner rotation for the Representative Portal"
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Banner
+          </Button>
+        }
+      />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full" />
+            <div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+              <Skeleton className="aspect-[16/7] w-full rounded-none" />
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
           <QueryErrorState error={error} onRetry={() => refetch()} />
         </div>
       ) : !banners || banners.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
           <EmptyState icon={ImageIcon} title="No banners found" description="Add your first banner to get started" />
         </div>
       ) : (
@@ -187,7 +192,7 @@ export default function BannersPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={confirmDelete} className={buttonVariants({ variant: 'destructive' })}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

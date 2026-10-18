@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import { PaymentStatusBadge } from '@/components/status-badge';
 import {
   AlertDialog,
@@ -80,19 +81,19 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Invoices</h1>
-          <p className="text-sm text-muted-foreground">Sales invoices generated on order approval</p>
-        </div>
-        <Button variant="outline" onClick={() => setResetOpen(true)}>
-          <RotateCcw />
-          Reset Counter
-        </Button>
-      </div>
+      <PageHeader
+        title="Invoices"
+        description="Sales invoices generated on order approval."
+        actions={
+          <Button variant="outline" onClick={() => setResetOpen(true)}>
+            <RotateCcw />
+            Reset Counter
+          </Button>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="All invoices" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="All invoices" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -170,11 +171,7 @@ export default function InvoicesPage() {
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -201,7 +198,7 @@ export default function InvoicesPage() {
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Dealer</TableHead>
                     <TableHead className="hidden sm:table-cell">Date</TableHead>
-                    <TableHead>Grand Total</TableHead>
+                    <TableHead className="text-right">Grand Total</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -209,13 +206,13 @@ export default function InvoicesPage() {
                   {data.data.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell>
-                        <Link href={`/admin/invoices/${invoice.id}`} className="font-medium text-primary">
+                        <Link href={`/admin/invoices/${invoice.id}`} className="font-medium text-primary hover:underline">
                           {invoice.invoiceNumber}
                         </Link>
                       </TableCell>
                       <TableCell>{invoice.dealer?.businessName ?? '—'}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{formatDate(invoice.createdAt)}</TableCell>
-                      <TableCell>{formatCurrency(invoice.grandTotal)}</TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{formatCurrency(invoice.grandTotal)}</TableCell>
                       <TableCell>
                         <PaymentStatusBadge status={invoice.paymentStatus} />
                       </TableCell>

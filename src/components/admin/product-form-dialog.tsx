@@ -150,7 +150,8 @@ export function ProductFormDialog({
           <DialogTitle>{isEdit ? 'Edit product' : 'Add a new product'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-5">
+            <h3 className="text-sm font-semibold">Product details</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -244,8 +245,9 @@ export function ProductFormDialog({
                         size="icon"
                         onClick={() => setCategoryManagerOpen(true)}
                         title="Manage categories"
+                        aria-label="Manage categories"
                       >
-                        <Settings2 className="size-4" />
+                        <Settings2 />
                       </Button>
                     </div>
                     <FormMessage />
@@ -294,12 +296,16 @@ export function ProductFormDialog({
               )}
             />
 
+            <div className="border-t border-border pt-5">
             <ProductImagesField
               productId={product?.id}
               images={product?.images ?? []}
               stagedFiles={stagedImageFiles}
               onStagedFilesChange={setStagedImageFiles}
             />
+            </div>
+
+            <h3 className="border-t border-border pt-5 text-sm font-semibold">Pricing</h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
@@ -376,6 +382,7 @@ export function ProductFormDialog({
               />
             </div>
 
+            <h3 className="border-t border-border pt-5 text-sm font-semibold">Stock &amp; status</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}

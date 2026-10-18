@@ -3,8 +3,11 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Download, Loader2, Printer } from 'lucide-react';
+import { Download, Loader2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   InvestorStatementPrintLayout,
   type CurrentEquityPosition,
@@ -34,8 +37,11 @@ function monthLabel(month: string) {
 
 function GeneratingOverlay() {
   return (
-    <div className="flex h-96 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/40">
-      <Loader2 className="size-8 animate-spin text-muted-foreground" />
+    <div
+      className="flex h-96 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/40"
+      aria-busy="true"
+    >
+      <Loader2 className="size-6 animate-spin text-muted-foreground" />
       <p className="text-sm font-medium text-muted-foreground">Generating statement…</p>
     </div>
   );
@@ -54,10 +60,28 @@ export default function InvestorStatementPage() {
   const dateFrom = `${fromMonth}-01`;
   const dateTo = lastDayOfMonth(toMonth);
 
-  const { data: investor, isLoading: investorLoading } = useInvestor(id);
-  const { data: equity, isLoading: equityLoading } = useEquitySummary();
+  const {
+    data: investor,
+    isLoading: investorLoading,
+    isError: investorIsError,
+    error: investorError,
+    refetch: refetchInvestor,
+  } = useInvestor(id);
+  const {
+    data: equity,
+    isLoading: equityLoading,
+    isError: equityIsError,
+    error: equityError,
+    refetch: refetchEquity,
+  } = useEquitySummary();
 
-  const { data: investmentRows, isLoading: investmentsLoading } = useQuery({
+  const {
+    data: investmentRows,
+    isLoading: investmentsLoading,
+    isError: investmentsIsError,
+    error: investmentsError,
+    refetch: refetchInvestments,
+  } = useQuery({
     queryKey: ['investor-statement', 'investments', id, dateFrom, dateTo],
     queryFn: () =>
       fetchAllPages((page, limit) => api.investments.list({ investorId: id, dateFrom, dateTo, page, limit })),
@@ -160,49 +184,74 @@ export default function InvestorStatementPage() {
     );
   }
 
+  const loadError = investorIsError ? investorError : equityIsError ? equityError : investmentsIsError ? investmentsError : null;
+  const hasLoadError = investorIsError || equityIsError || investmentsIsError;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/investments')} className="-ml-2 shrink-0">
-          <ArrowLeft />
-          Back to Investments
-        </Button>
+      <PageHeader
+        className="print:hidden"
+        title={investor ? `${investor.name} — Statement` : 'Investor Statement'}
+        description={`Capital contributions, withdrawals and current equity position for ${periodLabel}.`}
+        backHref="/admin/investments"
+        backLabel="Back to Investments"
+        actions={
+          <>
+            <Button variant="outline" onClick={handleExportExcel} disabled={!ready}>
+              <Download />
+              Excel
+            </Button>
+            <Button onClick={() => window.print()} disabled={!ready}>
+              <Printer />
+              Print
+            </Button>
+          </>
+        }
+      />
 
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card px-4 py-3 shadow-xs print:hidden sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
+        <span className="text-sm font-medium text-foreground">Statement period</span>
         <div className="flex flex-wrap items-center gap-2">
-          <input
+          <Input
             type="month"
             value={draftFrom}
             max={draftTo || undefined}
             onChange={(e) => setDraftFrom(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-auto"
+            aria-label="From month"
           />
           <span className="text-sm text-muted-foreground">to</span>
-          <input
+          <Input
             type="month"
             value={draftTo}
             min={draftFrom || undefined}
             max={currentMonth()}
             onChange={(e) => setDraftTo(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-auto"
+            aria-label="To month"
           />
           <Button variant="outline" size="sm" onClick={applyPeriod}>
             Update
           </Button>
-          <Button variant="outline" onClick={handleExportExcel} disabled={!ready}>
-            <Download />
-            Excel
-          </Button>
-          <Button onClick={() => window.print()} disabled={!ready}>
-            <Printer />
-            Print
-          </Button>
         </div>
       </div>
 
-      {!ready ? (
+      {hasLoadError ? (
+        <div className="rounded-xl border border-border bg-card shadow-xs print:hidden">
+          <QueryErrorState
+            error={loadError}
+            title="Couldn't generate this statement"
+            onRetry={() => {
+              if (investorIsError) refetchInvestor();
+              if (equityIsError) refetchEquity();
+              if (investmentsIsError) refetchInvestments();
+            }}
+          />
+        </div>
+      ) : !ready ? (
         <GeneratingOverlay />
       ) : (
-        <div className="overflow-x-auto rounded-xl bg-muted/40 p-4 print:overflow-visible print:bg-transparent print:p-0 sm:p-8">
+        <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
           <InvestorStatementPrintLayout
             investor={investor}
             periodLabel={periodLabel}

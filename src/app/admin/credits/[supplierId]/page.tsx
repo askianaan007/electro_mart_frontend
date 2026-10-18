@@ -6,11 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   Coins,
   HandCoins,
-  Loader2,
   Plus,
   Search,
   Trash2,
@@ -18,18 +16,20 @@ import {
   Undo2,
   Wallet,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { PageSkeleton, TableSkeleton } from '@/components/loading-state';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChequeStatusBadge } from '@/components/status-badge';
+import { RowActionsMenu, StatusMenuBadge } from '@/components/row-actions';
 import { SettlementFormDialog } from '@/components/admin/settlement-form-dialog';
 import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
 import {
@@ -97,6 +97,9 @@ export default function SupplierCreditDetailPage() {
     data: settlements,
     isLoading: settlementsLoading,
     isFetching: settlementsFetching,
+    isError: settlementsIsError,
+    error: settlementsError,
+    refetch: refetchSettlements,
   } = useSupplierSettlements(supplierId, {
     page: settlementsPage,
     limit: 10,
@@ -121,6 +124,9 @@ export default function SupplierCreditDetailPage() {
     data: purchases,
     isLoading: purchasesLoading,
     isFetching: purchasesFetching,
+    isError: purchasesIsError,
+    error: purchasesError,
+    refetch: refetchPurchases,
   } = usePurchases({
     supplierId,
     page: purchasesPage,
@@ -142,6 +148,9 @@ export default function SupplierCreditDetailPage() {
     data: purchaseReturns,
     isLoading: returnsLoading,
     isFetching: returnsFetching,
+    isError: returnsIsError,
+    error: returnsError,
+    refetch: refetchReturns,
   } = usePurchaseReturns({
     supplierId,
     page: returnsPage,
@@ -152,11 +161,61 @@ export default function SupplierCreditDetailPage() {
   });
 
   if (isError) {
-    return <QueryErrorState error={error} onRetry={() => refetch()} />;
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Supplier credit" onBack={() => router.back()} />
+        <div className="rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState error={error} onRetry={() => refetch()} />
+        </div>
+      </div>
+    );
   }
 
   if (isLoading || !data) {
-    return <Skeleton className="h-96 w-full" />;
+    return <PageSkeleton />;
+  }
+
+  /** Cheque badge that opens the transitions valid right now (same rules as before). */
+  function settlementStatusControl(payment: SupplierPayment) {
+    if (!payment.chequeStatus) return <span className="text-muted-foreground">—</span>;
+    const busy = updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id;
+    const options =
+      payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING'
+        ? [
+            { label: 'Pending', current: true, onSelect: () => undefined },
+            { label: 'Mark Cleared', onSelect: () => markCheque(payment.id, 'CLEARED') },
+            { label: 'Mark Returned', destructive: true, onSelect: () => markCheque(payment.id, 'RETURNED') },
+          ]
+        : payment.mode === 'CHEQUE' && canRevertToPending(payment)
+          ? [{ label: 'Revert to Pending', onSelect: () => setRevertPayment(payment) }]
+          : [];
+    return (
+      <StatusMenuBadge
+        label="Change cheque status"
+        busy={busy}
+        badge={<ChequeStatusBadge status={payment.chequeStatus} />}
+        options={options}
+      />
+    );
+  }
+
+  function settlementActions(payment: SupplierPayment) {
+    return (
+      <RowActionsMenu
+        label="Settlement actions"
+        groups={[
+          [
+            {
+              label: 'Delete settlement',
+              icon: Trash2,
+              destructive: true,
+              hidden: !canDeleteSettlement(payment),
+              onSelect: () => setDeletePayment(payment),
+            },
+          ],
+        ]}
+      />
+    );
   }
 
   function markCheque(paymentId: string, status: ChequeStatus) {
@@ -213,26 +272,22 @@ export default function SupplierCreditDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
-      </Button>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">{data.supplier.name}</h1>
-          <p className="text-sm text-muted-foreground">Credit (payable) history</p>
-        </div>
-        <Button onClick={() => setSettlementOpen(true)} className="shrink-0">
-          <Plus />
-          Record Settlement
-        </Button>
-      </div>
+      <PageHeader
+        title={data.supplier.name}
+        description="Credit (payable) history"
+        onBack={() => router.back()}
+        actions={
+          <Button onClick={() => setSettlementOpen(true)}>
+            <Plus />
+            Record Settlement
+          </Button>
+        }
+      />
 
       <div
         className={cn(
-          'grid grid-cols-1 gap-4 sm:grid-cols-2',
-          Number(data.totalTransportCharges) > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
+          'grid gap-4 sm:grid-cols-2',
+          Number(data.totalTransportCharges) > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-4',
         )}
       >
         <StatCard label="Total Purchases" value={formatCurrency(data.totalPurchases)} icon={Truck} />
@@ -256,8 +311,8 @@ export default function SupplierCreditDetailPage() {
       </div>
 
       {/* Settlements */}
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="Settlements" isFetching={settlementsFetching && !settlementsLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Settlements" isFetching={settlementsFetching && !settlementsLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -343,12 +398,13 @@ export default function SupplierCreditDetailPage() {
             variant="outline"
             size="icon"
             title={sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
+            aria-label={sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
             onClick={() => {
               setSortOrder((v) => (v === 'desc' ? 'asc' : 'desc'));
               setSettlementsPage(1);
             }}
           >
-            {sortOrder === 'desc' ? <ArrowDown className="size-4" /> : <ArrowUp className="size-4" />}
+            {sortOrder === 'desc' ? <ArrowDown /> : <ArrowUp />}
           </Button>
           {settlementsFiltersActive && (
             <Button variant="ghost" size="sm" onClick={clearSettlementsFilters}>
@@ -358,11 +414,9 @@ export default function SupplierCreditDetailPage() {
         </FilterBar>
 
         {settlementsLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={3} />
+        ) : settlementsIsError ? (
+          <QueryErrorState error={settlementsError} onRetry={() => refetchSettlements()} />
         ) : !settlements || settlements.data.length === 0 ? (
           settlementsFiltersActive ? (
             <EmptyState
@@ -390,7 +444,9 @@ export default function SupplierCreditDetailPage() {
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Cheque Status</TableHead>
                     <TableHead>Deposit Date</TableHead>
-                    <TableHead className="w-10" />
+                    <TableHead className="w-12 text-right">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -398,56 +454,17 @@ export default function SupplierCreditDetailPage() {
                     <TableRow key={payment.id}>
                       <TableCell className="whitespace-normal break-words">{formatDate(payment.paymentDate)}</TableCell>
                       <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
-                      <TableCell className="whitespace-normal break-words">{payment.reference ?? '—'}</TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-muted-foreground">
+                        {payment.reference ?? '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums">
                         {formatCurrency(payment.amount)}
                       </TableCell>
-                      <TableCell>
-                        {payment.chequeStatus ? <ChequeStatusBadge status={payment.chequeStatus} /> : '—'}
+                      <TableCell>{settlementStatusControl(payment)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {payment.chequeDepositDate ? formatDate(payment.chequeDepositDate) : '—'}
                       </TableCell>
-                      <TableCell>{payment.chequeDepositDate ? formatDate(payment.chequeDepositDate) : '—'}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
-                                onClick={() => markCheque(payment.id, 'CLEARED')}
-                              >
-                                Mark Cleared
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-destructive"
-                                disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
-                                onClick={() => markCheque(payment.id, 'RETURNED')}
-                              >
-                                Mark Returned
-                              </Button>
-                            </>
-                          )}
-                          {payment.mode === 'CHEQUE' && canRevertToPending(payment) && (
-                            <Button size="sm" variant="outline" onClick={() => setRevertPayment(payment)}>
-                              <Undo2 className="size-3.5" />
-                              Revert to Pending
-                            </Button>
-                          )}
-                          {canDeleteSettlement(payment) && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-destructive"
-                              onClick={() => setDeletePayment(payment)}
-                            >
-                              <Trash2 className="size-3.5" />
-                              Delete
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-right">{settlementActions(payment)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -456,66 +473,22 @@ export default function SupplierCreditDetailPage() {
 
             <div className={cn('space-y-3 p-4 sm:hidden', settlementsFetching && 'opacity-60 transition-opacity')}>
               {settlements.data.map((payment) => (
-                <div key={payment.id} className="rounded-lg border border-border p-4">
+                <div key={payment.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium">{payment.mode.replace('_', ' ')}</span>
-                    <span className="shrink-0 break-words font-semibold">{formatCurrency(payment.amount)}</span>
+                    <span className="shrink-0 break-words font-semibold tabular-nums">{formatCurrency(payment.amount)}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>{formatDate(payment.paymentDate)}</span>
                     <span className="break-words text-right">{payment.reference ?? '—'}</span>
                   </div>
-                  {payment.chequeStatus && (
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <ChequeStatusBadge status={payment.chequeStatus} />
-                      {payment.chequeDepositDate && (
-                        <span className="text-xs text-muted-foreground">{formatDate(payment.chequeDepositDate)}</span>
-                      )}
-                    </div>
+                  {payment.chequeDepositDate && (
+                    <p className="mt-1 text-xs text-muted-foreground">Deposit {formatDate(payment.chequeDepositDate)}</p>
                   )}
-                  {payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING' && (
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
-                        onClick={() => markCheque(payment.id, 'CLEARED')}
-                      >
-                        Mark Cleared
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-destructive"
-                        disabled={updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id}
-                        onClick={() => markCheque(payment.id, 'RETURNED')}
-                      >
-                        Mark Returned
-                      </Button>
-                    </div>
-                  )}
-                  {payment.mode === 'CHEQUE' && canRevertToPending(payment) && (
-                    <div className="mt-3 flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setRevertPayment(payment)}>
-                        <Undo2 className="size-3.5" />
-                        Revert to Pending
-                      </Button>
-                    </div>
-                  )}
-                  {canDeleteSettlement(payment) && (
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-destructive"
-                        onClick={() => setDeletePayment(payment)}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                    {settlementStatusControl(payment)}
+                    {settlementActions(payment)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -526,8 +499,8 @@ export default function SupplierCreditDetailPage() {
       </div>
 
       {/* Purchases */}
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="Purchases" isFetching={purchasesFetching && !purchasesLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Purchases" isFetching={purchasesFetching && !purchasesLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -568,11 +541,9 @@ export default function SupplierCreditDetailPage() {
         </FilterBar>
 
         {purchasesLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={3} />
+        ) : purchasesIsError ? (
+          <QueryErrorState error={purchasesError} onRetry={() => refetchPurchases()} />
         ) : !purchases || purchases.data.length === 0 ? (
           purchasesFiltersActive ? (
             <EmptyState
@@ -609,12 +580,14 @@ export default function SupplierCreditDetailPage() {
                           {purchase.invoiceNumber}
                         </Link>
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums">
                         {formatCurrency(purchase.totalValue)}
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right tabular-nums">
                         {Number(purchase.transportCharges) > 0 ? (
-                          <span className="text-warning-foreground">−{formatCurrency(purchase.transportCharges)}</span>
+                          <span className="text-warning-foreground dark:text-warning">
+                            −{formatCurrency(purchase.transportCharges)}
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -630,16 +603,16 @@ export default function SupplierCreditDetailPage() {
                 <Link
                   key={purchase.id}
                   href={`/admin/purchases/${purchase.id}`}
-                  className="block rounded-lg border border-border p-4"
+                  className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/40"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium text-primary">{purchase.invoiceNumber}</span>
-                    <span className="shrink-0 break-words font-semibold">{formatCurrency(purchase.totalValue)}</span>
+                    <span className="shrink-0 break-words font-semibold tabular-nums">{formatCurrency(purchase.totalValue)}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{formatDate(purchase.purchaseDate)}</p>
                     {Number(purchase.transportCharges) > 0 && (
-                      <p className="text-xs text-warning-foreground">
+                      <p className="text-xs tabular-nums text-warning-foreground dark:text-warning">
                         −{formatCurrency(purchase.transportCharges)} transport
                       </p>
                     )}
@@ -654,17 +627,18 @@ export default function SupplierCreditDetailPage() {
       </div>
 
       {/* Returns */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between gap-2 p-4 pb-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-medium">Returns</h2>
-            {returnsFetching && !returnsLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setReturnFormOpen(true)}>
-            <Undo2 />
-            Record Return
-          </Button>
-        </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="Returns"
+          isFetching={returnsFetching && !returnsLoading}
+          className="pb-3"
+          actions={
+            <Button variant="outline" size="sm" onClick={() => setReturnFormOpen(true)}>
+              <Undo2 />
+              Record Return
+            </Button>
+          }
+        />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -705,11 +679,9 @@ export default function SupplierCreditDetailPage() {
         </FilterBar>
 
         {returnsLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={3} />
+        ) : returnsIsError ? (
+          <QueryErrorState error={returnsError} onRetry={() => refetchReturns()} />
         ) : !purchaseReturns || purchaseReturns.data.length === 0 ? (
           returnsFiltersActive ? (
             <EmptyState
@@ -743,7 +715,7 @@ export default function SupplierCreditDetailPage() {
                       <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
                       <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
                       <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums text-destructive">
                         −{formatCurrency(purchaseReturn.totalAmount)}
                       </TableCell>
                     </TableRow>
@@ -754,10 +726,10 @@ export default function SupplierCreditDetailPage() {
 
             <div className={cn('space-y-3 p-4 sm:hidden', returnsFetching && 'opacity-60 transition-opacity')}>
               {purchaseReturns.data.map((purchaseReturn) => (
-                <div key={purchaseReturn.id} className="rounded-lg border border-border p-4">
+                <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium">{purchaseReturn.returnNumber}</span>
-                    <span className="shrink-0 break-words font-semibold text-destructive">
+                    <span className="shrink-0 break-words font-semibold tabular-nums text-destructive">
                       −{formatCurrency(purchaseReturn.totalAmount)}
                     </span>
                   </div>
@@ -821,7 +793,7 @@ export default function SupplierCreditDetailPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteSettlement.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

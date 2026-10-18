@@ -3,9 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { PageSkeleton } from '@/components/loading-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   SupplierStatementPrintLayout,
   type StatementPurchaseLine,
@@ -49,27 +52,59 @@ export default function SupplierStatementPage() {
   const dateFrom = `${fromMonth}-01`;
   const dateTo = lastDayOfMonth(toMonth);
 
-  const { data: supplier, isLoading: supplierLoading } = useSupplier(id);
+  const {
+    data: supplier,
+    isLoading: supplierLoading,
+    isError: supplierIsError,
+    error: supplierError,
+    refetch: refetchSupplier,
+  } = useSupplier(id);
 
-  const { data: purchaseRows, isLoading: purchasesLoading } = useQuery({
+  const {
+    data: purchaseRows,
+    isLoading: purchasesLoading,
+    isError: purchasesIsError,
+    error: purchasesError,
+    refetch: refetchPurchases,
+  } = useQuery({
     queryKey: ['supplier-statement', 'purchases', id, dateFrom, dateTo],
     queryFn: () =>
       fetchAllPages((page, limit) => api.purchases.list({ supplierId: id, dateFrom, dateTo, page, limit })),
     enabled: !!id,
   });
-  const { data: returnRows, isLoading: returnsLoading } = useQuery({
+  const {
+    data: returnRows,
+    isLoading: returnsLoading,
+    isError: returnsIsError,
+    error: returnsError,
+    refetch: refetchReturns,
+  } = useQuery({
     queryKey: ['supplier-statement', 'returns', id, dateFrom, dateTo],
     queryFn: () =>
       fetchAllPages((page, limit) => api.purchaseReturns.list({ supplierId: id, dateFrom, dateTo, page, limit })),
     enabled: !!id,
   });
-  const { data: settlementRows, isLoading: settlementsLoading } = useQuery({
+  const {
+    data: settlementRows,
+    isLoading: settlementsLoading,
+    isError: settlementsIsError,
+    error: settlementsError,
+    refetch: refetchSettlements,
+  } = useQuery({
     queryKey: ['supplier-statement', 'settlements', id, dateFrom, dateTo],
     queryFn: () => fetchAllPages((page, limit) => api.credits.settlements(id, { dateFrom, dateTo, page, limit })),
     enabled: !!id,
   });
 
   const isLoading = supplierLoading || purchasesLoading || returnsLoading || settlementsLoading;
+  const isError = supplierIsError || purchasesIsError || returnsIsError || settlementsIsError;
+  const firstError = supplierError ?? purchasesError ?? returnsError ?? settlementsError;
+  function retryAll() {
+    if (supplierIsError) refetchSupplier();
+    if (purchasesIsError) refetchPurchases();
+    if (returnsIsError) refetchReturns();
+    if (settlementsIsError) refetchSettlements();
+  }
 
   const computed = useMemo(() => {
     const purchases = purchaseRows ?? [];
@@ -138,43 +173,51 @@ export default function SupplierStatementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/suppliers')} className="-ml-2 shrink-0">
-          <ArrowLeft />
-          Back to Suppliers
-        </Button>
+      <PageHeader
+        className="print:hidden"
+        title={supplier ? `${supplier.name} statement` : 'Supplier statement'}
+        description={`Purchases, returns, transport charges and settlements for ${periodLabel}.`}
+        backHref="/admin/suppliers"
+        backLabel="Back to Suppliers"
+        actions={
+          <>
+            <Input
+              type="month"
+              value={draftFrom}
+              max={draftTo || undefined}
+              onChange={(e) => setDraftFrom(e.target.value)}
+              className="w-auto"
+              aria-label="From month"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="month"
+              value={draftTo}
+              min={draftFrom || undefined}
+              max={currentMonth()}
+              onChange={(e) => setDraftTo(e.target.value)}
+              className="w-auto"
+              aria-label="To month"
+            />
+            <Button variant="outline" onClick={applyPeriod}>
+              Update
+            </Button>
+            <Button onClick={() => window.print()}>
+              <Printer />
+              Print
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="month"
-            value={draftFrom}
-            max={draftTo || undefined}
-            onChange={(e) => setDraftFrom(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <input
-            type="month"
-            value={draftTo}
-            min={draftFrom || undefined}
-            max={currentMonth()}
-            onChange={(e) => setDraftTo(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <Button variant="outline" size="sm" onClick={applyPeriod}>
-            Update
-          </Button>
-          <Button onClick={() => window.print()}>
-            <Printer />
-            Print
-          </Button>
+      {isError ? (
+        <div className="rounded-xl border border-border bg-card shadow-xs print:hidden">
+          <QueryErrorState error={firstError} onRetry={retryAll} title="Couldn't load this statement" />
         </div>
-      </div>
-
-      {isLoading || !supplier ? (
-        <Skeleton className="h-96 w-full" />
+      ) : isLoading || !supplier ? (
+        <PageSkeleton cards={0} className="print:hidden" />
       ) : (
-        <div className="overflow-x-auto rounded-xl bg-muted/40 p-4 print:overflow-visible print:bg-transparent print:p-0 sm:p-8">
+        <div className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 print:overflow-visible print:border-0 print:bg-transparent print:p-0 sm:p-8">
           <SupplierStatementPrintLayout
             supplier={supplier}
             periodLabel={periodLabel}

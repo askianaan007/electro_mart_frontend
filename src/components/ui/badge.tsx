@@ -3,18 +3,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors w-fit shrink-0',
+  'inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium leading-4 [&_svg]:size-3',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground',
-        outline: 'border-border text-foreground',
-        success: 'border-transparent bg-success/15 text-success',
-        warning: 'border-transparent bg-warning/20 text-warning-foreground',
-        purple: 'border-transparent bg-purple/15 text-purple',
-        muted: 'border-transparent bg-muted text-muted-foreground',
+        default: 'border-primary/20 bg-primary/10 text-primary',
+        secondary: 'border-border bg-secondary text-secondary-foreground',
+        destructive: 'border-destructive/20 bg-destructive/10 text-destructive',
+        outline: 'border-border bg-transparent text-foreground',
+        success: 'border-success/20 bg-success/10 text-success',
+        warning: 'border-warning/25 bg-warning/10 text-warning-foreground dark:text-warning',
+        info: 'border-info/20 bg-info/10 text-info',
+        purple: 'border-purple/20 bg-purple/10 text-purple',
+        muted: 'border-border bg-muted text-muted-foreground',
       },
     },
     defaultVariants: {

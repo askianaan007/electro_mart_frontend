@@ -5,54 +5,50 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { AdminNavGroup } from '@/components/admin/admin-nav-items';
 
+export function isNavItemActive(pathname: string, href: string) {
+  return pathname === href || (!href.endsWith('/dashboard') && pathname.startsWith(`${href}/`));
+}
+
 export function SidebarNav({ groups, onNavigate }: { groups: AdminNavGroup[]; onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-6 p-3.5 select-none">
+    <nav className="flex select-none flex-col gap-5 px-3 py-4" aria-label="Main">
       {groups.map((group, index) => (
-        <div key={group.label ?? index} className="flex flex-col gap-1">
+        <div key={group.label ?? index} className="flex flex-col gap-0.5">
           {group.label && (
-            <div className="flex items-center justify-between px-3 pb-1.5 pt-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80 dark:text-slate-400/70">
-                {group.label}
-              </span>
-              <span className="h-px flex-1 ml-3 bg-gradient-to-r from-border/60 to-transparent" />
-            </div>
+            <p className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              {group.label}
+            </p>
           )}
           {group.items.map((item) => {
-            const active = pathname === item.href || (item.href !== '/admin/dashboard' && pathname.startsWith(`${item.href}/`));
+            const active = isNavItemActive(pathname, item.href);
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium transition-all duration-200',
+                  'group relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] font-medium transition-colors',
                   active
-                    ? 'bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 text-white font-semibold shadow-md shadow-blue-950/50 border border-blue-700/40'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-blue-400 dark:hover:text-white hover:bg-blue-950/20 dark:hover:bg-blue-950/40 backdrop-blur-md hover:translate-x-1 border border-transparent'
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-sidebar-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
+                {active && (
+                  <span className="absolute inset-y-1.5 -left-3 w-[3px] rounded-r-full bg-primary" aria-hidden />
+                )}
                 <Icon
                   className={cn(
-                    'size-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110',
-                    active
-                      ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]'
-                      : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-400'
+                    'size-[18px] shrink-0',
+                    active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
                   )}
                 />
                 <span className="flex-1 truncate">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span
-                    className={cn(
-                      'ml-auto inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow-xs border',
-                      active
-                        ? 'bg-blue-900/60 text-blue-200 border-blue-700/40'
-                        : 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25'
-                    )}
-                  >
+                  <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-destructive/10 px-1.5 text-[11px] font-semibold text-destructive tabular-nums">
                     {item.badge}
                   </span>
                 )}
@@ -64,4 +60,3 @@ export function SidebarNav({ groups, onNavigate }: { groups: AdminNavGroup[]; on
     </nav>
   );
 }
-

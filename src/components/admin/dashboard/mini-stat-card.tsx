@@ -2,40 +2,16 @@
 
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowUpRight, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronRight } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const TONES = {
-  primary: {
-    chip: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 border-blue-500/20',
-    laser: 'from-blue-500 via-sky-400 to-indigo-500',
-    badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-    hoverBorder: 'group-hover:border-blue-500/40',
-  },
-  success: {
-    chip: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-500/20',
-    laser: 'from-emerald-500 via-teal-400 to-emerald-600',
-    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    hoverBorder: 'group-hover:border-emerald-500/40',
-  },
-  warning: {
-    chip: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 border-amber-500/20',
-    laser: 'from-amber-500 via-orange-400 to-yellow-500',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    hoverBorder: 'group-hover:border-amber-500/40',
-  },
-  destructive: {
-    chip: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400 border-rose-500/20',
-    laser: 'from-rose-500 via-red-400 to-rose-600',
-    badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-    hoverBorder: 'group-hover:border-rose-500/40',
-  },
-  purple: {
-    chip: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400 border-purple-500/20',
-    laser: 'from-purple-500 via-fuchsia-400 to-indigo-500',
-    badge: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-    hoverBorder: 'group-hover:border-purple-500/40',
-  },
+  primary: 'bg-primary/10 text-primary',
+  success: 'bg-success/10 text-success',
+  warning: 'bg-warning/10 text-warning',
+  destructive: 'bg-destructive/10 text-destructive',
+  purple: 'bg-purple/10 text-purple',
 } as const;
 
 export function MiniStatCard({
@@ -57,77 +33,53 @@ export function MiniStatCard({
   href?: string;
   onClick?: () => void;
 }) {
-  const t = TONES[tone];
+  const interactive = Boolean(href || onClick);
 
   const content = (
-    <div
+    <Card
       className={cn(
-        'group relative isolate flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card/80 dark:bg-slate-900/60 p-4 sm:p-5 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg select-none',
-        t.hoverBorder
+        'flex h-full items-center gap-3.5 p-4',
+        interactive && 'transition-colors group-hover/stat:border-primary/40 group-hover/stat:bg-muted/30',
       )}
     >
-      {/* Top Specular Glass Curve Overlay */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 rounded-t-2xl bg-gradient-to-b from-white/15 via-white/5 to-transparent dark:from-white/5" />
-
-      {/* Distinctive Laser Accent Line at Bottom */}
-      <div className={cn('pointer-events-none absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r opacity-50 group-hover:opacity-100 transition-opacity duration-300', t.laser)} />
-
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="break-words text-[10px] sm:text-xs font-black uppercase tracking-[0.18em] text-muted-foreground/90 truncate">
-            {label}
-          </p>
-
-          <p className="break-words text-xl sm:text-2xl font-extrabold leading-tight tracking-tight text-foreground drop-shadow-xs">
-            {value}
-          </p>
-
-          {typeof change === 'number' && (
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-extrabold',
-                  change >= 0
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                )}
-              >
-                {change >= 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                <span>
-                  {change >= 0 ? '+' : ''}
-                  {change.toFixed(0)}%
-                </span>
-              </span>
-              {changeLabel && (
-                <span className="text-[11px] font-medium text-muted-foreground/80 truncate">
-                  {changeLabel}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Distinctive Tinted Icon Badge */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div
-            className={cn(
-              'flex size-10 items-center justify-center rounded-xl border shadow-xs transition-transform duration-300 group-hover:scale-110',
-              t.chip
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-          {(href || onClick) && (
-            <ArrowUpRight className="size-3.5 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground" />
-          )}
-        </div>
+      <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', TONES[tone])}>
+        <Icon className="size-[18px]" />
       </div>
-    </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium text-muted-foreground">{label}</p>
+        <p className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground tabular-nums">
+          {value}
+        </p>
+        {typeof change === 'number' && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-medium tabular-nums',
+                change >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive',
+              )}
+            >
+              {change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+              {change >= 0 ? '+' : ''}
+              {change.toFixed(0)}%
+            </span>
+            {changeLabel && <span className="truncate text-muted-foreground">{changeLabel}</span>}
+          </div>
+        )}
+      </div>
+
+      {interactive && (
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-colors group-hover/stat:text-primary" />
+      )}
+    </Card>
   );
 
   if (href) {
     return (
-      <Link href={href} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+      <Link
+        href={href}
+        className="group/stat block h-full rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      >
         {content}
       </Link>
     );
@@ -138,7 +90,7 @@ export function MiniStatCard({
       <button
         type="button"
         onClick={onClick}
-        className="block w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        className="group/stat block h-full w-full rounded-xl text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
       >
         {content}
       </button>

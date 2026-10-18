@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Investor } from '@/lib/api/types';
 
@@ -61,32 +62,34 @@ export function InvestorStatementDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="investor-statement-from">From</Label>
-            <input
+            <Input
               id="investor-statement-from"
               type="month"
               value={fromMonth}
               max={toMonth || undefined}
               onChange={(e) => setFromMonth(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="investor-statement-to">To</Label>
-            <input
+            <Input
               id="investor-statement-to"
               type="month"
               value={toMonth}
               min={fromMonth || undefined}
               max={currentMonth()}
               onChange={(e) => setToMonth(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

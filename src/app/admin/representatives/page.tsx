@@ -4,11 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Copy, MoreHorizontal, Plus, Search, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
@@ -40,6 +39,8 @@ import {
 import { RepresentativeFormDialog } from '@/components/admin/representative-form-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import {
   useDeleteRepresentative,
   useResetRepresentativePassword,
@@ -81,7 +82,7 @@ function RepresentativeRowActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="size-8" aria-label="More actions">
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -169,21 +170,19 @@ export default function RepresentativesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Representatives</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage sales representative accounts for the Representative Portal
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus />
-          Add Representative
-        </Button>
-      </div>
+      <PageHeader
+        title="Representatives"
+        description="Manage sales representative accounts for the Representative Portal."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Representative
+          </Button>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="All representatives" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="All representatives" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -223,11 +222,7 @@ export default function RepresentativesPage() {
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -269,18 +264,18 @@ export default function RepresentativesPage() {
                         <Link href={`/admin/representatives/${rep.id}`} className="font-medium text-primary">
                           {rep.name}
                         </Link>
-                        <p className="text-xs text-muted-foreground">{rep.email}</p>
+                        <div className="text-xs text-muted-foreground">{rep.email}</div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">{rep.phone}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className="hidden tabular-nums lg:table-cell">{rep.phone}</TableCell>
+                      <TableCell className="hidden tabular-nums text-muted-foreground lg:table-cell">
                         {new Date(rep.joiningDate).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <RepresentativeStatusBadge status={rep.status} />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(rep)}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="outline" size="sm" onClick={() => openEdit(rep)}>
                             Edit
                           </Button>
                           <RepresentativeRowActions
@@ -317,17 +312,19 @@ export default function RepresentativesPage() {
           </DialogHeader>
           {credentials && (
             <div className="space-y-3">
-              <div className="rounded-lg border border-border p-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">Username</p>
                 <p className="font-mono text-sm">{credentials.username}</p>
               </div>
-              <div className="rounded-lg border border-border p-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">Temporary password</p>
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-mono text-sm">{credentials.temporaryPassword}</p>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="size-8"
+                    aria-label="Copy password"
                     onClick={() => {
                       navigator.clipboard.writeText(credentials.temporaryPassword);
                       toast.success('Copied to clipboard');
@@ -358,7 +355,7 @@ export default function RepresentativesPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

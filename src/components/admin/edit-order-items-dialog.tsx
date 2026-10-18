@@ -102,7 +102,8 @@ export function EditOrderItemsDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Line items ({fields.length})</p>
               <Button
                 type="button"
                 variant="outline"
@@ -114,71 +115,75 @@ export function EditOrderItemsDialog({
               </Button>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-2/5">Product</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Line Total</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fields.map((rowField, index) => (
-                  <TableRow key={rowField.id}>
-                    <TableCell>
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.productId`}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products?.data.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name} ({product.currentStock} in stock)
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => <Input type="number" min={1} className="w-20" {...field} />}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(
-                        (Number(watchedItems[index]?.quantity) || 0) *
-                          unitPrice(products?.data, watchedItems[index]?.productId),
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        disabled={fields.length === 1}
-                        onClick={() => remove(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-2/5">Product</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead className="text-right">Line Total</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {fields.map((rowField, index) => (
+                    <TableRow key={rowField.id}>
+                      <TableCell>
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.productId`}
+                          render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products?.data.map((product) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.name} ({product.currentStock} in stock)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field }) => <Input type="number" min={1} className="w-20" {...field} />}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(
+                          (Number(watchedItems[index]?.quantity) || 0) *
+                            unitPrice(products?.data, watchedItems[index]?.productId),
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remove line item"
+                          className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={fields.length === 1}
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-            <div className="flex justify-end border-t border-border pt-3">
+            <div className="flex justify-end">
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Order Total</p>
-                <p className="text-lg font-semibold">{formatCurrency(grandTotal)}</p>
+                <p className="text-xs text-muted-foreground">Order total</p>
+                <p className="text-lg font-semibold tabular-nums">{formatCurrency(grandTotal)}</p>
               </div>
             </div>
 

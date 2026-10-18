@@ -4,8 +4,8 @@ const ORDER_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['var
   PENDING_APPROVAL: { label: 'Pending Approval', variant: 'warning' },
   APPROVED: { label: 'Approved', variant: 'success' },
   REJECTED: { label: 'Rejected', variant: 'destructive' },
-  PACKED: { label: 'Packed', variant: 'outline' },
-  DELIVERED: { label: 'Delivered', variant: 'secondary' },
+  PACKED: { label: 'Packed', variant: 'info' },
+  DELIVERED: { label: 'Delivered', variant: 'purple' },
   COMPLETED: { label: 'Completed', variant: 'success' },
 };
 
@@ -41,7 +41,7 @@ const REPRESENTATIVE_STATUS_MAP: Record<string, { label: string; variant: BadgeP
 
 const SETTLEMENT_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
   PENDING: { label: 'Pending', variant: 'muted' },
-  APPROVED: { label: 'Approved', variant: 'warning' },
+  APPROVED: { label: 'Approved', variant: 'info' },
   REJECTED: { label: 'Rejected', variant: 'destructive' },
   PAID: { label: 'Paid', variant: 'success' },
 };
@@ -54,10 +54,18 @@ const COLLECTION_STATUS_MAP: Record<string, { label: string; variant: BadgeProps
 
 const COMMISSION_LINE_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
   PENDING: { label: 'Pending', variant: 'muted' },
-  APPROVED: { label: 'Approved', variant: 'warning' },
+  APPROVED: { label: 'Approved', variant: 'info' },
   SETTLED: { label: 'Settled', variant: 'success' },
   REVERSED: { label: 'Reversed', variant: 'destructive' },
 };
+
+function humanize(value: string) {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
 function StatusBadge({
   status,
@@ -68,9 +76,10 @@ function StatusBadge({
   map: Record<string, { label: string; variant: BadgeProps['variant'] }>;
   className?: string;
 }) {
-  const entry = map[status] ?? { label: status, variant: 'outline' as const };
+  const entry = map[status] ?? { label: humanize(status), variant: 'outline' as const };
   return (
     <Badge variant={entry.variant} className={className}>
+      <span className="size-1.5 rounded-full bg-current opacity-80" aria-hidden />
       {entry.label}
     </Badge>
   );

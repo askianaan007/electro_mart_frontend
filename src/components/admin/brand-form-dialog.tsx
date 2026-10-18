@@ -56,7 +56,7 @@ function ImagePicker({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <p className="text-sm font-medium">{label}</p>
       <div className="flex items-center gap-3">
         <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
@@ -66,9 +66,12 @@ function ImagePicker({
             <ImagePlus className="size-5 text-muted-foreground" />
           )}
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
-          Choose file
-        </Button>
+        <div className="space-y-1">
+          <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+            Choose file
+          </Button>
+          <p className="text-xs text-muted-foreground">JPG, PNG, WebP or GIF</p>
+        </div>
         <input
           ref={inputRef}
           type="file"
@@ -210,7 +213,7 @@ export function BrandFormDialog({
                 control={form.control}
                 name="isFeatured"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3">
+                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 p-3">
                     <div>
                       <FormLabel>Featured</FormLabel>
                     </div>

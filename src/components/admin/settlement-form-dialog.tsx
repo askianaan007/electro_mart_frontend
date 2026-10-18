@@ -6,7 +6,14 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -99,8 +106,12 @@ export function SettlementFormDialog({
       <DialogContent title="Record settlement">
         <DialogHeader>
           <DialogTitle>Settle credit with {supplierName}</DialogTitle>
+          <DialogDescription>Record a payment against this supplier&apos;s outstanding credit.</DialogDescription>
         </DialogHeader>
-        <p className="-mt-2 text-sm text-muted-foreground">Outstanding credit balance: {formatCurrency(creditBalance)}</p>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+          <span className="text-muted-foreground">Outstanding credit balance</span>
+          <span className="font-semibold tabular-nums text-foreground">{formatCurrency(creditBalance)}</span>
+        </div>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">

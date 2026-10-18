@@ -2,39 +2,26 @@
 
 import { useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Calendar, Loader2, ScrollText, User, X } from 'lucide-react';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
+import { TableSkeleton } from '@/components/loading-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { useInventoryLedger } from '@/hooks/use-inventory';
 import { cn, formatDateTime } from '@/lib/utils';
 import type { InventoryLogType } from '@/lib/api/types';
 
-const TYPE_LABEL: Record<string, { label: string; className: string }> = {
-  PURCHASE: {
-    label: 'Purchase',
-    className: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 font-bold',
-  },
-  SALE: {
-    label: 'Sale',
-    className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold',
-  },
-  ADJUSTMENT: {
-    label: 'Adjustment',
-    className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold',
-  },
-  RESERVE: {
-    label: 'Reserved',
-    className: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 font-bold',
-  },
-  RELEASE: {
-    label: 'Released',
-    className: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 font-bold',
-  },
+const TYPE_LABEL: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
+  PURCHASE: { label: 'Purchase', variant: 'default' },
+  SALE: { label: 'Sale', variant: 'success' },
+  ADJUSTMENT: { label: 'Adjustment', variant: 'warning' },
+  RESERVE: { label: 'Reserved', variant: 'purple' },
+  RELEASE: { label: 'Released', variant: 'info' },
 };
 
 export function InventoryLedgerSheet({
@@ -52,7 +39,7 @@ export function InventoryLedgerSheet({
   const [dateTo, setDateTo] = useState('');
   const filtersActive = type !== 'all' || !!dateFrom || !!dateTo;
 
-  const { data, isLoading, isFetching } = useInventoryLedger(productId ?? undefined, {
+  const { data, isLoading, isFetching, isError, error, refetch } = useInventoryLedger(productId ?? undefined, {
     page,
     limit: 15,
     type: type === 'all' ? undefined : type,
@@ -81,33 +68,27 @@ export function InventoryLedgerSheet({
       <SheetContent
         side="right"
         title="Stock ledger"
-        className="w-full max-w-full sm:max-w-3xl lg:max-w-4xl rounded-l-3xl border-l border-border/60 bg-card/95 backdrop-blur-2xl p-4 sm:p-6 shadow-2xl flex flex-col h-full overflow-hidden select-none"
+        className="flex h-full w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl lg:max-w-4xl"
       >
-        {/* Specular Shimmer Top Curve Overlay */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 rounded-tl-3xl bg-gradient-to-b from-white/15 via-white/5 to-transparent dark:from-white/10" />
-
         {/* Fixed Top Header & Filter Bar */}
-        <div className="shrink-0 space-y-4 pb-3">
-          {/* Sheet Header with pr-12 for Close Button clearance */}
-          <SheetHeader className="relative z-10 space-y-1 pr-12 sm:pr-14">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
-                <ScrollText className="size-4.5" />
-              </div>
-              <SheetTitle className="text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2">
-                <span>Stock Movement Ledger</span>
-                {isFetching && !isLoading && <Loader2 className="size-4 animate-spin text-primary" />}
-              </SheetTitle>
-            </div>
+        <div className="shrink-0">
+          <SheetHeader className="space-y-0 px-4 pb-3 pr-12 pt-4 sm:px-5 sm:pr-14 sm:pt-5">
+            <SheetTitle className="flex items-center gap-2">
+              <ScrollText className="size-[18px] text-muted-foreground" />
+              <span>Stock Movement Ledger</span>
+              {isFetching && !isLoading && (
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-label="Refreshing" />
+              )}
+            </SheetTitle>
             {productName && (
-              <p className="text-xs text-muted-foreground font-semibold truncate">
-                Product: <span className="text-foreground font-bold">{productName}</span>
+              <p className="truncate text-sm text-muted-foreground">
+                Product: <span className="font-medium text-foreground">{productName}</span>
               </p>
             )}
           </SheetHeader>
 
           {/* Filter Controls Bar */}
-          <div className="relative z-10 flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-muted/40 p-3 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-col gap-2.5 border-y border-border px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
             <Select
               value={type}
               onValueChange={(v) => {
@@ -115,10 +96,10 @@ export function InventoryLedgerSheet({
                 setPage(1);
               }}
             >
-              <SelectTrigger className="sm:w-40 h-9 rounded-xl border-border/60 bg-background/60 backdrop-blur-md font-semibold text-xs">
+              <SelectTrigger className="sm:w-40">
                 <SelectValue placeholder="All Movement Types" />
               </SelectTrigger>
-              <SelectContent className="rounded-2xl border-border/60 shadow-xl">
+              <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 {Object.entries(TYPE_LABEL).map(([value, conf]) => (
                   <SelectItem key={value} value={value}>
@@ -128,8 +109,8 @@ export function InventoryLedgerSheet({
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-              <span className="text-xs font-bold text-muted-foreground">From:</span>
+            <div className="flex flex-1 items-center gap-1.5 sm:flex-none">
+              <span className="text-sm text-muted-foreground">From</span>
               <Input
                 type="date"
                 value={dateFrom}
@@ -137,12 +118,12 @@ export function InventoryLedgerSheet({
                   setDateFrom(e.target.value);
                   setPage(1);
                 }}
-                className="h-9 w-full sm:w-36 rounded-xl border-border/60 bg-background/60 backdrop-blur-md text-xs font-medium"
+                className="w-full sm:w-40"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-              <span className="text-xs font-bold text-muted-foreground">To:</span>
+            <div className="flex flex-1 items-center gap-1.5 sm:flex-none">
+              <span className="text-sm text-muted-foreground">To</span>
               <Input
                 type="date"
                 value={dateTo}
@@ -150,32 +131,25 @@ export function InventoryLedgerSheet({
                   setDateTo(e.target.value);
                   setPage(1);
                 }}
-                className="h-9 w-full sm:w-36 rounded-xl border-border/60 bg-background/60 backdrop-blur-md text-xs font-medium"
+                className="w-full sm:w-40"
               />
             </div>
 
             {filtersActive && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="h-9 rounded-full text-xs font-bold text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-                <span>Clear filters</span>
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X />
+                Clear filters
               </Button>
             )}
           </div>
         </div>
 
         {/* Scrollable Main Ledger Content */}
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="space-y-3 py-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-2xl" />
-              ))}
-            </div>
+            <TableSkeleton rows={6} />
+          ) : isError ? (
+            <QueryErrorState error={error} onRetry={() => refetch()} />
           ) : !data || data.data.length === 0 ? (
             filtersActive ? (
               <EmptyState
@@ -183,7 +157,7 @@ export function InventoryLedgerSheet({
                 title="No matching stock movements"
                 description="Try adjusting or clearing your date range and type filters"
                 action={
-                  <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-xl font-semibold">
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
                     Clear filters
                   </Button>
                 }
@@ -194,78 +168,61 @@ export function InventoryLedgerSheet({
           ) : (
             <>
               {/* Desktop Table View */}
-              <div className={cn('hidden sm:block overflow-x-auto rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md', isFetching && 'opacity-60 transition-opacity')}>
+              <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
                 <Table className="min-w-[650px]">
-                  <TableHeader className="bg-muted/60">
-                    <TableRow className="hover:bg-transparent border-border/60">
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Type
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground min-w-[220px]">
-                        Movement Details &amp; Performer
-                      </TableHead>
-                      <TableHead className="text-center font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Qty In
-                      </TableHead>
-                      <TableHead className="text-center font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Qty Out
-                      </TableHead>
-                      <TableHead className="text-right font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Balance After
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                        Timestamp
-                      </TableHead>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="min-w-[220px]">Movement Details &amp; Performer</TableHead>
+                      <TableHead className="text-right">Qty In</TableHead>
+                      <TableHead className="text-right">Qty Out</TableHead>
+                      <TableHead className="text-right">Balance After</TableHead>
+                      <TableHead>Timestamp</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="divide-y divide-border/50">
+                  <TableBody>
                     {data.data.map((log) => {
-                      const typeInfo = TYPE_LABEL[log.type] ?? {
-                        label: log.type,
-                        className: 'bg-muted/60 text-muted-foreground border-border/50',
-                      };
+                      const typeInfo = TYPE_LABEL[log.type] ?? { label: log.type, variant: 'muted' as const };
                       return (
-                        <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
+                        <TableRow key={log.id}>
                           <TableCell>
-                            <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs backdrop-blur-md', typeInfo.className)}>
-                              {typeInfo.label}
-                            </span>
+                            <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
                           </TableCell>
-                          <TableCell className="max-w-md py-3">
-                            <p className="font-semibold text-xs sm:text-sm text-foreground leading-snug break-words">
-                              {log.description}
-                            </p>
+                          <TableCell className="max-w-md whitespace-normal">
+                            <p className="break-words leading-snug text-foreground">{log.description}</p>
                             {log.performedBy && (
-                              <p className="text-[11px] font-medium text-muted-foreground mt-0.5 flex items-center gap-1">
-                                <User className="size-3 text-muted-foreground/70" />
-                                <span>By: <strong className="text-foreground">{log.performedBy}</strong></span>
-                              </p>
+                              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                                <User className="size-3" />
+                                <span>
+                                  By: <span className="font-medium text-foreground">{log.performedBy}</span>
+                                </span>
+                              </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-right">
                             {log.quantityIn ? (
-                              <span className="inline-flex items-center gap-0.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                              <span className="inline-flex items-center gap-0.5 font-medium tabular-nums text-success">
                                 <ArrowDownLeft className="size-3" />
                                 +{log.quantityIn}
                               </span>
                             ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-right">
                             {log.quantityOut ? (
-                              <span className="inline-flex items-center gap-0.5 text-xs font-black text-rose-600 dark:text-rose-400">
+                              <span className="inline-flex items-center gap-0.5 font-medium tabular-nums text-destructive">
                                 <ArrowUpRight className="size-3" />
                                 -{log.quantityOut}
                               </span>
                             ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-black text-xs sm:text-sm text-foreground">
-                            {log.balanceAfter} units
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {log.balanceAfter} <span className="text-xs font-normal text-muted-foreground">units</span>
                           </TableCell>
-                          <TableCell className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+                          <TableCell className="text-xs text-muted-foreground">
                             {formatDateTime(log.createdAt)}
                           </TableCell>
                         </TableRow>
@@ -276,56 +233,48 @@ export function InventoryLedgerSheet({
               </div>
 
               {/* Mobile Cards View */}
-              <div className={cn('space-y-3 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
+              <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
                 {data.data.map((log) => {
-                  const typeInfo = TYPE_LABEL[log.type] ?? {
-                    label: log.type,
-                    className: 'bg-muted/60 text-muted-foreground border-border/50',
-                  };
+                  const typeInfo = TYPE_LABEL[log.type] ?? { label: log.type, variant: 'muted' as const };
                   return (
-                    <div
-                      key={log.id}
-                      className="rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur-md space-y-2.5 shadow-2xs"
-                    >
+                    <div key={log.id} className="space-y-2.5 rounded-lg border border-border bg-card p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px]', typeInfo.className)}>
-                          {typeInfo.label}
-                        </span>
-                        <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                        <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="size-3" />
                           {formatDateTime(log.createdAt)}
                         </span>
                       </div>
 
-                      <p className="font-bold text-xs text-foreground leading-relaxed break-words">
+                      <p className="break-words text-sm font-medium leading-relaxed text-foreground">
                         {log.description}
                       </p>
 
                       {log.performedBy && (
-                        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-                          <User className="size-3 text-muted-foreground/70" />
-                          <span>By: <strong className="text-foreground">{log.performedBy}</strong></span>
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="size-3" />
+                          <span>
+                            By: <span className="font-medium text-foreground">{log.performedBy}</span>
+                          </span>
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
-                        <div className="flex items-center gap-2 font-black">
+                      <div className="flex items-center justify-between border-t border-border pt-2 text-xs tabular-nums">
+                        <div className="flex items-center gap-2 font-medium">
                           {log.quantityIn ? (
-                            <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-0.5 text-success">
                               <ArrowDownLeft className="size-3" />
                               +{log.quantityIn} in
                             </span>
                           ) : null}
                           {log.quantityOut ? (
-                            <span className="inline-flex items-center gap-0.5 text-rose-600 dark:text-rose-400">
+                            <span className="inline-flex items-center gap-0.5 text-destructive">
                               <ArrowUpRight className="size-3" />
                               -{log.quantityOut} out
                             </span>
                           ) : null}
                         </div>
-                        <span className="font-black text-foreground">
-                          Balance: {log.balanceAfter} units
-                        </span>
+                        <span className="font-medium text-foreground">Balance: {log.balanceAfter} units</span>
                       </div>
                     </div>
                   );
@@ -337,7 +286,7 @@ export function InventoryLedgerSheet({
 
         {/* Fixed Bottom Pagination */}
         {data && data.meta && (
-          <div className="relative z-10 shrink-0 pt-3 border-t border-border/60">
+          <div className="shrink-0">
             <PaginationBar meta={data.meta} onPageChange={setPage} />
           </div>
         )}

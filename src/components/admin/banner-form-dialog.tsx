@@ -109,7 +109,7 @@ export function BannerFormDialog({
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
             {!isEdit && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <p className="text-sm font-medium">Image</p>
                 <div className="flex items-center gap-3">
                   <div className="flex h-20 w-36 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
@@ -119,9 +119,12 @@ export function BannerFormDialog({
                       <ImagePlus className="size-5 text-muted-foreground" />
                     )}
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
-                    Choose file
-                  </Button>
+                  <div className="space-y-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+                      Choose file
+                    </Button>
+                    <p className="text-xs text-muted-foreground">JPG, PNG, WebP or GIF</p>
+                  </div>
                   <input
                     ref={inputRef}
                     type="file"

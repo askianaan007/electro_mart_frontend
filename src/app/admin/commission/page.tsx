@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
@@ -15,6 +14,8 @@ import { SettlementStatusBadge } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import { CreateSettlementDialog } from '@/components/admin/create-settlement-dialog';
 import { useCommissionDashboard, useSettlements } from '@/hooks/use-commission';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -28,7 +29,13 @@ export default function CommissionPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: dashboard, isLoading: dashboardLoading } = useCommissionDashboard();
+  const {
+    data: dashboard,
+    isLoading: dashboardLoading,
+    isError: dashboardIsError,
+    error: dashboardError,
+    refetch: refetchDashboard,
+  } = useCommissionDashboard();
   const { data, isLoading, isFetching, isError, error, refetch } = useSettlements({
     page,
     limit: 20,
@@ -46,18 +53,27 @@ export default function CommissionPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Commission</h1>
-          <p className="text-sm text-muted-foreground">Track and settle representative commission</p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus />
-          Create Settlement
-        </Button>
-      </div>
+      <PageHeader
+        title="Commission"
+        description="Track and settle representative commission."
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus />
+            Create Settlement
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {dashboardIsError ? (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState
+            title="Couldn't load commission summary"
+            error={dashboardError}
+            onRetry={() => refetchDashboard()}
+          />
+        </div>
+      ) : (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Pending Commission"
           value={dashboardLoading ? '…' : formatCurrency(dashboard?.pendingCommission ?? 0)}
@@ -68,6 +84,7 @@ export default function CommissionPage() {
           label="Approved Commission"
           value={dashboardLoading ? '…' : formatCurrency(dashboard?.approvedCommission ?? 0)}
           icon={HandCoins}
+          tone="info"
         />
         <StatCard
           label="Settled Commission"
@@ -81,9 +98,10 @@ export default function CommissionPage() {
           icon={Receipt}
         />
       </div>
+      )}
 
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="Settlements" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Settlements" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -123,19 +141,28 @@ export default function CommissionPage() {
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
-          <EmptyState
-            icon={Receipt}
-            title="No settlements found"
-            description="Create a settlement to batch a representative's pending commission for payout"
-          />
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching settlements"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={Receipt}
+              title="No settlements found"
+              description="Create a settlement to batch a representative's pending commission for payout"
+            />
+          )
         ) : (
           <>
             <div className={cn(isFetching && 'opacity-60 transition-opacity')}>
@@ -145,7 +172,7 @@ export default function CommissionPage() {
                     <TableHead>Settlement #</TableHead>
                     <TableHead>Representative</TableHead>
                     <TableHead>Period</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -158,10 +185,12 @@ export default function CommissionPage() {
                         </Link>
                       </TableCell>
                       <TableCell>{settlement.representative?.name ?? '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">
                         {formatDate(settlement.periodStart)} – {formatDate(settlement.periodEnd)}
                       </TableCell>
-                      <TableCell>{formatCurrency(settlement.totalCommission)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(settlement.totalCommission)}
+                      </TableCell>
                       <TableCell>
                         <SettlementStatusBadge status={settlement.status} />
                       </TableCell>

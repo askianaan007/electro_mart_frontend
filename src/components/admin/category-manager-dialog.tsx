@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { Check, Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,7 @@ export function CategoryManagerDialog({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
-  const { data: categories, isLoading } = useAllCategories();
+  const { data: categories, isLoading, isError, error, refetch } = useAllCategories();
   const createCategory = useCreateCategory();
   const deleteCategory = useDeleteCategory();
   const updateCategory = useUpdateCategory();
@@ -122,13 +123,15 @@ export function CategoryManagerDialog({
             </Button>
           </div>
 
-          <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-border">
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
             {isLoading ? (
               <div className="space-y-2 p-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-9 w-full" />
                 ))}
               </div>
+            ) : isError ? (
+              <QueryErrorState error={error} onRetry={() => refetch()} className="py-8" />
             ) : !categories || categories.data.length === 0 ? (
               <EmptyState icon={Tag} title="No categories yet" description="Add your first category above" />
             ) : (
@@ -154,28 +157,41 @@ export function CategoryManagerDialog({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="shrink-0"
+                      className="size-8 shrink-0"
+                      aria-label="Save category"
                       disabled={updateCategory.isPending}
                       onClick={confirmEdit}
                     >
-                      <Check className="size-4" />
+                      <Check />
                     </Button>
-                    <Button variant="ghost" size="icon" className="shrink-0" onClick={cancelEdit}>
-                      <X className="size-4" />
+                    <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Cancel edit" onClick={cancelEdit}>
+                      <X />
                     </Button>
                   </div>
                 ) : (
                   <div
                     key={category.id}
-                    className="flex items-center justify-between border-b border-border px-4 py-2 last:border-b-0"
+                    className="flex items-center justify-between border-b border-border px-4 py-2 transition-colors last:border-b-0 hover:bg-muted/40"
                   >
-                    <span className="text-sm">{category.name}</span>
+                    <span className="text-sm font-medium">{category.name}</span>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => startEdit(category)}>
-                        <Pencil className="size-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        aria-label="Rename category"
+                        onClick={() => startEdit(category)}
+                      >
+                        <Pencil />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeletingCategory(category)}>
-                        <Trash2 className="size-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Delete category"
+                        onClick={() => setDeletingCategory(category)}
+                      >
+                        <Trash2 />
                       </Button>
                     </div>
                   </div>
@@ -200,7 +216,7 @@ export function CategoryManagerDialog({
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteCategory.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

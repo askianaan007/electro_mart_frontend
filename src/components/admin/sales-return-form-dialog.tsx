@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -197,7 +198,10 @@ export function SalesReturnFormDialog({
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
             {orderLoading || !order ? (
-              <p className="p-3 text-sm text-muted-foreground">Loading order…</p>
+              <div className="space-y-2" aria-busy="true" aria-label="Loading order">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
             ) : order.status !== 'COMPLETED' ? (
               <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
                 Only completed orders can have items returned.
@@ -208,12 +212,13 @@ export function SalesReturnFormDialog({
               </p>
             ) : (
               <div className="space-y-3">
+                <p className="text-sm font-semibold">Items to return</p>
                 {fields.map((rowField, index) => {
                   const selectedProductId = watchedItems?.[index]?.productId ?? '';
                   const remaining = remainingForRow(selectedProductId, index);
                   const enteredQuantity = Number(watchedItems?.[index]?.quantity) || 0;
                   return (
-                    <div key={rowField.id} className="space-y-1.5 rounded-lg border border-border p-2.5">
+                    <div key={rowField.id} className="space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
                       <div className="flex items-start gap-2">
                         <FormField
                           control={form.control}
@@ -265,7 +270,8 @@ export function SalesReturnFormDialog({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="mt-6"
+                          aria-label="Remove item"
+                          className="mt-6 text-muted-foreground hover:text-destructive"
                           disabled={fields.length === 1}
                           onClick={() => remove(index)}
                         >
@@ -281,9 +287,9 @@ export function SalesReturnFormDialog({
               </div>
             )}
             {order && (watchedItems ?? []).some((row) => row.productId && Number(row.quantity) > 0) && (
-              <div className="flex justify-between rounded-lg bg-muted/40 p-3 text-sm font-semibold">
+              <div className="flex justify-between rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm font-semibold">
                 <span>Total refund</span>
-                <span>
+                <span className="tabular-nums">
                   {formatCurrency(
                     (watchedItems ?? []).reduce((sum, row) => {
                       const orderItem = order.items.find((item) => item.productId === row.productId);
@@ -306,6 +312,7 @@ export function SalesReturnFormDialog({
               </Button>
             )}
 
+            <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="reason"
@@ -332,6 +339,7 @@ export function SalesReturnFormDialog({
                 </FormItem>
               )}
             />
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

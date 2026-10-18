@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useAllRepresentatives } from '@/hooks/use-representatives';
 import { useAssignBanner, useBannerAssignments, useRemoveBannerAssignment } from '@/hooks/use-banners';
 import { getErrorMessage } from '@/lib/api/error';
@@ -36,7 +37,13 @@ export function BannerAssignDialog({
   const [priority, setPriority] = useState('0');
 
   const { data: representatives } = useAllRepresentatives();
-  const { data: assignments, isLoading } = useBannerAssignments(bannerId);
+  const {
+    data: assignments,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useBannerAssignments(bannerId);
   const assignBanner = useAssignBanner(bannerId);
   const removeAssignment = useRemoveBannerAssignment(bannerId);
 
@@ -66,8 +73,8 @@ export function BannerAssignDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-end gap-2">
-          <div className="flex-1 space-y-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[12rem] flex-1 space-y-1.5">
             <Label>Representative</Label>
             <Select value={representativeId} onValueChange={setRepresentativeId}>
               <SelectTrigger>
@@ -82,7 +89,7 @@ export function BannerAssignDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="w-24 space-y-2">
+          <div className="w-24 space-y-1.5">
             <Label>Priority</Label>
             <Input type="number" min={0} value={priority} onChange={(e) => setPriority(e.target.value)} />
           </div>
@@ -91,42 +98,50 @@ export function BannerAssignDialog({
           </Button>
         </div>
 
-        <div className="rounded-lg border border-border">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
-              ))}
-            </div>
-          ) : !assignments || assignments.length === 0 ? (
-            <EmptyState icon={Users} title="No representatives assigned yet" />
-          ) : (
-            <div className="divide-y divide-border">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between p-3">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {representatives?.data.find((r) => r.id === assignment.representativeId)?.name ??
-                        assignment.representativeId}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Priority {assignment.priority}</p>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Current assignments</p>
+          <div className="overflow-hidden rounded-lg border border-border">
+            {isLoading ? (
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : isError ? (
+              <QueryErrorState error={error} onRetry={() => refetch()} className="py-8" />
+            ) : !assignments || assignments.length === 0 ? (
+              <EmptyState icon={Users} title="No representatives assigned yet" className="py-8" />
+            ) : (
+              <div className="divide-y divide-border">
+                {assignments.map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {representatives?.data.find((r) => r.id === assignment.representativeId)?.name ??
+                          assignment.representativeId}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">Priority {assignment.priority}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remove assignment"
+                      className="text-destructive hover:text-destructive"
+                      disabled={removeAssignment.isPending && removeAssignment.variables === assignment.id}
+                      onClick={() =>
+                        removeAssignment.mutate(assignment.id, {
+                          onSuccess: () => toast.success('Assignment removed'),
+                          onError: (error) => toast.error(getErrorMessage(error)),
+                        })
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      removeAssignment.mutate(assignment.id, {
-                        onSuccess: () => toast.success('Assignment removed'),
-                        onError: (error) => toast.error(getErrorMessage(error)),
-                      })
-                    }
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter>

@@ -1,3 +1,14 @@
-export function FilterBar({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:flex-wrap sm:items-center">{children}</div>;
+import { cn } from '@/lib/utils';
+
+export function FilterBar({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-2.5 border-b border-border px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-5',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }

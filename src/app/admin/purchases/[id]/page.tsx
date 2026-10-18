@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Coins, Pencil, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
+import { Coins, Pencil, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
+import { PageSkeleton, TableSkeleton } from '@/components/loading-state';
+import { QueryErrorState } from '@/components/query-error-state';
 import { EmptyState } from '@/components/empty-state';
 import { StatCard } from '@/components/stat-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,8 +40,14 @@ function canEditPurchaseReturn(purchaseReturn: PurchaseReturn) {
 export default function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: purchase, isLoading } = usePurchase(id);
-  const { data: purchaseReturns, isLoading: returnsLoading } = usePurchaseReturnsForPurchase(id);
+  const { data: purchase, isLoading, isError, error, refetch } = usePurchase(id);
+  const {
+    data: purchaseReturns,
+    isLoading: returnsLoading,
+    isError: returnsIsError,
+    error: returnsError,
+    refetch: refetchReturns,
+  } = usePurchaseReturnsForPurchase(id);
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<PurchaseReturn | null>(null);
@@ -47,8 +55,19 @@ export default function PurchaseDetailPage() {
   const deletePurchase = useDeletePurchase();
   const deletePurchaseReturn = useDeletePurchaseReturn();
 
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Purchase" onBack={() => router.back()} />
+        <div className="rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState error={error} onRetry={() => refetch()} title="Couldn't load this purchase" />
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !purchase) {
-    return <Skeleton className="h-96 w-full" />;
+    return <PageSkeleton cards={3} />;
   }
 
   const grossValue = Number(purchase.totalValue);
@@ -88,42 +107,40 @@ export default function PurchaseDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
-      </Button>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">Purchase from {purchase.supplier.name}</h1>
-            {hasReturns && (
-              <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
-                {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title={`Purchase from ${purchase.supplier.name}`}
+        description={
+          <>
             Invoice {purchase.invoiceNumber} &middot; {formatDate(purchase.purchaseDate)}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
-            <Undo2 />
-            Record Return
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/admin/purchases/${id}/edit`}>
-              <Pencil />
-              Edit
-            </Link>
-          </Button>
-          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2 />
-            Delete
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+        onBack={() => router.back()}
+        meta={
+          hasReturns && (
+            <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
+              {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
+            </Badge>
+          )
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
+              <Undo2 />
+              Record Return
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/admin/purchases/${id}/edit`}>
+                <Pencil />
+                Edit
+              </Link>
+            </Button>
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 />
+              Delete
+            </Button>
+          </>
+        }
+      />
 
       <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2', hasTransportCharges ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
         <StatCard label="Gross Purchase Value" value={formatCurrency(grossValue)} icon={Wallet} />
@@ -145,8 +162,8 @@ export default function PurchaseDetailPage() {
         <StatCard label="Net Value" value={formatCurrency(netValue)} icon={Coins} tone="success" />
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3 sm:pb-3">
           <CardTitle>Line items</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-0">
@@ -154,7 +171,7 @@ export default function PurchaseDetailPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
-                <TableHead>Quantity</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Unit Cost</TableHead>
                 <TableHead className="text-right">Line Total</TableHead>
               </TableRow>
@@ -162,12 +179,12 @@ export default function PurchaseDetailPage() {
             <TableBody>
               {purchase.items.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="whitespace-normal break-words">
+                  <TableCell className="whitespace-normal break-words font-medium">
                     {item.product?.name ?? item.productId}
                   </TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(item.unitCost)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatCurrency(item.unitCost)}</TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">{formatCurrency(item.lineTotal)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -175,8 +192,8 @@ export default function PurchaseDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+      <Card className="overflow-hidden">
+        <CardHeader className="flex-row items-center justify-between pb-3 sm:pb-3">
           <CardTitle>Returns</CardTitle>
           {purchaseReturns && purchaseReturns.length > 0 && (
             <Badge variant="warning">
@@ -186,11 +203,9 @@ export default function PurchaseDetailPage() {
         </CardHeader>
         <CardContent className="p-0 sm:p-0">
           {returnsLoading ? (
-            <div className="space-y-2 p-6">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
+            <TableSkeleton rows={2} />
+          ) : returnsIsError ? (
+            <QueryErrorState error={returnsError} onRetry={() => refetchReturns()} />
           ) : !purchaseReturns || purchaseReturns.length === 0 ? (
             <EmptyState icon={Undo2} title="No returns yet" description="Returns sent back to the supplier will appear here" />
           ) : (
@@ -210,19 +225,26 @@ export default function PurchaseDetailPage() {
                     <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
                     <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
                     <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
-                    <TableCell className="text-right font-medium text-destructive">
+                    <TableCell className="text-right font-medium tabular-nums text-destructive">
                       −{formatCurrency(purchaseReturn.totalAmount)}
                     </TableCell>
                     <TableCell>
                       {canEditPurchaseReturn(purchaseReturn) && (
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => setEditingReturn(purchaseReturn)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8"
+                            aria-label="Edit return"
+                            onClick={() => setEditingReturn(purchaseReturn)}
+                          >
                             <Pencil className="size-3.5" />
                           </Button>
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="ghost"
-                            className="text-destructive"
+                            className="size-8 text-destructive hover:text-destructive"
+                            aria-label="Delete return"
                             onClick={() => setDeletingReturn(purchaseReturn)}
                           >
                             <Trash2 className="size-3.5" />
@@ -236,7 +258,7 @@ export default function PurchaseDetailPage() {
                   <TableCell colSpan={3} className="font-semibold">
                     Total returned
                   </TableCell>
-                  <TableCell className="text-right font-semibold text-destructive">
+                  <TableCell className="text-right font-semibold tabular-nums text-destructive">
                     −{formatCurrency(returnedValue)}
                   </TableCell>
                   <TableCell />
@@ -269,7 +291,7 @@ export default function PurchaseDetailPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deletePurchase.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>
@@ -292,7 +314,7 @@ export default function PurchaseDetailPage() {
             <AlertDialogAction
               onClick={confirmDeleteReturn}
               disabled={deletePurchaseReturn.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

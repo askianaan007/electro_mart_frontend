@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Supplier } from '@/lib/api/types';
 
@@ -64,25 +65,23 @@ export function SupplierStatementDialog({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="statement-from">From</Label>
-            <input
+            <Input
               id="statement-from"
               type="month"
               value={fromMonth}
               max={toMonth || undefined}
               onChange={(e) => setFromMonth(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="statement-to">To</Label>
-            <input
+            <Input
               id="statement-to"
               type="month"
               value={toMonth}
               min={fromMonth || undefined}
               max={currentMonth()}
               onChange={(e) => setToMonth(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         </div>

@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { FileBarChart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/empty-state';
+import { QueryErrorState } from '@/components/query-error-state';
+import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
+import { SettlementStatusBadge } from '@/components/status-badge';
 import {
   useCollectionPerformanceReport,
   useCommissionSummaryReport,
@@ -21,25 +24,43 @@ import {
   useSalesByRepresentativeReport,
   useSettlementSummaryReport,
 } from '@/hooks/use-reports';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+
+type ReportColumn<T> = {
+  header: string;
+  render: (row: T) => React.ReactNode;
+  align?: 'right';
+};
+
+type ReportQuery<T> = {
+  data: T[] | undefined;
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => unknown;
+};
 
 function ReportTable<T>({
   isLoading,
+  isError = false,
+  error,
+  onRetry,
   rows,
   columns,
 }: {
   isLoading: boolean;
+  isError?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   rows: T[] | undefined;
-  columns: { header: string; render: (row: T) => React.ReactNode }[];
+  columns: ReportColumn<T>[];
 }) {
   if (isLoading) {
-    return (
-      <div className="space-y-2 p-6">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <TableSkeleton rows={5} />;
+  }
+  if (isError) {
+    return <QueryErrorState error={error} onRetry={onRetry} />;
   }
   if (!rows || rows.length === 0) {
     return <EmptyState icon={FileBarChart} title="No data for this report" />;
@@ -49,7 +70,9 @@ function ReportTable<T>({
       <TableHeader>
         <TableRow>
           {columns.map((col) => (
-            <TableHead key={col.header}>{col.header}</TableHead>
+            <TableHead key={col.header} className={cn(col.align === 'right' && 'text-right')}>
+              {col.header}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -57,12 +80,47 @@ function ReportTable<T>({
         {rows.map((row, i) => (
           <TableRow key={i}>
             {columns.map((col) => (
-              <TableCell key={col.header}>{col.render(row)}</TableCell>
+              <TableCell key={col.header} className={cn(col.align === 'right' && 'text-right tabular-nums')}>
+                {col.render(row)}
+              </TableCell>
             ))}
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function ReportPanel<T>({
+  title,
+  description,
+  query,
+  columns,
+}: {
+  title: string;
+  description?: string;
+  query: ReportQuery<T>;
+  columns: ReportColumn<T>[];
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <SectionHeader
+        title={title}
+        description={description}
+        isFetching={query.isFetching && !query.isLoading}
+        className="border-b border-border pb-3"
+      />
+      <div className={cn(query.isFetching && !query.isLoading && 'opacity-60 transition-opacity')}>
+        <ReportTable
+          isLoading={query.isLoading}
+          isError={query.isError}
+          error={query.error}
+          onRetry={() => query.refetch()}
+          rows={query.data}
+          columns={columns}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -84,28 +142,25 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Reports</h1>
-        <p className="text-sm text-muted-foreground">Representative and collection performance reporting</p>
-      </div>
+      <PageHeader title="Reports" description="Representative and collection performance reporting" />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="space-y-2">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-xs sm:flex-row sm:flex-wrap sm:items-end sm:p-5">
+        <div className="space-y-1.5">
           <Label>From</Label>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="sm:w-44" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label>To</Label>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="sm:w-44" />
         </div>
-        <p className="pb-2 text-xs text-muted-foreground">
+        <p className="max-w-md text-xs text-muted-foreground sm:pb-2">
           Applies to date-scoped reports below. Outstanding-by-Representative and Overdue Collections always show
           current state.
         </p>
       </div>
 
-      <Tabs defaultValue="representative-performance">
-        <TabsList className="flex-wrap">
+      <Tabs defaultValue="representative-performance" className="space-y-4">
+        <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="representative-performance">Rep Performance</TabsTrigger>
           <TabsTrigger value="collection-performance">Collection Performance</TabsTrigger>
           <TabsTrigger value="outstanding">Outstanding by Rep</TabsTrigger>
@@ -119,175 +174,145 @@ export default function ReportsPage() {
         </TabsList>
 
         <TabsContent value="representative-performance">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={repPerformance.isLoading}
-                rows={repPerformance.data}
-                columns={[
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Orders', render: (r) => r.orderCount },
-                  { header: 'Revenue', render: (r) => formatCurrency(r.revenue) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Rep Performance"
+            description="Orders and revenue per representative"
+            query={repPerformance}
+            columns={[
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Orders', render: (r) => r.orderCount, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="collection-performance">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={collectionPerformance.isLoading}
-                rows={collectionPerformance.data}
-                columns={[
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Confirmed', render: (r) => r.confirmed },
-                  { header: 'Confirmed Amount', render: (r) => formatCurrency(r.confirmedAmount) },
-                  { header: 'Rejected', render: (r) => r.rejected },
-                  { header: 'Pending', render: (r) => r.pending },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Collection Performance"
+            description="Confirmed, rejected and pending collections per representative"
+            query={collectionPerformance}
+            columns={[
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Confirmed', render: (r) => r.confirmed, align: 'right' },
+              { header: 'Confirmed Amount', render: (r) => formatCurrency(r.confirmedAmount), align: 'right' },
+              { header: 'Rejected', render: (r) => r.rejected, align: 'right' },
+              { header: 'Pending', render: (r) => r.pending, align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="outstanding">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={outstanding.isLoading}
-                rows={outstanding.data}
-                columns={[
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Customers', render: (r) => r.customerCount },
-                  { header: 'Outstanding Balance', render: (r) => formatCurrency(r.outstandingBalance) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Outstanding by Rep"
+            description="Current outstanding customer balances per representative"
+            query={outstanding}
+            columns={[
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Customers', render: (r) => r.customerCount, align: 'right' },
+              { header: 'Outstanding Balance', render: (r) => formatCurrency(r.outstandingBalance), align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="commission-summary">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={commissionSummary.isLoading}
-                rows={commissionSummary.data}
-                columns={[
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Pending', render: (r) => formatCurrency(r.pending) },
-                  { header: 'Approved', render: (r) => formatCurrency(r.approved) },
-                  { header: 'Settled', render: (r) => formatCurrency(r.settled) },
-                  { header: 'Reversed', render: (r) => formatCurrency(r.reversed) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Commission Summary"
+            description="Commission by status per representative"
+            query={commissionSummary}
+            columns={[
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Pending', render: (r) => formatCurrency(r.pending), align: 'right' },
+              { header: 'Approved', render: (r) => formatCurrency(r.approved), align: 'right' },
+              { header: 'Settled', render: (r) => formatCurrency(r.settled), align: 'right' },
+              { header: 'Reversed', render: (r) => formatCurrency(r.reversed), align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="settlement-summary">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={settlementSummary.isLoading}
-                rows={settlementSummary.data}
-                columns={[
-                  { header: 'Status', render: (r) => r.status },
-                  { header: 'Count', render: (r) => r.count },
-                  { header: 'Total Commission', render: (r) => formatCurrency(r.totalCommission) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Settlement Summary"
+            description="Settlements grouped by status"
+            query={settlementSummary}
+            columns={[
+              { header: 'Status', render: (r) => <SettlementStatusBadge status={r.status} /> },
+              { header: 'Count', render: (r) => r.count, align: 'right' },
+              { header: 'Total Commission', render: (r) => formatCurrency(r.totalCommission), align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="overdue-collections">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={overdueCollections.isLoading}
-                rows={overdueCollections.data}
-                columns={[
-                  { header: 'Order #', render: (r) => r.orderNumber },
-                  { header: 'Customer', render: (r) => r.customerName },
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Invoice', render: (r) => r.invoiceNumber },
-                  { header: 'Outstanding', render: (r) => formatCurrency(r.outstandingAmount) },
-                  { header: 'Days Overdue', render: (r) => r.overdueDays },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Overdue Collections"
+            description="Invoices past due with outstanding amounts"
+            query={overdueCollections}
+            columns={[
+              { header: 'Order #', render: (r) => r.orderNumber },
+              { header: 'Customer', render: (r) => r.customerName },
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Invoice', render: (r) => r.invoiceNumber },
+              { header: 'Outstanding', render: (r) => formatCurrency(r.outstandingAmount), align: 'right' },
+              { header: 'Days Overdue', render: (r) => <span className="font-medium text-destructive">{r.overdueDays}</span>, align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="returned-cheques">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={returnedCheques.isLoading}
-                rows={returnedCheques.data}
-                columns={[
-                  { header: 'Customer', render: (r) => r.customerName },
-                  { header: 'Invoice', render: (r) => r.invoiceNumber ?? '—' },
-                  { header: 'Representative', render: (r) => r.representativeName ?? '—' },
-                  { header: 'Cheque #', render: (r) => r.chequeNumber ?? '—' },
-                  { header: 'Bank', render: (r) => r.bankName ?? '—' },
-                  { header: 'Amount', render: (r) => formatCurrency(r.amount) },
-                  { header: 'Returned On', render: (r) => (r.chequeStatusUpdatedAt ? formatDate(r.chequeStatusUpdatedAt) : '—') },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Returned Cheques"
+            description="Cheques marked returned in the selected period"
+            query={returnedCheques}
+            columns={[
+              { header: 'Customer', render: (r) => r.customerName },
+              { header: 'Invoice', render: (r) => r.invoiceNumber ?? '—' },
+              { header: 'Representative', render: (r) => r.representativeName ?? '—' },
+              { header: 'Cheque #', render: (r) => r.chequeNumber ?? '—' },
+              { header: 'Bank', render: (r) => r.bankName ?? '—' },
+              { header: 'Amount', render: (r) => formatCurrency(r.amount), align: 'right' },
+              { header: 'Returned On', render: (r) => (r.chequeStatusUpdatedAt ? formatDate(r.chequeStatusUpdatedAt) : '—') },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="sales-product">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={salesByProduct.isLoading}
-                rows={salesByProduct.data}
-                columns={[
-                  { header: 'Product', render: (r) => r.productName },
-                  { header: 'Code', render: (r) => r.productCode },
-                  { header: 'Quantity Sold', render: (r) => r.quantitySold },
-                  { header: 'Revenue', render: (r) => formatCurrency(r.revenue) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Sales by Product"
+            description="Quantity sold and revenue per product"
+            query={salesByProduct}
+            columns={[
+              { header: 'Product', render: (r) => r.productName },
+              { header: 'Code', render: (r) => r.productCode },
+              { header: 'Quantity Sold', render: (r) => r.quantitySold, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="sales-category">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={salesByCategory.isLoading}
-                rows={salesByCategory.data}
-                columns={[
-                  { header: 'Category', render: (r) => r.category },
-                  { header: 'Quantity Sold', render: (r) => r.quantitySold },
-                  { header: 'Revenue', render: (r) => formatCurrency(r.revenue) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Sales by Category"
+            description="Quantity sold and revenue per category"
+            query={salesByCategory}
+            columns={[
+              { header: 'Category', render: (r) => r.category },
+              { header: 'Quantity Sold', render: (r) => r.quantitySold, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="sales-representative">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <ReportTable
-                isLoading={salesByRepresentative.isLoading}
-                rows={salesByRepresentative.data}
-                columns={[
-                  { header: 'Representative', render: (r) => r.representativeName },
-                  { header: 'Orders', render: (r) => r.orderCount },
-                  { header: 'Revenue', render: (r) => formatCurrency(r.revenue) },
-                ]}
-              />
-            </CardContent>
-          </Card>
+          <ReportPanel
+            title="Sales by Rep"
+            description="Orders and revenue per representative"
+            query={salesByRepresentative}
+            columns={[
+              { header: 'Representative', render: (r) => r.representativeName },
+              { header: 'Orders', render: (r) => r.orderCount, align: 'right' },
+              { header: 'Revenue', render: (r) => <span className="font-medium">{formatCurrency(r.revenue)}</span>, align: 'right' },
+            ]}
+          />
         </TabsContent>
       </Tabs>
     </div>

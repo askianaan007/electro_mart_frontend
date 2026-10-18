@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
@@ -121,10 +121,10 @@ export function StandalonePurchaseReturnFormDialog({
       <DialogContent title={isEdit ? 'Edit return' : 'Record a return'} className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit return' : 'Record a return'}</DialogTitle>
+          <DialogDescription>
+            For damaged or defective stock that doesn&apos;t need to be matched against a particular purchase bill.
+          </DialogDescription>
         </DialogHeader>
-        <p className="-mt-2 text-sm text-muted-foreground">
-          For damaged or defective stock that doesn&apos;t need to be matched against a particular purchase bill.
-        </p>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
             <FormField
@@ -184,7 +184,7 @@ export function StandalonePurchaseReturnFormDialog({
                   <FormItem>
                     <FormLabel>Quantity</FormLabel>
                     <FormControl>
-                      <Input type="number" min={1} {...field} />
+                      <Input type="number" min={1} className="tabular-nums" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -197,7 +197,7 @@ export function StandalonePurchaseReturnFormDialog({
                   <FormItem>
                     <FormLabel>Unit cost</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step="0.01" {...field} />
+                      <Input type="number" min={0} step="0.01" className="tabular-nums" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

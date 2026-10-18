@@ -6,7 +6,14 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,6 +67,7 @@ export function CreateSettlementDialog({
       <DialogContent title="Create settlement">
         <DialogHeader>
           <DialogTitle>Create a commission settlement</DialogTitle>
+          <DialogDescription>Batch a representative&apos;s pending commission for payout.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -115,7 +123,7 @@ export function CreateSettlementDialog({
                 )}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
               Batches every pending commission line for this representative created within the period into a new
               settlement.
             </p>

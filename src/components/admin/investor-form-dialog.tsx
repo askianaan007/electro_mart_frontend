@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useCreateInvestor, useUpdateInvestor } from '@/hooks/use-investors';
@@ -79,6 +79,7 @@ export function InvestorFormDialog({
       <DialogContent title={isEdit ? 'Edit investor' : 'Add investor'}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit investor' : 'Add a new investor'}</DialogTitle>
+          <DialogDescription>Equity partner details and their share of profit and expenses.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -130,7 +131,7 @@ export function InvestorFormDialog({
                 <FormItem>
                   <FormLabel>Profit share (%)</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0} max={100} step="0.01" {...field} />
+                    <Input type="number" min={0} max={100} step="0.01" className="tabular-nums" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

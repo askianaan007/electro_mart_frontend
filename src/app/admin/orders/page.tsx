@@ -2,20 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import {
-  ArrowUpRight,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  PackageCheck,
-  Plus,
-  RotateCcw,
-  Search,
-  ShoppingCart,
-  Truck,
-  User,
-  X,
-} from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, Clock, Plus, RotateCcw, Search, ShoppingCart, Truck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +16,9 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { StatCard } from '@/components/stat-card';
+import { TableSkeleton } from '@/components/loading-state';
 import { OrderStatusBadge } from '@/components/status-badge';
 import {
   AlertDialog,
@@ -66,10 +56,7 @@ function orderTotals(order: Order) {
 
 function ReturnedBadge({ netValue }: { netValue: number }) {
   return (
-    <Badge
-      variant={netValue <= 0 ? 'destructive' : 'warning'}
-      className="rounded-full px-2 py-0 text-[10px] font-black uppercase tracking-wider shadow-2xs"
-    >
+    <Badge variant={netValue <= 0 ? 'destructive' : 'warning'}>
       {netValue <= 0 ? 'Fully Returned' : 'Partially Returned'}
     </Badge>
   );
@@ -79,14 +66,14 @@ function AmountBreakdown({ order, className }: { order: Order; className?: strin
   const { grossValue, returnedValue, netValue, hasReturns } = orderTotals(order);
 
   if (!hasReturns) {
-    return <span className={cn('font-black text-foreground text-xs sm:text-sm', className)}>{formatCurrency(grossValue)}</span>;
+    return <span className={cn('font-medium tabular-nums text-foreground', className)}>{formatCurrency(grossValue)}</span>;
   }
 
   return (
-    <div className={cn('flex flex-col gap-0.5', className)}>
-      <span className="text-[10px] text-muted-foreground line-through">{formatCurrency(grossValue)}</span>
-      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">−{formatCurrency(returnedValue)} returned</span>
-      <span className="font-black text-xs sm:text-sm text-foreground">{formatCurrency(netValue)} net</span>
+    <div className={cn('flex flex-col gap-0.5 tabular-nums', className)}>
+      <span className="text-xs text-muted-foreground line-through">{formatCurrency(grossValue)}</span>
+      <span className="text-xs font-medium text-destructive">−{formatCurrency(returnedValue)} returned</span>
+      <span className="font-medium text-foreground">{formatCurrency(netValue)} net</span>
     </div>
   );
 }
@@ -143,136 +130,67 @@ export default function OrdersPage() {
   const completedCount = data?.data.filter((o) => o.status === 'DELIVERED' || o.status === 'COMPLETED').length ?? 0;
 
   return (
-    <div className="space-y-6 select-none">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
-              <ShoppingCart className="size-5" />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              Orders Management
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground font-medium sm:text-sm">
-            Review dealer orders, approve incoming requests, track delivery status, and handle returns
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Orders"
+        description="Review dealer orders, approve incoming requests, track delivery status and handle returns."
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setResetOpen(true)}>
+              <RotateCcw />
+              Reset Counter
+            </Button>
+            <Button asChild>
+              <Link href="/admin/orders/new">
+                <Plus />
+                New Order
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-          <Button
-            variant="outline"
-            onClick={() => setResetOpen(true)}
-            className="rounded-2xl font-semibold backdrop-blur-md h-10 shadow-xs"
-          >
-            <RotateCcw className="size-4" />
-            <span>Reset Counter</span>
-          </Button>
-          <Button asChild className="rounded-2xl font-bold shadow-md hover:shadow-lg transition-all h-10">
-            <Link href="/admin/orders/new">
-              <Plus className="size-4" />
-              <span>New Order</span>
-            </Link>
-          </Button>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[104px] w-full rounded-xl" />)
+        ) : (
+          <>
+            <StatCard label="Total Orders" value={totalOrdersCount} icon={ShoppingCart} />
+            <StatCard label="Pending Approval" value={pendingCount} icon={Clock} tone="warning" hint="On this page" />
+            <StatCard label="In Packing / Shipping" value={inProgressCount} icon={Truck} tone="purple" hint="On this page" />
+            <StatCard
+              label="Delivered & Completed"
+              value={completedCount}
+              icon={CheckCircle2}
+              tone="success"
+              hint="On this page"
+            />
+          </>
+        )}
       </div>
 
-      {/* 4 Quick Orders KPI Summary Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Total Orders */}
-        <div className="group relative isolate overflow-hidden rounded-2xl border border-border/60 bg-card/80 dark:bg-slate-900/60 p-4 backdrop-blur-xl shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Total Orders
-            </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              <ShoppingCart className="size-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black tracking-tight text-foreground">
-            {isLoading ? <Skeleton className="h-8 w-16" /> : totalOrdersCount}
-          </div>
-        </div>
-
-        {/* KPI 2: Pending Approval */}
-        <div className="group relative isolate overflow-hidden rounded-2xl border border-border/60 bg-card/80 dark:bg-slate-900/60 p-4 backdrop-blur-xl shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Pending Approval
-            </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              <Clock className="size-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">
-            {isLoading ? <Skeleton className="h-8 w-16" /> : pendingCount}
-          </div>
-        </div>
-
-        {/* KPI 3: In Progress */}
-        <div className="group relative isolate overflow-hidden rounded-2xl border border-border/60 bg-card/80 dark:bg-slate-900/60 p-4 backdrop-blur-xl shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              In Packing / Shipping
-            </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-              <Truck className="size-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black tracking-tight text-foreground">
-            {isLoading ? <Skeleton className="h-8 w-16" /> : inProgressCount}
-          </div>
-        </div>
-
-        {/* KPI 4: Delivered */}
-        <div className="group relative isolate overflow-hidden rounded-2xl border border-border/60 bg-card/80 dark:bg-slate-900/60 p-4 backdrop-blur-xl shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Delivered &amp; Completed
-            </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <CheckCircle2 className="size-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-            {isLoading ? <Skeleton className="h-8 w-16" /> : completedCount}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Filter Bar */}
       <Tabs
         value={status}
         onValueChange={(v) => {
           setStatus(v);
           setPage(1);
         }}
-        className="w-full"
       >
-        <TabsList className="w-full justify-start overflow-x-auto rounded-2xl border border-border/60 bg-card/70 p-1.5 backdrop-blur-md h-auto gap-1">
+        <TabsList className="max-w-full justify-start overflow-x-auto scrollbar-thin">
           {TABS.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md shrink-0"
-            >
+            <TabsTrigger key={tab.value} value={tab.value} className="shrink-0">
               {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
 
-      {/* Main Glass Table Container */}
-      <div className="relative isolate overflow-hidden rounded-3xl border border-border/50 bg-card/70 backdrop-blur-2xl shadow-[0_10px_35px_rgba(0,0,0,0.03)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.4)] transition-all">
-        {/* Specular Shimmer Top Curve */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 rounded-t-3xl bg-gradient-to-b from-white/15 via-white/5 to-transparent dark:from-white/10" />
-
-        <SectionHeader title="Orders Register" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Orders register" isFetching={isFetching && !isLoading} className="pb-3" />
 
         <FilterBar>
           <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search order #, dealer..."
               value={search}
@@ -280,7 +198,7 @@ export default function OrdersPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-9 rounded-xl border-border/60 bg-background/60 backdrop-blur-md"
+              className="pl-9"
             />
           </div>
 
@@ -291,10 +209,10 @@ export default function OrdersPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="sm:w-44 rounded-xl border-border/60 bg-background/60 backdrop-blur-md font-semibold text-xs">
+            <SelectTrigger className="sm:w-48">
               <SelectValue placeholder="All Customers" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl border-border/60 shadow-xl">
+            <SelectContent>
               <SelectItem value="all">All Customers</SelectItem>
               {dealers?.data.map((dealer) => (
                 <SelectItem key={dealer.id} value={dealer.id}>
@@ -304,51 +222,38 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-            <span className="text-xs font-bold text-muted-foreground">From:</span>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 w-full sm:w-36 rounded-xl border-border/60 bg-background/60 backdrop-blur-md text-xs font-medium"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-            <span className="text-xs font-bold text-muted-foreground">To:</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 w-full sm:w-36 rounded-xl border-border/60 bg-background/60 backdrop-blur-md text-xs font-medium"
-            />
-          </div>
+          <Input
+            type="date"
+            aria-label="From date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto"
+          />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input
+            type="date"
+            aria-label="To date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto"
+          />
 
           {filtersActive && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="rounded-full text-xs font-bold text-muted-foreground hover:text-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="size-3.5" />
-              <span>Clear filters</span>
+              Clear filters
             </Button>
           )}
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-3 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-2xl" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -358,107 +263,80 @@ export default function OrdersPage() {
               title="No matching orders"
               description="Try adjusting or clearing your search term and date range filters"
               action={
-                <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-xl font-semibold">
+                <Button variant="outline" size="sm" onClick={clearFilters}>
                   Clear filters
                 </Button>
               }
             />
           ) : (
-            <EmptyState icon={ShoppingCart} title="No orders recorded" description="Dealer orders submitted to the system will display here" />
+            <EmptyState
+              icon={ShoppingCart}
+              title="No orders recorded"
+              description="Dealer orders submitted to the system will display here"
+            />
           )
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className={cn('hidden sm:block overflow-x-auto p-4 sm:p-6', isFetching && 'opacity-60 transition-opacity')}>
-              <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/50 backdrop-blur-md">
-                <Table className="min-w-[700px]">
-                  <TableHeader className="bg-muted/60">
-                    <TableRow className="hover:bg-transparent border-border/60">
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Order #
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Customer / Dealer
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Order Date
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Total Amount
-                      </TableHead>
-                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-right font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Action
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="divide-y divide-border/50">
-                    {data.data.map((order) => {
-                      const { hasReturns, netValue } = orderTotals(order);
-                      return (
-                        <TableRow
-                          key={order.id}
-                          className={cn(
-                            'hover:bg-muted/30 transition-colors',
-                            hasReturns && 'border-l-4 border-l-amber-500 bg-amber-500/5'
-                          )}
-                        >
-                          <TableCell>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
-                                href={`/admin/orders/${order.id}`}
-                                className="inline-flex items-center rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-black text-primary border border-primary/20 hover:bg-primary/20 transition-all"
-                              >
-                                {order.orderNumber}
-                              </Link>
-                              {hasReturns && <ReturnedBadge netValue={netValue} />}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex size-8 items-center justify-center rounded-full bg-muted border border-border/60 text-muted-foreground font-bold text-xs shrink-0">
-                                {order.dealer.businessName.slice(0, 2).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-xs text-foreground truncate">{order.dealer.businessName}</p>
-                                {order.dealer.ownerName && (
-                                  <p className="text-[10px] text-muted-foreground font-medium truncate">{order.dealer.ownerName}</p>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1">
-                              <Calendar className="size-3 text-muted-foreground/70" />
-                              {formatDate(order.createdAt)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <AmountBreakdown order={order} />
-                          </TableCell>
-                          <TableCell>
-                            <OrderStatusBadge status={order.status} />
-                          </TableCell>
-                          <TableCell className="text-right">
+            {/* Desktop table */}
+            <div className={cn('hidden sm:block', isFetching && 'opacity-60 transition-opacity')}>
+              <Table className="min-w-[700px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order #</TableHead>
+                    <TableHead>Customer / Dealer</TableHead>
+                    <TableHead>Order Date</TableHead>
+                    <TableHead className="text-right">Total Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.data.map((order) => {
+                    const { hasReturns, netValue } = orderTotals(order);
+                    return (
+                      <TableRow key={order.id} className={cn(hasReturns && 'bg-warning/5')}>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={`/admin/orders/${order.id}`}
-                              className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-extrabold text-primary border border-primary/20 hover:bg-primary/20 transition-all"
+                              className="font-medium text-primary hover:underline"
                             >
-                              <span>View</span>
-                              <ArrowUpRight className="size-3" />
+                              {order.orderNumber}
                             </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            {hasReturns && <ReturnedBadge netValue={netValue} />}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-foreground">{order.dealer.businessName}</p>
+                            {order.dealer.ownerName && (
+                              <div className="truncate text-xs text-muted-foreground">{order.dealer.ownerName}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <AmountBreakdown order={order} className="items-end" />
+                        </TableCell>
+                        <TableCell>
+                          <OrderStatusBadge status={order.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/orders/${order.id}`}>
+                              View
+                              <ArrowUpRight className="size-3.5" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
 
-            {/* Mobile Cards View */}
+            {/* Mobile cards */}
             <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((order) => {
                 const { hasReturns, netValue } = orderTotals(order);
@@ -466,16 +344,13 @@ export default function OrdersPage() {
                   <div
                     key={order.id}
                     className={cn(
-                      'rounded-2xl border border-border/60 bg-background/60 p-4 backdrop-blur-md space-y-3 shadow-2xs',
-                      hasReturns && 'border-l-4 border-l-amber-500 bg-amber-500/5'
+                      'space-y-3 rounded-lg border border-border bg-card p-4',
+                      hasReturns && 'border-warning/25 bg-warning/5',
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="inline-flex items-center rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-black text-primary border border-primary/20"
-                        >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/admin/orders/${order.id}`} className="font-medium text-primary hover:underline">
                           {order.orderNumber}
                         </Link>
                         {hasReturns && <ReturnedBadge netValue={netValue} />}
@@ -483,31 +358,22 @@ export default function OrdersPage() {
                       <OrderStatusBadge status={order.status} />
                     </div>
 
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 items-center justify-center rounded-full bg-muted border border-border/60 text-muted-foreground font-bold text-xs shrink-0">
-                        {order.dealer.businessName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs text-foreground truncate">{order.dealer.businessName}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Calendar className="size-3" />
-                          {formatDate(order.createdAt)}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{order.dealer.businessName}</p>
+                      <div className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/50 pt-2.5">
+                    <div className="flex items-end justify-between border-t border-border pt-3">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Amount</p>
+                        <p className="text-xs text-muted-foreground">Total amount</p>
                         <AmountBreakdown order={order} />
                       </div>
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-extrabold text-primary border border-primary/20"
-                      >
-                        <span>Details</span>
-                        <ArrowUpRight className="size-3" />
-                      </Link>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/admin/orders/${order.id}`}>
+                          Details
+                          <ArrowUpRight className="size-3.5" />
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -520,21 +386,17 @@ export default function OrdersPage() {
       </div>
 
       <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
-        <AlertDialogContent className="rounded-3xl shadow-2xl border-border/60 select-none">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-extrabold text-lg">Reset the order-number counter?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+            <AlertDialogTitle>Reset the order-number counter?</AlertDialogTitle>
+            <AlertDialogDescription>
               Realigns the next order number with what&apos;s actually in the table — one past the highest order
               number still on record, or #00001 if there are no orders left. Existing order numbers are never changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl font-semibold">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmResetCounter}
-              disabled={resetCounter.isPending}
-              className="rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetCounter} disabled={resetCounter.isPending}>
               Reset Counter
             </AlertDialogAction>
           </AlertDialogFooter>

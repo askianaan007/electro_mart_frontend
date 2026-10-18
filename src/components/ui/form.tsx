@@ -61,7 +61,7 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
   const id = React.useId();
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div className={cn('flex flex-col gap-2', className)} {...props} />
+      <div className={cn('flex flex-col gap-1.5', className)} {...props} />
     </FormItemContext.Provider>
   );
 }
@@ -92,7 +92,7 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
 function FormDescription({ className, ...props }: React.ComponentProps<'p'>) {
   const { formDescriptionId } = useFormField();
   return (
-    <p id={formDescriptionId} className={cn('text-sm text-muted-foreground', className)} {...props} />
+    <p id={formDescriptionId} className={cn('text-xs text-muted-foreground', className)} {...props} />
   );
 }
 
@@ -102,7 +102,7 @@ function FormMessage({ className, children, ...props }: React.ComponentProps<'p'
   if (!body) return null;
 
   return (
-    <p id={formMessageId} className={cn('text-sm font-medium text-destructive', className)} {...props}>
+    <p id={formMessageId} className={cn('text-xs font-medium text-destructive', className)} {...props}>
       {body}
     </p>
   );

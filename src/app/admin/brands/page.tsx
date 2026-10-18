@@ -4,11 +4,10 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { MoreHorizontal, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
@@ -32,6 +31,8 @@ import {
 import { BrandFormDialog } from '@/components/admin/brand-form-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import { useBrands, useDeleteBrand } from '@/hooks/use-brands';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn } from '@/lib/utils';
@@ -80,21 +81,19 @@ export default function BrandsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Brands</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage brand pages and logos for the Representative Portal storefront
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus />
-          Add Brand
-        </Button>
-      </div>
+      <PageHeader
+        title="Brands"
+        description="Manage brand pages and logos for the Representative Portal storefront"
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Brand
+          </Button>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-card">
-        <SectionHeader title="All brands" isFetching={isFetching && !isLoading} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="All brands" isFetching={isFetching && !isLoading} className="pb-3" />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -111,11 +110,7 @@ export default function BrandsPage() {
         </FilterBar>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -127,7 +122,7 @@ export default function BrandsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Brand</TableHead>
-                    <TableHead>Sort Order</TableHead>
+                    <TableHead className="text-right">Sort Order</TableHead>
                     <TableHead>Featured</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-10" />
@@ -138,17 +133,17 @@ export default function BrandsPage() {
                     <TableRow key={brand.id}>
                       <TableCell>
                         <button onClick={() => openEdit(brand)} className="flex items-center gap-3 text-left">
-                          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                             {brand.logoUrl ? (
                               <Image src={brand.logoUrl} alt={brand.name} width={36} height={36} className="object-cover" />
                             ) : (
                               <Tag className="size-4 text-muted-foreground" />
                             )}
                           </div>
-                          <p className="font-medium text-primary">{brand.name}</p>
+                          <p className="font-medium text-foreground hover:text-primary">{brand.name}</p>
                         </button>
                       </TableCell>
-                      <TableCell>{brand.sortOrder}</TableCell>
+                      <TableCell className="text-right tabular-nums">{brand.sortOrder}</TableCell>
                       <TableCell>{brand.isFeatured ? <Badge variant="purple">Featured</Badge> : '—'}</TableCell>
                       <TableCell>
                         <AccountStatusBadge status={brand.status} />
@@ -156,7 +151,7 @@ export default function BrandsPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" aria-label={`Actions for ${brand.name}`}>
                               <MoreHorizontal className="size-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -197,7 +192,7 @@ export default function BrandsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={confirmDelete} className={buttonVariants({ variant: 'destructive' })}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

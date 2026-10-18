@@ -21,8 +21,11 @@ export default function RootPage() {
   }, [hasHydrated, user, router]);
 
   return (
-    <div className="flex min-h-svh items-center justify-center">
-      <Loader2 className="size-6 animate-spin text-muted-foreground" />
+    <div className="flex min-h-svh items-center justify-center bg-background" aria-busy="true">
+      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+        <Loader2 className="size-5 animate-spin text-primary" />
+        Loading…
+      </div>
     </div>
   );
 }

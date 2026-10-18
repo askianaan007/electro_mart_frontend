@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { PaginationBar } from '@/components/pagination-bar';
 import { QueryErrorState } from '@/components/query-error-state';
 import { ProductCard } from '@/components/dealer/product-card';
@@ -39,9 +40,7 @@ export default function DealerProductsPage() {
     const copy = [...data.data];
     copy.sort((a, b) => {
       const cmp =
-        field === 'price'
-          ? Number(a.wholesalePrice) - Number(b.wholesalePrice)
-          : a.name.localeCompare(b.name);
+        field === 'price' ? Number(a.wholesalePrice) - Number(b.wholesalePrice) : a.name.localeCompare(b.name);
       return dir === 'desc' ? -cmp : cmp;
     });
     return copy;
@@ -49,10 +48,7 @@ export default function DealerProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Products</h1>
-        <p className="text-sm text-muted-foreground">Browse available products and add to cart</p>
-      </div>
+      <PageHeader title="Products" description="Browse available products and add them to your cart." />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
@@ -84,17 +80,29 @@ export default function DealerProductsPage() {
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+            <div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+              <Skeleton className="aspect-square rounded-none" />
+              <div className="space-y-2 p-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            </div>
           ))}
         </div>
       ) : isError ? (
-        <QueryErrorState error={error} onRetry={() => refetch()} />
+        <div className="rounded-xl border border-border bg-card shadow-xs">
+          <QueryErrorState error={error} onRetry={() => refetch()} />
+        </div>
       ) : !data || data.data.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title={search ? 'No matching products' : 'No products found'}
-          description={search ? 'Try a different search term' : 'Check back later for new products'}
-        />
+        <div className="rounded-xl border border-border bg-card shadow-xs">
+          <EmptyState
+            icon={Package}
+            title={search ? 'No matching products' : 'No products found'}
+            description={search ? 'Try a different search term' : 'Check back later for new products'}
+          />
+        </div>
       ) : (
         <>
           <div

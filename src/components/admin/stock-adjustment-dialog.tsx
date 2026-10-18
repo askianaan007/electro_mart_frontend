@@ -5,9 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowDownLeft, ArrowUpRight, Boxes, Minus, Package, Plus, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,47 +75,35 @@ export function StockAdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Stock adjustment" className="sm:max-w-md rounded-3xl border border-border/60 bg-card/95 backdrop-blur-2xl p-6 shadow-2xl select-none overflow-hidden">
-        {/* Specular Shimmer Curve */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 rounded-t-3xl bg-gradient-to-b from-white/20 via-white/5 to-transparent dark:from-white/10" />
-
-        <DialogHeader className="relative z-10 space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-xs">
-              <SlidersHorizontal className="size-4.5" />
-            </div>
-            <DialogTitle className="text-lg sm:text-xl font-extrabold tracking-tight">
-              Stock Adjustment
-            </DialogTitle>
-          </div>
-          <p className="text-xs text-muted-foreground font-medium">
+      <DialogContent title="Stock adjustment" className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Stock Adjustment</DialogTitle>
+          <DialogDescription>
             Record manual stock count corrections, damages, or incoming stock arrivals
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={onSubmit} className="relative z-10 space-y-4 pt-2">
+          <form onSubmit={onSubmit} className="space-y-4">
             {/* Product Selector */}
             <FormField
               control={form.control}
               name="productId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Target Product
-                  </FormLabel>
+                  <FormLabel>Target Product</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange} disabled={!!defaultProductId}>
                     <FormControl>
-                      <SelectTrigger className="h-11 rounded-2xl border-border/60 bg-background/60 backdrop-blur-md font-semibold text-xs sm:text-sm">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select a product from inventory" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="rounded-2xl border-border/60 shadow-xl max-h-60">
+                    <SelectContent className="max-h-60">
                       {products?.data.map((product) => (
-                        <SelectItem key={product.id} value={product.id} className="rounded-xl text-xs font-medium py-2">
-                          <span className="font-bold text-foreground">{product.name}</span>{' '}
-                          <span className="text-muted-foreground font-mono text-[10px]">({product.productCode})</span>
-                          <span className="ml-1.5 font-bold text-primary">— {product.currentStock} units</span>
+                        <SelectItem key={product.id} value={product.id}>
+                          <span className="font-medium text-foreground">{product.name}</span>{' '}
+                          <span className="font-mono text-xs text-muted-foreground">({product.productCode})</span>
+                          <span className="ml-1.5 tabular-nums text-muted-foreground">— {product.currentStock} units</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -127,23 +115,23 @@ export function StockAdjustmentDialog({
 
             {/* Selected Product Context Banner */}
             {selectedProduct && (
-              <div className="rounded-2xl border border-border/60 bg-muted/40 p-3.5 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-                    <Package className="size-4" />
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Package className="size-[18px]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-foreground">{selectedProduct.name}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">Current: {currentStock} units</p>
+                    <p className="truncate text-sm font-medium text-foreground">{selectedProduct.name}</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">Current: {currentStock} units</p>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">New Stock</p>
-                  <div className="flex items-center gap-1 font-extrabold text-xs">
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-muted-foreground">New Stock</p>
+                  <div className="flex items-center justify-end gap-1 text-sm tabular-nums">
                     <span className="text-muted-foreground">{currentStock}</span>
-                    <span>→</span>
-                    <span className={cn('font-black text-sm', direction === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
+                    <span className="text-muted-foreground">→</span>
+                    <span className={cn('font-semibold', direction === 'IN' ? 'text-success' : 'text-destructive')}>
                       {projectedStock} units
                     </span>
                   </div>
@@ -157,18 +145,17 @@ export function StockAdjustmentDialog({
               name="direction"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Adjustment Direction
-                  </FormLabel>
-                  <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/60 border border-border/60">
+                  <FormLabel>Adjustment Direction</FormLabel>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted/60 p-1">
                     <button
                       type="button"
                       onClick={() => field.onChange('IN')}
+                      aria-pressed={field.value === 'IN'}
                       className={cn(
-                        'flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-extrabold transition-all duration-200',
+                        'flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
                         field.value === 'IN'
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs scale-[1.02]'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-card text-success shadow-xs ring-1 ring-success/25'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       <ArrowDownLeft className="size-4" />
@@ -177,11 +164,12 @@ export function StockAdjustmentDialog({
                     <button
                       type="button"
                       onClick={() => field.onChange('OUT')}
+                      aria-pressed={field.value === 'OUT'}
                       className={cn(
-                        'flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-extrabold transition-all duration-200',
+                        'flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
                         field.value === 'OUT'
-                          ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-xs scale-[1.02]'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-card text-destructive shadow-xs ring-1 ring-destructive/25'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       <ArrowUpRight className="size-4" />
@@ -198,17 +186,9 @@ export function StockAdjustmentDialog({
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Adjustment Quantity
-                  </FormLabel>
+                  <FormLabel>Adjustment Quantity</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="Enter quantity"
-                      {...field}
-                      className="h-11 rounded-2xl border-border/60 bg-background/60 backdrop-blur-md font-extrabold text-sm"
-                    />
+                    <Input type="number" min={1} placeholder="Enter quantity" {...field} className="tabular-nums" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -221,35 +201,20 @@ export function StockAdjustmentDialog({
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Reason / Note
-                  </FormLabel>
+                  <FormLabel>Reason / Note</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g., Stock count audit correction, damage discard..."
-                      {...field}
-                      className="h-11 rounded-2xl border-border/60 bg-background/60 backdrop-blur-md text-xs sm:text-sm font-medium"
-                    />
+                    <Input placeholder="e.g., Stock count audit correction, damage discard..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <DialogFooter className="gap-2 pt-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="rounded-2xl font-semibold backdrop-blur-md h-11 sm:h-10"
-              >
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                loading={adjustStock.isPending}
-                className="rounded-2xl font-bold shadow-md hover:shadow-lg transition-all h-11 sm:h-10"
-              >
+              <Button type="submit" loading={adjustStock.isPending}>
                 Save Adjustment
               </Button>
             </DialogFooter>

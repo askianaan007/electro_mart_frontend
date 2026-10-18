@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Ban,
   Copy,
   Eraser,
@@ -22,10 +21,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -47,12 +44,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  AccountStatusBadge,
   RepresentativeStatusBadge,
   SettlementStatusBadge,
 } from '@/components/status-badge';
 import { StatCard } from '@/components/stat-card';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { PageSkeleton, TableSkeleton } from '@/components/loading-state';
 import { RepresentativeFormDialog } from '@/components/admin/representative-form-dialog';
 import { AssignProductDialog } from '@/components/admin/assign-product-dialog';
 import {
@@ -76,11 +77,16 @@ import { getErrorMessage } from '@/lib/api/error';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 function TabLoader() {
+  return <TableSkeleton rows={3} />;
+}
+
+const PANEL = 'overflow-hidden rounded-xl border border-border bg-card shadow-xs';
+
+function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="space-y-2 p-6">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} className="h-10 w-full" />
-      ))}
+    <div className="space-y-0.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -102,50 +108,82 @@ export default function RepresentativeDetailPage() {
   const removeAssignment = useRemoveProductAssignment(id);
 
   const { data: rep, isLoading, isError, error, refetch } = useRepresentative(id);
-  const { data: salesStats, isLoading: salesLoading } = useRepresentativeSalesStats(id);
-  const { data: commissionStats, isLoading: commissionLoading } = useRepresentativeCommissionStats(id);
+  const {
+    data: salesStats,
+    isLoading: salesLoading,
+    isError: salesIsError,
+    error: salesError,
+    refetch: refetchSales,
+  } = useRepresentativeSalesStats(id);
+  const {
+    data: commissionStats,
+    isLoading: commissionLoading,
+    isError: commissionIsError,
+    error: commissionError,
+    refetch: refetchCommission,
+  } = useRepresentativeCommissionStats(id);
   const {
     data: assignedProducts,
     isLoading: assignedProductsLoading,
     isFetching: assignedProductsFetching,
+    isError: assignedProductsIsError,
+    error: assignedProductsError,
+    refetch: refetchAssignedProducts,
   } = useRepresentativeAssignedProducts(id);
-  const { data: assignedBanners, isLoading: assignedBannersLoading } = useRepresentativeAssignedBanners(id);
+  const {
+    data: assignedBanners,
+    isLoading: assignedBannersLoading,
+    isFetching: assignedBannersFetching,
+    isError: assignedBannersIsError,
+    error: assignedBannersError,
+    refetch: refetchAssignedBanners,
+  } = useRepresentativeAssignedBanners(id);
   const {
     data: assignedCustomers,
     isLoading: customersLoading,
     isFetching: customersFetching,
+    isError: customersIsError,
+    error: customersError,
+    refetch: refetchCustomers,
   } = useRepresentativeAssignedCustomers(id, { limit: 10 });
   const {
     data: settlements,
     isLoading: settlementsLoading,
     isFetching: settlementsFetching,
+    isError: settlementsIsError,
+    error: settlementsError,
+    refetch: refetchSettlements,
   } = useRepresentativeSettlements(id, { limit: 10 });
   const {
     data: loginHistory,
     isLoading: loginHistoryLoading,
     isFetching: loginHistoryFetching,
+    isError: loginHistoryIsError,
+    error: loginHistoryError,
+    refetch: refetchLoginHistory,
   } = useRepresentativeLoginHistory(id, { limit: 10 });
   const {
     data: activityLog,
     isLoading: activityLoading,
     isFetching: activityFetching,
+    isError: activityIsError,
+    error: activityError,
+    refetch: refetchActivity,
   } = useRepresentativeActivityLog(id, { limit: 10 });
 
   if (isError) {
-    return <QueryErrorState error={error} onRetry={() => refetch()} />;
-  }
-
-  if (isLoading || !rep) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
+      <div className="space-y-6">
+        <PageHeader title="Representative" onBack={() => router.back()} />
+        <div className={PANEL}>
+          <QueryErrorState error={error} onRetry={() => refetch()} />
         </div>
       </div>
     );
+  }
+
+  if (isLoading || !rep) {
+    return <PageSkeleton cards={4} />;
   }
 
   const isLocked = !!rep.lockedUntil && new Date(rep.lockedUntil) > new Date();
@@ -197,59 +235,59 @@ export default function RepresentativeDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
-        <ArrowLeft />
-        Back
-      </Button>
-
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{rep.name}</h1>
+      <PageHeader
+        title={rep.name}
+        onBack={() => router.back()}
+        description={
+          <span className="tabular-nums">
+            {rep.email} &middot; {rep.phone}
+          </span>
+        }
+        meta={
+          <>
             <RepresentativeStatusBadge status={rep.status} />
             {isLocked && (
               <Badge variant="destructive">
-                <Lock className="mr-1 size-3" />
+                <Lock />
                 Locked
               </Badge>
             )}
             {rep.mustChangePassword && <Badge variant="warning">Password change pending</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {rep.email} &middot; {rep.phone}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isLocked && (
-            <Button variant="outline" onClick={handleUnlock} loading={unlockRep.isPending}>
-              <Unlock />
-              Unlock
+          </>
+        }
+        actions={
+          <>
+            {isLocked && (
+              <Button variant="outline" onClick={handleUnlock} loading={unlockRep.isPending}>
+                <Unlock />
+                Unlock
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleResetPassword} loading={resetPassword.isPending}>
+              <KeyRound />
+              Reset password
             </Button>
-          )}
-          <Button variant="outline" onClick={handleResetPassword} loading={resetPassword.isPending}>
-            <KeyRound />
-            Reset password
-          </Button>
-          <Button variant="outline" onClick={handleForcePasswordChange} loading={forcePasswordChange.isPending}>
-            <ShieldAlert />
-            Force change
-          </Button>
-          <Button
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 />
-            Delete
-          </Button>
-          <Button onClick={() => setEditOpen(true)}>
-            <Pencil />
-            Edit
-          </Button>
-        </div>
-      </div>
+            <Button variant="outline" onClick={handleForcePasswordChange} loading={forcePasswordChange.isPending}>
+              <ShieldAlert />
+              Force change
+            </Button>
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 />
+              Delete
+            </Button>
+            <Button onClick={() => setEditOpen(true)}>
+              <Pencil />
+              Edit
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Customers" value={rep.summary.totalCustomers} icon={Users} />
         <StatCard label="Total Orders" value={rep.summary.totalOrders} icon={ShoppingCart} />
         <StatCard
@@ -266,86 +304,73 @@ export default function RepresentativeDetailPage() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="products">
-            Assigned Products
-            {assignedProductsFetching && !assignedProductsLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
-          </TabsTrigger>
-          <TabsTrigger value="banners">Assigned Banners</TabsTrigger>
-          <TabsTrigger value="customers">
-            Assigned Customers
-            {customersFetching && !customersLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
-          </TabsTrigger>
-          <TabsTrigger value="sales-stats">Sales Statistics</TabsTrigger>
-          <TabsTrigger value="commission-stats">Commission Statistics</TabsTrigger>
-          <TabsTrigger value="settlements">
-            Settlement History
-            {settlementsFetching && !settlementsLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
-          </TabsTrigger>
-          <TabsTrigger value="login-history">
-            Login History
-            {loginHistoryFetching && !loginHistoryLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
-          </TabsTrigger>
-          <TabsTrigger value="activity">
-            Activity History
-            {activityFetching && !activityLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-thin">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="products">
+              Assigned Products
+              {assignedProductsFetching && !assignedProductsLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+            </TabsTrigger>
+            <TabsTrigger value="banners">Assigned Banners</TabsTrigger>
+            <TabsTrigger value="customers">
+              Assigned Customers
+              {customersFetching && !customersLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+            </TabsTrigger>
+            <TabsTrigger value="sales-stats">Sales Statistics</TabsTrigger>
+            <TabsTrigger value="commission-stats">Commission Statistics</TabsTrigger>
+            <TabsTrigger value="settlements">
+              Settlement History
+              {settlementsFetching && !settlementsLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+            </TabsTrigger>
+            <TabsTrigger value="login-history">
+              Login History
+              {loginHistoryFetching && !loginHistoryLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+            </TabsTrigger>
+            <TabsTrigger value="activity">
+              Activity History
+              {activityFetching && !activityLoading && <Loader2 className="ml-1.5 size-3.5 animate-spin" />}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
-          <Card>
-            <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Full name</p>
-                <p className="text-sm font-medium">{rep.name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Email / Username</p>
-                <p className="text-sm font-medium">{rep.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="text-sm font-medium">{rep.phone}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">NIC / Employee ID</p>
-                <p className="text-sm font-medium">{rep.nicOrEmployeeId ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Address</p>
-                <p className="text-sm font-medium">{rep.address ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Joining date</p>
-                <p className="text-sm font-medium">{formatDate(rep.joiningDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Last login</p>
-                <p className="text-sm font-medium">{rep.lastLoginAt ? formatDate(rep.lastLoginAt) : 'Never'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Failed login attempts</p>
-                <p className="text-sm font-medium">{rep.failedLoginAttempts}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className={PANEL}>
+            <SectionHeader title="Profile" description="Account and contact details" className="pb-3" />
+            <div className="grid gap-x-6 gap-y-4 border-t border-border p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
+              <DetailField label="Full name" value={rep.name} />
+              <DetailField label="Email / Username" value={rep.email} />
+              <DetailField label="Phone" value={<span className="tabular-nums">{rep.phone}</span>} />
+              <DetailField label="NIC / Employee ID" value={rep.nicOrEmployeeId ?? '—'} />
+              <DetailField label="Address" value={rep.address ?? '—'} />
+              <DetailField label="Joining date" value={formatDate(rep.joiningDate)} />
+              <DetailField label="Last login" value={rep.lastLoginAt ? formatDate(rep.lastLoginAt) : 'Never'} />
+              <DetailField
+                label="Failed login attempts"
+                value={<span className="tabular-nums">{rep.failedLoginAttempts}</span>}
+              />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="products">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <div className="flex items-center justify-between p-4">
-                <p className="text-sm text-muted-foreground">
-                  Opt-in catalog scope — with no assignments, this representative sees every active product.
-                </p>
+          <div className={PANEL}>
+            <SectionHeader
+              title="Assigned products"
+              description="Opt-in catalog scope — with no assignments, this representative sees every active product."
+              isFetching={assignedProductsFetching && !assignedProductsLoading}
+              className="pb-3"
+              actions={
                 <Button size="sm" onClick={() => setAssignOpen(true)}>
                   <Plus />
                   Assign scope
                 </Button>
-              </div>
+              }
+            />
+            <div className="border-t border-border">
               {assignedProductsLoading ? (
                 <TabLoader />
+              ) : assignedProductsIsError ? (
+                <QueryErrorState error={assignedProductsError} onRetry={() => refetchAssignedProducts()} />
               ) : !assignedProducts || assignedProducts.length === 0 ? (
                 <EmptyState icon={ShoppingCart} title="No scopes assigned" description="This representative can see the entire active catalog" />
               ) : (
@@ -365,11 +390,13 @@ export default function RepresentativeDetailPage() {
                           <Badge variant="outline">{assignment.scopeType}</Badge>
                         </TableCell>
                         <TableCell className="font-medium">{assignment.scopeValue}</TableCell>
-                        <TableCell>{formatDate(assignment.createdAt)}</TableCell>
-                        <TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">{formatDate(assignment.createdAt)}</TableCell>
+                        <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="size-8 text-destructive hover:text-destructive"
+                            aria-label="Remove assignment"
                             onClick={() =>
                               removeAssignment.mutate(assignment.id, {
                                 onSuccess: () => toast.success('Assignment removed'),
@@ -377,7 +404,7 @@ export default function RepresentativeDetailPage() {
                               })
                             }
                           >
-                            <Trash2 className="size-4 text-destructive" />
+                            <Trash2 className="size-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -385,15 +412,22 @@ export default function RepresentativeDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="banners">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
+          <div className={PANEL}>
+            <SectionHeader
+              title="Assigned banners"
+              isFetching={assignedBannersFetching && !assignedBannersLoading}
+              className="pb-3"
+            />
+            <div className="border-t border-border">
               {assignedBannersLoading ? (
                 <TabLoader />
+              ) : assignedBannersIsError ? (
+                <QueryErrorState error={assignedBannersError} onRetry={() => refetchAssignedBanners()} />
               ) : !assignedBanners || assignedBanners.length === 0 ? (
                 <EmptyState
                   icon={Ban}
@@ -405,7 +439,7 @@ export default function RepresentativeDetailPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Banner</TableHead>
-                      <TableHead>Priority</TableHead>
+                      <TableHead className="text-right">Priority</TableHead>
                       <TableHead>Window</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -413,8 +447,8 @@ export default function RepresentativeDetailPage() {
                     {assignedBanners.map((assignment) => (
                       <TableRow key={assignment.id}>
                         <TableCell className="font-medium">{assignment.banner.title ?? assignment.bannerId}</TableCell>
-                        <TableCell>{assignment.priority}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-right tabular-nums">{assignment.priority}</TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
                           {assignment.startsAt ? formatDate(assignment.startsAt) : 'Always'} –{' '}
                           {assignment.expiresAt ? formatDate(assignment.expiresAt) : 'No expiry'}
                         </TableCell>
@@ -423,15 +457,22 @@ export default function RepresentativeDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="customers">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
+          <div className={PANEL}>
+            <SectionHeader
+              title="Assigned customers"
+              isFetching={customersFetching && !customersLoading}
+              className="pb-3"
+            />
+            <div className="border-t border-border">
               {customersLoading ? (
                 <TabLoader />
+              ) : customersIsError ? (
+                <QueryErrorState error={customersError} onRetry={() => refetchCustomers()} />
               ) : !assignedCustomers || assignedCustomers.data.length === 0 ? (
                 <EmptyState icon={Users} title="No customers registered yet" />
               ) : (
@@ -440,7 +481,7 @@ export default function RepresentativeDetailPage() {
                     <TableRow>
                       <TableHead>Shop</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Outstanding</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -452,23 +493,33 @@ export default function RepresentativeDetailPage() {
                             {customer.businessName}
                           </Link>
                         </TableCell>
-                        <TableCell>{customer.phone}</TableCell>
-                        <TableCell>{formatCurrency(customer.outstandingBalance)}</TableCell>
-                        <TableCell>{customer.status}</TableCell>
+                        <TableCell className="tabular-nums">{customer.phone}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatCurrency(customer.outstandingBalance)}
+                        </TableCell>
+                        <TableCell>
+                          <AccountStatusBadge status={customer.status} />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="sales-stats">
-          {salesLoading || !salesStats ? (
+          {salesLoading ? (
+            <TabLoader />
+          ) : salesIsError ? (
+            <div className={PANEL}>
+              <QueryErrorState error={salesError} onRetry={() => refetchSales()} />
+            </div>
+          ) : !salesStats ? (
             <TabLoader />
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard label="Today's Orders" value={salesStats.todaysOrders} icon={ShoppingCart} />
               <StatCard label="Monthly Orders" value={salesStats.monthlyOrders} icon={ShoppingCart} />
               <StatCard label="Pending Approval" value={salesStats.pendingOrders} icon={ShoppingCart} tone="warning" />
@@ -479,22 +530,35 @@ export default function RepresentativeDetailPage() {
         </TabsContent>
 
         <TabsContent value="commission-stats">
-          {commissionLoading || !commissionStats ? (
+          {commissionLoading ? (
+            <TabLoader />
+          ) : commissionIsError ? (
+            <div className={PANEL}>
+              <QueryErrorState error={commissionError} onRetry={() => refetchCommission()} />
+            </div>
+          ) : !commissionStats ? (
             <TabLoader />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               <StatCard label="Pending" value={formatCurrency(commissionStats.pendingCommission)} icon={Wallet} tone="warning" />
-              <StatCard label="Approved" value={formatCurrency(commissionStats.approvedCommission)} icon={Wallet} />
+              <StatCard label="Approved" value={formatCurrency(commissionStats.approvedCommission)} icon={Wallet} tone="info" />
               <StatCard label="Paid" value={formatCurrency(commissionStats.paidCommission)} icon={Wallet} tone="success" />
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="settlements">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
+          <div className={PANEL}>
+            <SectionHeader
+              title="Settlement history"
+              isFetching={settlementsFetching && !settlementsLoading}
+              className="pb-3"
+            />
+            <div className="border-t border-border">
               {settlementsLoading ? (
                 <TabLoader />
+              ) : settlementsIsError ? (
+                <QueryErrorState error={settlementsError} onRetry={() => refetchSettlements()} />
               ) : !settlements || settlements.data.length === 0 ? (
                 <EmptyState icon={Receipt} title="No settlements yet" />
               ) : (
@@ -503,7 +567,7 @@ export default function RepresentativeDetailPage() {
                     <TableRow>
                       <TableHead>Settlement #</TableHead>
                       <TableHead>Period</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -515,10 +579,12 @@ export default function RepresentativeDetailPage() {
                             {settlement.settlementNumber}
                           </Link>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
                           {formatDate(settlement.periodStart)} – {formatDate(settlement.periodEnd)}
                         </TableCell>
-                        <TableCell>{formatCurrency(settlement.totalCommission)}</TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatCurrency(settlement.totalCommission)}
+                        </TableCell>
                         <TableCell>
                           <SettlementStatusBadge status={settlement.status} />
                         </TableCell>
@@ -527,15 +593,22 @@ export default function RepresentativeDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="login-history">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
+          <div className={PANEL}>
+            <SectionHeader
+              title="Login history"
+              isFetching={loginHistoryFetching && !loginHistoryLoading}
+              className="pb-3"
+            />
+            <div className="border-t border-border">
               {loginHistoryLoading ? (
                 <TabLoader />
+              ) : loginHistoryIsError ? (
+                <QueryErrorState error={loginHistoryError} onRetry={() => refetchLoginHistory()} />
               ) : !loginHistory || loginHistory.data.length === 0 ? (
                 <EmptyState icon={Lock} title="No login history yet" />
               ) : (
@@ -551,7 +624,7 @@ export default function RepresentativeDetailPage() {
                   <TableBody>
                     {loginHistory.data.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell>{formatDate(entry.loginAt)}</TableCell>
+                        <TableCell className="tabular-nums">{formatDate(entry.loginAt)}</TableCell>
                         <TableCell>
                           {entry.success ? (
                             <Badge variant="success">Success</Badge>
@@ -559,8 +632,8 @@ export default function RepresentativeDetailPage() {
                             <Badge variant="destructive">{entry.failureReason ?? 'Failed'}</Badge>
                           )}
                         </TableCell>
-                        <TableCell>{entry.ipAddress ?? '—'}</TableCell>
-                        <TableCell className="hidden max-w-xs truncate lg:table-cell">
+                        <TableCell className="font-mono text-xs">{entry.ipAddress ?? '—'}</TableCell>
+                        <TableCell className="hidden max-w-xs truncate text-xs text-muted-foreground lg:table-cell">
                           {entry.userAgent ?? '—'}
                         </TableCell>
                       </TableRow>
@@ -568,14 +641,17 @@ export default function RepresentativeDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card>
-            <CardContent className="p-0 sm:p-0">
-              <div className="flex items-center justify-end p-4">
+          <div className={PANEL}>
+            <SectionHeader
+              title="Activity history"
+              isFetching={activityFetching && !activityLoading}
+              className="pb-3"
+              actions={
                 <Button
                   variant="outline"
                   size="sm"
@@ -586,9 +662,13 @@ export default function RepresentativeDetailPage() {
                   <Eraser />
                   Clear log
                 </Button>
-              </div>
+              }
+            />
+            <div className="border-t border-border">
               {activityLoading ? (
                 <TabLoader />
+              ) : activityIsError ? (
+                <QueryErrorState error={activityError} onRetry={() => refetchActivity()} />
               ) : !activityLog || activityLog.data.length === 0 ? (
                 <EmptyState icon={ShieldAlert} title="No activity recorded yet" />
               ) : (
@@ -604,17 +684,19 @@ export default function RepresentativeDetailPage() {
                   <TableBody>
                     {activityLog.data.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell>{formatDate(entry.createdAt)}</TableCell>
+                        <TableCell className="tabular-nums">{formatDate(entry.createdAt)}</TableCell>
                         <TableCell className="font-medium">{entry.action.replaceAll('_', ' ')}</TableCell>
-                        <TableCell className="hidden max-w-xs truncate lg:table-cell">{entry.details ?? '—'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{entry.ipAddress ?? '—'}</TableCell>
+                        <TableCell className="hidden max-w-xs truncate text-muted-foreground lg:table-cell">
+                          {entry.details ?? '—'}
+                        </TableCell>
+                        <TableCell className="hidden font-mono text-xs lg:table-cell">{entry.ipAddress ?? '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -636,17 +718,19 @@ export default function RepresentativeDetailPage() {
           </DialogHeader>
           {credentials && (
             <div className="space-y-3">
-              <div className="rounded-lg border border-border p-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">Username</p>
                 <p className="font-mono text-sm">{credentials.username}</p>
               </div>
-              <div className="rounded-lg border border-border p-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">Temporary password</p>
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-mono text-sm">{credentials.temporaryPassword}</p>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="size-8"
+                    aria-label="Copy password"
                     onClick={() => {
                       navigator.clipboard.writeText(credentials.temporaryPassword);
                       toast.success('Copied to clipboard');
@@ -678,7 +762,7 @@ export default function RepresentativeDetailPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteRep.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>
@@ -699,7 +783,7 @@ export default function RepresentativeDetailPage() {
             <AlertDialogAction
               onClick={confirmClearLog}
               disabled={clearActivityLog.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Clear log
             </AlertDialogAction>

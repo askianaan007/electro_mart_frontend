@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MoreHorizontal, Plus, Search, Trash2, Truck, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -17,12 +17,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { PaginationBar } from "@/components/pagination-bar";
 import { FilterBar } from "@/components/filter-bar";
 import { SectionHeader } from "@/components/section-header";
 import { QueryErrorState } from "@/components/query-error-state";
+import { PageHeader } from "@/components/page-header";
+import { TableSkeleton } from "@/components/loading-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,14 +91,14 @@ function ValueBreakdown({
 
   if (!hasReturns && !hasTransportCharges) {
     return (
-      <span className={cn("font-medium", className)}>
+      <span className={cn("font-medium tabular-nums", className)}>
         {formatCurrency(grossValue)}
       </span>
     );
   }
 
   return (
-    <div className={cn("flex flex-col gap-0.5", className)}>
+    <div className={cn("flex flex-col gap-0.5 tabular-nums", className)}>
       <span className="text-xs text-muted-foreground line-through">
         {formatCurrency(grossValue)}
       </span>
@@ -107,11 +108,11 @@ function ValueBreakdown({
         </span>
       )}
       {hasTransportCharges && (
-        <span className="text-xs font-medium text-warning-foreground">
+        <span className="text-xs font-medium text-warning-foreground dark:text-warning">
           −{formatCurrency(transportCharges)} transport
         </span>
       )}
-      <span className="font-semibold">{formatCurrency(netValue)} net</span>
+      <span className="font-medium text-foreground">{formatCurrency(netValue)} net</span>
     </div>
   );
 }
@@ -165,31 +166,24 @@ export default function PurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Truck className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Purchases</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Stock purchases recorded from suppliers
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
-            <Undo2 />
-            Record Return
-          </Button>
-          <Button asChild>
-            <Link href="/admin/purchases/new">
-              <Plus />
-              Record Purchase
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Purchases"
+        description="Stock purchases recorded from suppliers."
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
+              <Undo2 />
+              Record Return
+            </Button>
+            <Button asChild>
+              <Link href="/admin/purchases/new">
+                <Plus />
+                Record Purchase
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -198,8 +192,8 @@ export default function PurchasesPage() {
         </TabsList>
 
         <TabsContent value="purchases">
-          <div className="rounded-xl border border-border bg-card">
-            <SectionHeader title="All purchases" isFetching={isFetching && !isLoading} />
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+            <SectionHeader title="All purchases" isFetching={isFetching && !isLoading} className="pb-3" />
             <FilterBar>
               <div className="relative flex-1 sm:max-w-[12rem]">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -258,11 +252,7 @@ export default function PurchasesPage() {
               )}
             </FilterBar>
             {isLoading ? (
-              <div className="space-y-2 p-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
+              <TableSkeleton rows={6} />
             ) : isError ? (
               <QueryErrorState error={error} onRetry={() => refetch()} />
             ) : !data || data.data.length === 0 ? (
@@ -293,7 +283,7 @@ export default function PurchasesPage() {
                         <TableHead>Supplier</TableHead>
                         <TableHead>Invoice #</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead>Items</TableHead>
+                        <TableHead className="text-right">Items</TableHead>
                         <TableHead className="text-right">Value</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
@@ -329,7 +319,7 @@ export default function PurchasesPage() {
                             <TableCell className="whitespace-normal break-words">
                               {formatDate(purchase.purchaseDate)}
                             </TableCell>
-                            <TableCell>{purchase.items.length}</TableCell>
+                            <TableCell className="text-right tabular-nums">{purchase.items.length}</TableCell>
                             <TableCell className="text-right">
                               <ValueBreakdown
                                 purchase={purchase}
@@ -339,8 +329,8 @@ export default function PurchasesPage() {
                             <TableCell>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="size-4" />
+                                  <Button variant="ghost" size="icon" className="size-8" aria-label="Purchase actions">
+                                    <MoreHorizontal />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -377,7 +367,7 @@ export default function PurchasesPage() {
                       <div
                         key={purchase.id}
                         className={cn(
-                          "rounded-lg border border-border p-4",
+                          "rounded-lg border border-border bg-card p-4",
                           hasReturns &&
                             "border-l-4 border-l-warning bg-warning/5",
                         )}
@@ -399,9 +389,10 @@ export default function PurchasesPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="-mr-2 -mt-1 shrink-0"
+                                className="-mr-2 -mt-1 size-8 shrink-0"
+                                aria-label="Purchase actions"
                               >
-                                <MoreHorizontal className="size-4" />
+                                <MoreHorizontal />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -469,7 +460,7 @@ export default function PurchasesPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deletePurchase.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: "destructive" })}
             >
               Delete
             </AlertDialogAction>

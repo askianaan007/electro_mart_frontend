@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Coins, HandCoins, Loader2, Receipt, Search, Wallet } from 'lucide-react';
+import { Coins, HandCoins, Receipt, Search, Wallet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,10 @@ import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { FilterBar } from '@/components/filter-bar';
+import { TableSkeleton } from '@/components/loading-state';
 import { useCreditsSummary } from '@/hooks/use-credits';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -39,30 +43,20 @@ export default function CreditsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <HandCoins className="size-5" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Credits</h1>
-            {isFetching && !isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            What we owe each supplier — increases with every purchase, decreases as you settle
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Credits"
+        description="What we owe each supplier — increases with every purchase, decreases as you settle."
+      />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : (
         data && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Total Purchases" value={formatCurrency(data.totals.totalPurchases)} icon={Receipt} />
             <StatCard
               label="Total Returns"
@@ -86,43 +80,39 @@ export default function CreditsPage() {
         )
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search suppliers..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="pl-9"
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <Switch
-            checked={outstandingOnly}
-            onCheckedChange={(checked) => {
-              setOutstandingOnly(checked);
-              setPage(1);
-            }}
-          />
-          Outstanding only
-        </label>
-        {filtersActive && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        )}
-      </div>
-
-      <div className="rounded-xl border border-border bg-card">
-        {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="Supplier balances" isFetching={isFetching && !isLoading} className="pb-3" />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search suppliers..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Switch
+              checked={outstandingOnly}
+              onCheckedChange={(checked) => {
+                setOutstandingOnly(checked);
+                setPage(1);
+              }}
+            />
+            Outstanding only
+          </label>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
+        {isLoading ? (
+          <TableSkeleton rows={4} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.entries.length === 0 ? (
@@ -161,16 +151,16 @@ export default function CreditsPage() {
                           {entry.supplierName}
                         </Link>
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right tabular-nums">
                         {formatCurrency(entry.totalPurchases)}
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
                         −{formatCurrency(entry.totalReturns)}
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right">
+                      <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
                         −{formatCurrency(entry.totalSettled)}
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right font-semibold">
+                      <TableCell className="whitespace-normal break-words text-right font-semibold tabular-nums">
                         {formatCurrency(entry.creditBalance)}
                       </TableCell>
                     </TableRow>
@@ -184,15 +174,15 @@ export default function CreditsPage() {
                 <Link
                   key={entry.supplierId}
                   href={`/admin/credits/${entry.supplierId}`}
-                  className="block rounded-lg border border-border p-4"
+                  className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/40"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="break-words font-medium text-primary">{entry.supplierName}</span>
-                    <span className="shrink-0 break-words text-right font-semibold">
+                    <span className="shrink-0 break-words text-right font-semibold tabular-nums">
                       {formatCurrency(entry.creditBalance)}
                     </span>
                   </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums">
                     <div>
                       <p className="text-muted-foreground">Purchases</p>
                       <p className="break-words font-medium">{formatCurrency(entry.totalPurchases)}</p>

@@ -17,43 +17,35 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
   };
 
   return (
-    <div className="relative w-full select-none pt-2">
-      <ResponsiveContainer width="100%" height={320}>
+    <div className="relative w-full select-none">
+      <ResponsiveContainer width="100%" height={300}>
         <AreaChart
           data={chartData}
-          margin={{ top: 15, right: 15, left: -5, bottom: 5 }}
+          margin={{ top: 10, right: 10, left: -5, bottom: 0 }}
           accessibilityLayer
           aria-label="Revenue chart timeline"
         >
           <defs>
-            <linearGradient id="revenueGlowGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.45} />
-              <stop offset="50%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.15} />
-              <stop offset="100%" stopColor="var(--color-primary, #3b82f6)" stopOpacity={0.0} />
+            <linearGradient id="revenueAreaFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.18} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
 
-          <CartesianGrid
-            strokeDasharray="4 4"
-            vertical={false}
-            stroke="var(--color-border)"
-            opacity={0.35}
-          />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
 
           <XAxis
             dataKey="month"
             tickLine={false}
-            axisLine={false}
-            className="text-[11px] font-semibold"
-            stroke="var(--color-muted-foreground)"
-            dy={8}
+            axisLine={{ stroke: 'var(--border)' }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+            dy={6}
           />
 
           <YAxis
             tickLine={false}
             axisLine={false}
-            className="text-[11px] font-medium"
-            stroke="var(--color-muted-foreground)"
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             tickFormatter={formatYAxis}
             width={52}
           />
@@ -63,15 +55,11 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
               if (active && payload && payload.length) {
                 const item = payload[0].payload;
                 return (
-                  <div className="rounded-2xl border border-border/80 bg-card/90 dark:bg-slate-900/90 p-3.5 backdrop-blur-xl shadow-2xl space-y-1 min-w-[150px]">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {item.fullMonth}
-                    </p>
+                  <div className="min-w-[150px] space-y-1 rounded-lg border border-border bg-popover px-3 py-2 text-popover-foreground shadow-md">
+                    <p className="text-xs text-muted-foreground">{item.fullMonth}</p>
                     <div className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                      <p className="text-sm font-extrabold text-foreground">
-                        {formatCurrency(item.revenue)}
-                      </p>
+                      <span className="size-2 rounded-full" style={{ backgroundColor: 'var(--chart-1)' }} />
+                      <p className="text-sm font-semibold tabular-nums">{formatCurrency(item.revenue)}</p>
                     </div>
                   </div>
                 );
@@ -79,10 +67,8 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
               return null;
             }}
             cursor={{
-              stroke: 'var(--color-primary, #3b82f6)',
-              strokeWidth: 1.5,
-              strokeDasharray: '4 4',
-              opacity: 0.7,
+              stroke: 'var(--border)',
+              strokeWidth: 1,
             }}
           />
 
@@ -90,19 +76,18 @@ export function RevenueChart({ data }: { data: { month: string; revenue: string 
             type="monotone"
             dataKey="revenue"
             name="Revenue"
-            stroke="var(--color-primary, #3b82f6)"
-            strokeWidth={3}
-            fill="url(#revenueGlowGradient)"
+            stroke="var(--chart-1)"
+            strokeWidth={2}
+            fill="url(#revenueAreaFill)"
             activeDot={{
-              r: 6,
-              strokeWidth: 3,
-              stroke: 'var(--color-primary, #3b82f6)',
-              fill: 'var(--color-card, #ffffff)',
-              className: 'shadow-lg',
+              r: 4,
+              strokeWidth: 2,
+              stroke: 'var(--chart-1)',
+              fill: 'var(--card)',
             }}
             isAnimationActive={true}
-            animationDuration={1200}
-            animationEasing="ease-in-out"
+            animationDuration={800}
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>

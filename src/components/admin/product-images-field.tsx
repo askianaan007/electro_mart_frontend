@@ -89,7 +89,7 @@ export function ProductImagesField({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Images (optional, up to {MAX_PRODUCT_IMAGES}, 5MB each)</p>
+      <p className="text-sm font-semibold">Images (optional, up to {MAX_PRODUCT_IMAGES}, 5MB each)</p>
       <div className="flex flex-wrap gap-3">
         {images.map((image) => (
           <div
@@ -101,7 +101,8 @@ export function ProductImagesField({
               type="button"
               onClick={() => confirmRemoveImage(image.id)}
               disabled={removeImage.isPending}
-              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Remove image"
+              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-foreground/70 text-background opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
             >
               <X className="size-3" />
             </button>
@@ -119,7 +120,8 @@ export function ProductImagesField({
             <button
               type="button"
               onClick={() => removeStagedFile(index)}
-              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Remove image"
+              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-foreground/70 text-background opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
             >
               <X className="size-3" />
             </button>
@@ -130,10 +132,10 @@ export function ProductImagesField({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploadImages.isPending}
-            className="flex size-20 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
+            className="flex size-20 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
           >
             {uploadImages.isPending ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" />}
-            <span className="text-[10px]">Add</span>
+            <span className="text-xs">Add</span>
           </button>
         )}
       </div>

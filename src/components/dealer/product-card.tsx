@@ -28,39 +28,60 @@ export function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <Card className="flex flex-col overflow-hidden">
-      <Link href={`/dealer/products/${product.id}`} className="flex aspect-square items-center justify-center bg-muted">
+    <Card className="group flex flex-col overflow-hidden transition-shadow hover:shadow-sm">
+      <Link
+        href={`/dealer/products/${product.id}`}
+        className="relative flex aspect-square items-center justify-center border-b border-border bg-muted/50"
+      >
         {product.imageUrl ? (
-          <Image src={product.imageUrl} alt={product.name} width={200} height={200} className="size-full object-cover" />
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            width={200}
+            height={200}
+            className="size-full object-cover"
+          />
         ) : (
-          <Package className="size-10 text-muted-foreground" />
+          <Package className="size-10 text-muted-foreground/60" />
         )}
+        <div className="absolute left-2 top-2">
+          <StockStatusBadge status={stockStatus(product)} />
+        </div>
       </Link>
-      <CardContent className="flex flex-1 flex-col gap-2 p-3">
-        <Link href={`/dealer/products/${product.id}`} className="min-w-0">
-          <p className="truncate text-sm font-medium">{product.name}</p>
+      <CardContent className="flex flex-1 flex-col gap-3 p-3 sm:p-3">
+        <Link href={`/dealer/products/${product.id}`} className="min-w-0 space-y-0.5">
+          <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">{product.name}</p>
           <p className="truncate text-xs text-muted-foreground">{product.category ?? product.brand ?? ''}</p>
         </Link>
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">{formatCurrency(product.wholesalePrice)}</span>
-          <StockStatusBadge status={stockStatus(product)} />
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <p className="text-base font-semibold tabular-nums text-foreground">
+              {formatCurrency(product.wholesalePrice)}
+            </p>
+            <p className="text-xs text-muted-foreground">Wholesale price</p>
+          </div>
+          {!outOfStock && (
+            <p className="text-xs text-muted-foreground tabular-nums">{product.currentStock} available</p>
+          )}
         </div>
 
         {!outOfStock && (
-          <div className="mt-auto flex items-center gap-2 pt-1">
-            <div className="flex items-center rounded-md border border-input">
+          <div className="mt-auto flex items-center gap-2">
+            <div className="flex h-8 items-center rounded-md border border-input bg-card shadow-xs dark:bg-muted/40">
               <button
                 type="button"
-                className="flex size-8 items-center justify-center text-muted-foreground disabled:opacity-40"
+                aria-label="Decrease quantity"
+                className="flex size-8 items-center justify-center rounded-l-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
               >
                 <Minus className="size-3.5" />
               </button>
-              <span className="w-6 text-center text-sm">{quantity}</span>
+              <span className="w-7 text-center text-sm font-medium tabular-nums">{quantity}</span>
               <button
                 type="button"
-                className="flex size-8 items-center justify-center text-muted-foreground disabled:opacity-40"
+                aria-label="Increase quantity"
+                className="flex size-8 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                 onClick={() => setQuantity((q) => Math.min(product.currentStock, q + 1))}
                 disabled={quantity >= product.currentStock}
               >

@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Factory, FileText, Loader2, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { Factory, FileText, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { FilterBar } from '@/components/filter-bar';
+import { TableSkeleton } from '@/components/loading-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,45 +91,35 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Factory className="size-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold">Suppliers</h1>
-              {isFetching && !isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">Manage suppliers used for stock purchases</p>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus />
-          Add Supplier
-        </Button>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        description="Manage suppliers used for stock purchases."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            Add Supplier
+          </Button>
+        }
+      />
 
-      <div className="relative sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search suppliers..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="pl-9"
-        />
-      </div>
-
-      <div className="rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader title="All suppliers" isFetching={isFetching && !isLoading} className="pb-3" />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search suppliers..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+        </FilterBar>
         {isLoading ? (
-          <div className="space-y-2 p-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={5} />
         ) : isError ? (
           <QueryErrorState error={error} onRetry={() => refetch()} />
         ) : !data || data.data.length === 0 ? (
@@ -162,13 +155,17 @@ export default function SuppliersPage() {
                     <TableRow key={supplier.id}>
                       <TableCell className="whitespace-normal break-words font-medium">{supplier.name}</TableCell>
                       <TableCell className="whitespace-normal break-words">{supplier.contact ?? '—'}</TableCell>
-                      <TableCell className="whitespace-normal break-words">{supplier.phone ?? '—'}</TableCell>
-                      <TableCell className="whitespace-normal break-words">{supplier.email ?? '—'}</TableCell>
+                      <TableCell className="whitespace-normal break-words tabular-nums text-muted-foreground">
+                        {supplier.phone ?? '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-normal break-words text-muted-foreground">
+                        {supplier.email ?? '—'}
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="size-4" />
+                            <Button variant="ghost" size="icon" className="size-8" aria-label="Supplier actions">
+                              <MoreHorizontal />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -192,13 +189,18 @@ export default function SuppliersPage() {
 
             <div className={cn('space-y-3 p-4 sm:hidden', isFetching && 'opacity-60 transition-opacity')}>
               {data.data.map((supplier) => (
-                <div key={supplier.id} className="rounded-lg border border-border p-4">
+                <div key={supplier.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="break-words font-medium">{supplier.name}</p>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="-mr-2 -mt-1 shrink-0">
-                          <MoreHorizontal className="size-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="-mr-2 -mt-1 size-8 shrink-0"
+                          aria-label="Supplier actions"
+                        >
+                          <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -245,7 +247,7 @@ export default function SuppliersPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteSupplier.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
               Delete
             </AlertDialogAction>

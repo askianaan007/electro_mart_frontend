@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   ArrowDownCircle,
   ArrowDownLeft,
-  ArrowLeft,
   ArrowUpCircle,
   ArrowUpRight,
   Clock,
@@ -13,12 +11,12 @@ import {
   FileDown,
   HandCoins,
   Landmark,
-  Loader2,
   MinusCircle,
   Receipt,
   Search,
   TrendingUp,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +24,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
+import { PageHeader } from '@/components/page-header';
+import { SectionHeader } from '@/components/section-header';
+import { FilterBar } from '@/components/filter-bar';
+import { TableSkeleton } from '@/components/loading-state';
 import { useLiquidCashSummary, useLiquidCashHistory } from '@/hooks/use-liquid-cash';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { api } from '@/lib/api/endpoints';
@@ -201,403 +204,389 @@ export default function LiquidCashPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Landmark className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Liquid Cash</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Every event that moves actual cash — investments, dealer collections, supplier payments, and expenses —
-              with a running balance so you can see exactly how the current figure was reached.
-            </p>
-          </div>
-        </div>
-        <Link href="/admin/dashboard" className="shrink-0">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft />
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Liquid Cash"
+        description="Every event that moves actual cash — investments, dealer collections, supplier payments, and expenses — with a running balance so you can see exactly how the current figure was reached."
+        backHref="/admin/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
-      {/* Headline balance — futuristic gradient card with animated count-up */}
-      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-6 shadow-sm sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 size-56 rounded-full bg-success/10 blur-3xl" />
-        <div className="relative flex flex-col gap-2">
-          <p className="text-sm font-medium text-muted-foreground">Current Cash Position</p>
-          {summaryLoading ? (
-            <Skeleton className="h-11 w-64" />
-          ) : summaryError ? (
-            <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} className="items-start py-0 text-left" />
-          ) : (
-            <p className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-              {formatCurrency(animatedBalance)}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Investments + cleared dealer collections − cleared supplier payments − expenses, all-time.
-          </p>
-        </div>
-      </section>
-
-      {/* Breakdown */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Financial Flow Breakdown</h2>
-        </div>
-
-        {summaryLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+      {summaryLoading ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-36 rounded-2xl" />
+              <Skeleton key={i} className="h-[108px] rounded-xl" />
             ))}
-            <Skeleton className="h-44 rounded-2xl md:col-span-2" />
           </div>
-        ) : summaryError ? null : (
-          summary && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {/* 1. Investments In */}
-              <div className="group relative overflow-hidden rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-blue-500/10 blur-2xl transition-all duration-300 group-hover:bg-blue-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shadow-inner">
-                    <TrendingUp className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                    <ArrowDownLeft className="size-3" /> INFLOW
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Investments In</p>
-                  <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                    {formatCurrency(summary.totalInvestments)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-blue-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Capital additions</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">Direct Cash Entry</span>
-                </div>
-              </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-72 rounded-xl lg:col-span-2" />
+            <Skeleton className="h-72 rounded-xl" />
+          </div>
+        </>
+      ) : summaryError ? (
+        <Card>
+          <QueryErrorState error={summaryErrorObj} onRetry={() => refetchSummary()} title="Couldn't load the cash position" />
+        </Card>
+      ) : (
+        summary && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Current Cash Position"
+                value={formatCurrency(animatedBalance)}
+                icon={Landmark}
+                tone={summary.balance < 0 ? 'destructive' : 'default'}
+                hint="All-time, cleared only"
+              />
+              <StatCard
+                label="Pending Cheques"
+                value={formatCurrency(summary.pendingDealerCheques + summary.pendingSupplierCheques)}
+                icon={Clock}
+                tone="purple"
+                hint="Pending clearance"
+              />
+              <StatCard
+                label="Pending Dealer Cheques (In)"
+                value={formatCurrency(summary.pendingDealerCheques)}
+                icon={ArrowDownLeft}
+                tone="success"
+              />
+              <StatCard
+                label="Pending Supplier Cheques (Out)"
+                value={formatCurrency(summary.pendingSupplierCheques)}
+                icon={ArrowUpRight}
+                tone="warning"
+              />
+            </div>
 
-              {/* 2. Dealer Collections In */}
-              <div className="group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-emerald-500/10 blur-2xl transition-all duration-300 group-hover:bg-emerald-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-inner">
-                    <Wallet className="size-6" />
+            <div className="grid gap-4 lg:grid-cols-3">
+              {/* Cash flow statement */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-3">
+                  <CardTitle>Financial Flow Breakdown</CardTitle>
+                  <CardDescription>How the current cash position is reached, all-time.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="pb-1 text-xs font-semibold text-muted-foreground">Inflows</p>
+                    <StatementRow
+                      icon={TrendingUp}
+                      label="Investments In"
+                      sub="Capital additions · Direct cash entry"
+                      value={formatCurrency(summary.totalInvestments)}
+                    />
+                    <StatementRow
+                      icon={Wallet}
+                      label="Dealer Collections In"
+                      sub="Cleared dealer settlements · Liquid receipts"
+                      value={formatCurrency(summary.totalCollected)}
+                      valueClassName="text-success"
+                    />
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <ArrowDownLeft className="size-3" /> INFLOW
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dealer Collections In</p>
-                  <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-3xl">
-                    {formatCurrency(summary.totalCollected)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-emerald-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Cleared dealer settlements</span>
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">Liquid Receipts</span>
-                </div>
-              </div>
-
-              {/* 3. Supplier Payments Out */}
-              <div className="group relative overflow-hidden rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-rose-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-rose-500/10 blur-2xl transition-all duration-300 group-hover:bg-rose-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shadow-inner">
-                    <HandCoins className="size-6" />
+                  <div>
+                    <p className="pb-1 text-xs font-semibold text-muted-foreground">Outflows</p>
+                    <StatementRow
+                      icon={HandCoins}
+                      label="Supplier Payments Out"
+                      sub="Inventory supplier payouts · Liquid payouts"
+                      value={`−${formatCurrency(summary.totalPaidToSuppliers)}`}
+                      valueClassName="text-destructive"
+                    />
+                    <StatementRow
+                      icon={Receipt}
+                      label="Expenses Out"
+                      sub="Operational expenses · Business costs"
+                      value={`−${formatCurrency(summary.totalExpensesPaid)}`}
+                      valueClassName="text-destructive"
+                    />
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                    <ArrowUpRight className="size-3" /> OUTFLOW
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Supplier Payments Out</p>
-                  <p className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400 sm:text-3xl">
-                    −{formatCurrency(summary.totalPaidToSuppliers)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-rose-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Inventory supplier payouts</span>
-                  <span className="font-medium text-rose-600 dark:text-rose-400">Liquid Payouts</span>
-                </div>
-              </div>
-
-              {/* 4. Expenses Out */}
-              <div className="group relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/40 hover:shadow-md">
-                <div className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-amber-500/10 blur-2xl transition-all duration-300 group-hover:bg-amber-500/20" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 shadow-inner">
-                    <Receipt className="size-6" />
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                    <ArrowUpRight className="size-3" /> OUTFLOW
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expenses Out</p>
-                  <p className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400 sm:text-3xl">
-                    −{formatCurrency(summary.totalExpensesPaid)}
-                  </p>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-amber-500/15 pt-3 text-xs text-muted-foreground">
-                  <span>Operational expenses</span>
-                  <span className="font-medium text-amber-600 dark:text-amber-400">Business Costs</span>
-                </div>
-              </div>
-
-              {/* 5. Pending Cheques - Featured Card taking 2 columns */}
-              <div className="group relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-card to-card p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-md md:col-span-2">
-                <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-purple-500/10 blur-3xl transition-all duration-300 group-hover:bg-purple-500/20" />
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shadow-inner">
-                      <Clock className="size-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending Cheques</p>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-600 dark:text-purple-400">
-                          PENDING CLEARANCE
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                        {formatCurrency(summary.pendingDealerCheques + summary.pendingSupplierCheques)}
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 px-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Current Cash Position</p>
+                      <p className="text-xs text-muted-foreground">
+                        Investments + cleared dealer collections − cleared supplier payments − expenses, all-time.
                       </p>
                     </div>
+                    <p
+                      className={cn(
+                        'shrink-0 text-lg font-semibold tabular-nums',
+                        summary.balance < 0 ? 'text-destructive' : 'text-foreground',
+                      )}
+                    >
+                      {formatCurrency(animatedBalance)}
+                    </p>
                   </div>
-                  <p className="max-w-xs text-xs text-muted-foreground sm:text-right">
+                </CardContent>
+              </Card>
+
+              {/* Pending cheques */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Pending Cheques</CardTitle>
+                    <Badge variant="purple">Pending clearance</Badge>
+                  </div>
+                  <CardDescription>
                     Cheques awaiting bank clearance. These do not affect the current liquid cash balance until cleared.
-                  </p>
-                </div>
-
-                <div className="mt-5 grid grid-cols-1 gap-3 border-t border-purple-500/15 pt-4 sm:grid-cols-2">
-                  <div className="flex items-center justify-between rounded-xl bg-muted/40 p-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="size-2 rounded-full bg-emerald-500" />
-                      <span className="font-medium text-muted-foreground">Pending Dealer Cheques (In)</span>
-                    </div>
-                    <span className="font-bold text-foreground">{formatCurrency(summary.pendingDealerCheques)}</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <StatementRow
+                    label="Pending Dealer Cheques (In)"
+                    value={formatCurrency(summary.pendingDealerCheques)}
+                  />
+                  <StatementRow
+                    label="Pending Supplier Cheques (Out)"
+                    value={formatCurrency(summary.pendingSupplierCheques)}
+                  />
+                  <div className="mt-1 flex items-center justify-between gap-3 border-t-2 border-border pt-2.5">
+                    <p className="text-sm font-semibold text-foreground">Total Pending</p>
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
+                      {formatCurrency(summary.pendingDealerCheques + summary.pendingSupplierCheques)}
+                    </p>
                   </div>
-
-                  <div className="flex items-center justify-between rounded-xl bg-muted/40 p-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="size-2 rounded-full bg-rose-500" />
-                      <span className="font-medium text-muted-foreground">Pending Supplier Cheques (Out)</span>
-                    </div>
-                    <span className="font-bold text-foreground">{formatCurrency(summary.pendingSupplierCheques)}</span>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
-          )
-        )}
-      </section>
+          </>
+        )
+      )}
 
       {/* History */}
-      <section className="space-y-3 rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-3 p-4 sm:p-6 sm:pb-0">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-medium">History</h2>
-              {historyFetching && !historyLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={history.length === 0 || isExportingCsv}>
-                {isExportingCsv ? <Loader2 className="animate-spin" /> : <Download />}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="History"
+          description="Pending and returned cheques appear too, marked with a status badge — they show a $0 balance impact until they actually clear, which is why the previous and after balance match on those rows."
+          isFetching={historyFetching && !historyLoading}
+          className="pb-3"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={history.length === 0}
+                loading={isExportingCsv}
+              >
+                {!isExportingCsv && <Download />}
                 CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={history.length === 0 || !summary || isExportingPdf}>
-                {isExportingPdf ? <Loader2 className="animate-spin" /> : <FileDown />}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={history.length === 0 || !summary}
+                loading={isExportingPdf}
+              >
+                {!isExportingPdf && <FileDown />}
                 PDF
               </Button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Pending and returned cheques appear too, marked with a status badge — they show a $0 balance impact until they
-            actually clear, which is why the previous and after balance match on those rows.
-          </p>
+            </>
+          }
+        />
 
-          {exportError && (
-            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        {exportError && (
+          <div className="px-4 pb-3 sm:px-5">
+            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground dark:text-warning">
               {exportError}
             </p>
-          )}
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative flex-1 sm:min-w-[12rem]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search description, dealer, supplier..."
-                value={search}
-                onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={(value) => resetPageAnd(setTypeFilter)(value as TypeFilter)}>
-              <SelectTrigger className="sm:w-48">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {(Object.keys(TYPE_META) as LiquidCashEntryType[]).map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {TYPE_META[type].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
-            {filtersActive && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
-          </div>
-        </div>
+        )}
 
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          {historyLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+        <FilterBar>
+          <div className="relative flex-1 sm:min-w-[12rem]">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search description, dealer, supplier..."
+              value={search}
+              onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={(value) => resetPageAnd(setTypeFilter)(value as TypeFilter)}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {(Object.keys(TYPE_META) as LiquidCashEntryType[]).map((type) => (
+                <SelectItem key={type} value={type}>
+                  {TYPE_META[type].label}
+                </SelectItem>
               ))}
-            </div>
-          ) : historyError ? (
-            <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
-          ) : history.length === 0 ? (
-            filtersActive ? (
-              <EmptyState
-                icon={Search}
-                title="No matching entries"
-                description="Try adjusting or clearing your filters"
-                action={
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState icon={Landmark} title="No history yet" description="Investments, payments, and expenses will appear here" />
-            )
-          ) : (
-            <>
-              <div className={cn('hidden lg:block', historyFetching && 'opacity-60 transition-opacity')}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Previous Balance</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Balance After</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.map((row) => {
-                      const meta = TYPE_META[row.type];
-                      const Icon = meta.icon;
-                      const faceAmount = Number(row.faceAmount);
-                      const statusMeta = row.status ? STATUS_META[row.status] : null;
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell className="whitespace-normal break-words">{formatDate(row.date)}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.tone)}>
-                                <Icon className="size-4 shrink-0" />
-                                {meta.label}
-                              </span>
-                              {statusMeta && (
-                                <Badge variant={statusMeta.variant} className="w-fit">
-                                  {statusMeta.label}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="whitespace-normal break-words">
-                            <p>{row.description}</p>
-                            {row.mode && <p className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</p>}
-                          </TableCell>
-                          <TableCell className="whitespace-normal break-words text-right text-muted-foreground">
-                            {formatCurrency(row.balanceBefore)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'whitespace-normal break-words text-right font-medium',
-                              faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
-                            )}
-                          >
-                            {faceAmount >= 0 ? '+' : ''}
-                            {formatCurrency(faceAmount)}
-                          </TableCell>
-                          <TableCell className="whitespace-normal break-words text-right font-semibold">
-                            {formatCurrency(row.balanceAfter)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
 
-              <div className={cn('space-y-3 lg:hidden', historyFetching && 'opacity-60 transition-opacity')}>
-                {history.map((row) => {
-                  const meta = TYPE_META[row.type];
-                  const Icon = meta.icon;
-                  const faceAmount = Number(row.faceAmount);
-                  const statusMeta = row.status ? STATUS_META[row.status] : null;
-                  return (
-                    <div key={row.id} className="rounded-lg border border-border p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.tone)}>
-                          <Icon className="size-4 shrink-0" />
-                          {meta.label}
-                        </span>
-                        <span
+        {historyLoading ? (
+          <TableSkeleton rows={6} />
+        ) : historyError ? (
+          <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
+        ) : history.length === 0 ? (
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching entries"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={Landmark} title="No history yet" description="Investments, payments, and expenses will appear here" />
+          )
+        ) : (
+          <>
+            <div className={cn('hidden lg:block', historyFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Previous Balance</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Balance After</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((row) => {
+                    const meta = TYPE_META[row.type];
+                    const Icon = meta.icon;
+                    const faceAmount = Number(row.faceAmount);
+                    const statusMeta = row.status ? STATUS_META[row.status] : null;
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-muted-foreground tabular-nums">{formatDate(row.date)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.tone)}>
+                              <Icon className="size-4 shrink-0" />
+                              {meta.label}
+                            </span>
+                            {statusMeta && <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-normal break-words">
+                          <div>{row.description}</div>
+                          {row.mode && <div className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</div>}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {formatCurrency(row.balanceBefore)}
+                        </TableCell>
+                        <TableCell
                           className={cn(
-                            'shrink-0 break-words font-medium',
+                            'text-right font-medium tabular-nums',
                             faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
                           )}
                         >
                           {faceAmount >= 0 ? '+' : ''}
                           {formatCurrency(faceAmount)}
-                        </span>
-                      </div>
-                      {statusMeta && (
-                        <Badge variant={statusMeta.variant} className="mt-2 w-fit">
-                          {statusMeta.label}
-                        </Badge>
-                      )}
-                      <p className="mt-2 break-words text-sm font-medium">{row.description}</p>
-                      {row.mode && <p className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</p>}
-                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                        <span>{formatDate(row.date)}</span>
-                        <span>
-                          {formatCurrency(row.balanceBefore)} → <span className="font-semibold text-foreground">{formatCurrency(row.balanceAfter)}</span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right font-semibold tabular-nums',
+                            Number(row.balanceAfter) < 0 ? 'text-destructive' : 'text-foreground',
+                          )}
+                        >
+                          {formatCurrency(row.balanceAfter)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
-              <PaginationBar meta={historyResult?.meta} onPageChange={setPage} />
-            </>
-          )}
+            <div className={cn('space-y-3 p-4 lg:hidden', historyFetching && 'opacity-60 transition-opacity')}>
+              {history.map((row) => {
+                const meta = TYPE_META[row.type];
+                const Icon = meta.icon;
+                const faceAmount = Number(row.faceAmount);
+                const statusMeta = row.status ? STATUS_META[row.status] : null;
+                return (
+                  <div key={row.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.tone)}>
+                        <Icon className="size-4 shrink-0" />
+                        {meta.label}
+                      </span>
+                      <span
+                        className={cn(
+                          'shrink-0 break-words font-medium tabular-nums',
+                          faceAmount > 0 ? 'text-success' : faceAmount < 0 ? 'text-destructive' : 'text-muted-foreground',
+                        )}
+                      >
+                        {faceAmount >= 0 ? '+' : ''}
+                        {formatCurrency(faceAmount)}
+                      </span>
+                    </div>
+                    {statusMeta && (
+                      <Badge variant={statusMeta.variant} className="mt-2">
+                        {statusMeta.label}
+                      </Badge>
+                    )}
+                    <p className="mt-2 break-words text-sm font-medium">{row.description}</p>
+                    {row.mode && <p className="text-xs text-muted-foreground">{row.mode.replace('_', ' ')}</p>}
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+                      <span>{formatDate(row.date)}</span>
+                      <span className="tabular-nums">
+                        {formatCurrency(row.balanceBefore)} →{' '}
+                        <span className="font-semibold text-foreground">{formatCurrency(row.balanceAfter)}</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <PaginationBar meta={historyResult?.meta} onPageChange={setPage} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** One label/value line in a statement-style card. */
+function StatementRow({
+  icon: Icon,
+  label,
+  sub,
+  value,
+  valueClassName,
+}: {
+  icon?: LucideIcon;
+  label: string;
+  sub?: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border py-2.5 last:border-0">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {Icon && (
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Icon className="size-4" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
-      </section>
+      </div>
+      <p className={cn('shrink-0 text-sm font-medium tabular-nums text-foreground', valueClassName)}>{value}</p>
     </div>
   );
 }

@@ -106,7 +106,7 @@ export function ApproveOrderDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="discountType"
@@ -150,20 +150,20 @@ export function ApproveOrderDialog({
             </div>
             <FormDescription>Leave blank for no discount</FormDescription>
 
-            <div className="space-y-1 rounded-lg border border-border p-3 text-sm">
+            <dl className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatCurrency(subtotalNum)}</span>
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="tabular-nums">{formatCurrency(subtotalNum)}</dd>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Discount</span>
-                <span>−{formatCurrency(discountAmount)}</span>
+                <dt className="text-muted-foreground">Discount</dt>
+                <dd className="tabular-nums">−{formatCurrency(discountAmount)}</dd>
               </div>
-              <div className="flex justify-between border-t border-border pt-1 font-semibold">
-                <span>Final total</span>
-                <span>{formatCurrency(finalTotal)}</span>
+              <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
+                <dt>Final total</dt>
+                <dd className="tabular-nums">{formatCurrency(finalTotal)}</dd>
               </div>
-            </div>
+            </dl>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -8,7 +8,6 @@ import {
   Coins,
   Download,
   Layers,
-  Loader2,
   MinusCircle,
   PieChart,
   Receipt,
@@ -21,12 +20,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { StatCard } from '@/components/stat-card';
+import { FilterBar } from '@/components/filter-bar';
+import { SectionHeader } from '@/components/section-header';
+import { PageHeader } from '@/components/page-header';
+import { TableSkeleton } from '@/components/loading-state';
 import { useEquitySummary, useEquityHistory } from '@/hooks/use-equity';
 import { useInvestments } from '@/hooks/use-investments';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -41,15 +46,46 @@ type HistoryType = 'INVESTMENT' | 'WITHDRAWAL' | 'EXPENSE';
 const AVATAR_TONES = [
   'bg-primary/15 text-primary',
   'bg-success/15 text-success',
-  'bg-warning/20 text-warning-foreground',
+  'bg-warning/20 text-warning-foreground dark:text-warning',
   'bg-destructive/15 text-destructive',
 ];
 
-const TYPE_META: Record<HistoryType, { label: string; icon: typeof ArrowDownCircle; className: string }> = {
-  INVESTMENT: { label: 'Investment', icon: ArrowDownCircle, className: 'text-success' },
-  WITHDRAWAL: { label: 'Withdrawal', icon: ArrowUpCircle, className: 'text-destructive' },
-  EXPENSE: { label: 'Expense', icon: MinusCircle, className: 'text-destructive' },
+const TYPE_META: Record<
+  HistoryType,
+  { label: string; icon: typeof ArrowDownCircle; className: string; badge: BadgeProps['variant'] }
+> = {
+  INVESTMENT: { label: 'Investment', icon: ArrowDownCircle, className: 'text-success', badge: 'success' },
+  WITHDRAWAL: { label: 'Withdrawal', icon: ArrowUpCircle, className: 'text-destructive', badge: 'destructive' },
+  EXPENSE: { label: 'Expense', icon: MinusCircle, className: 'text-destructive', badge: 'warning' },
 };
+
+/** One label/value line of the equity statement; `total` draws the emphasised closing line. */
+function StatementRow({
+  label,
+  value,
+  total = false,
+  muted = false,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  total?: boolean;
+  muted?: boolean;
+  valueClassName?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-baseline justify-between gap-4 py-2',
+        total && 'mt-1 border-t-2 border-border pt-3 text-[15px] font-semibold',
+        muted && 'border-t border-border text-xs text-muted-foreground',
+      )}
+    >
+      <span className={cn(!total && !muted && 'text-muted-foreground')}>{label}</span>
+      <span className={cn('tabular-nums', total ? 'text-foreground' : 'font-medium', valueClassName)}>{value}</span>
+    </div>
+  );
+}
 
 function downloadHistoryCsv(filename: string, rows: EquityHistoryEntry[]) {
   const header = ['Date', 'Type', 'Description', 'Investor', 'Amount'];
@@ -138,40 +174,32 @@ export default function EquityPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <PieChart className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Equity</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Investment + profit share − expense share, per investor.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Profit is calculated automatically from every completed sale — no manual entry needed.
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={handleExport} disabled={history.length === 0 || isExporting} className="shrink-0">
-          {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
-          Export
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Equity"
+        description="Investment + profit share − expense share, per investor. Profit is calculated automatically from every completed sale — no manual entry needed."
+        actions={
+          <Button variant="outline" onClick={handleExport} disabled={history.length === 0} loading={isExporting}>
+            {!isExporting && <Download />}
+            Export
+          </Button>
+        }
+      />
 
-      <section className="space-y-3">
-        {equityLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
-          </div>
-        ) : equityError ? (
+      {equityLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[104px] rounded-xl" />
+          ))}
+        </div>
+      ) : equityError ? (
+        <div className="rounded-xl border border-border bg-card shadow-xs">
           <QueryErrorState error={equityErrorObj} onRetry={() => refetchEquity()} />
-        ) : (
-          equity && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        </div>
+      ) : (
+        equity && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <StatCard
                 label="Total Investment"
                 value={formatCurrency(equity.totals.totalInvestment)}
@@ -196,380 +224,449 @@ export default function EquityPage() {
                 label="Total Equity"
                 value={formatCurrency(equity.totals.totalEquity)}
                 icon={Coins}
+                tone="purple"
                 hint="Current total equity"
               />
             </div>
-          )
-        )}
-      </section>
 
-      <section className="space-y-3 rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6 sm:pb-0">
-          <h2 className="text-lg font-medium">Investor Equity Overview</h2>
-          {equity && equity.entries.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setBreakdownOpen(true)}>
-              <Layers />
-              View Breakdown
-            </Button>
-          )}
-        </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Equity statement</CardTitle>
+                <CardDescription>All investors combined, to date</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-0 text-sm">
+                <StatementRow label="Capital invested" value={formatCurrency(equity.totals.totalInvestment)} />
+                <StatementRow
+                  label="Add: profit share"
+                  value={formatCurrency(equity.totals.totalProfit)}
+                  valueClassName="text-success"
+                />
+                <StatementRow
+                  label="Less: expense share"
+                  value={`−${formatCurrency(equity.totals.totalExpenses)}`}
+                  valueClassName="text-destructive"
+                />
+                <StatementRow
+                  label="Total equity"
+                  value={formatCurrency(equity.totals.totalEquity)}
+                  total
+                  valueClassName={Number(equity.totals.totalEquity) < 0 ? 'text-destructive' : undefined}
+                />
+                <StatementRow
+                  label="Profit share allocated"
+                  value={`${Number(equity.totals.percentageTotal)}%`}
+                  muted
+                  valueClassName={Number(equity.totals.percentageTotal) !== 100 ? 'text-destructive' : undefined}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )
+      )}
 
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          {equityLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : equityError ? (
-            <QueryErrorState error={equityErrorObj} onRetry={() => refetchEquity()} />
-          ) : !equity || equity.entries.length === 0 ? (
-            <EmptyState icon={PieChart} title="No investors yet" description="Add investors under the Investments page" />
-          ) : (
-            <>
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Investor</TableHead>
-                      <TableHead className="text-right">Share %</TableHead>
-                      <TableHead className="text-right">Investment</TableHead>
-                      <TableHead className="text-right">Profit Share</TableHead>
-                      <TableHead className="text-right">Expense Share</TableHead>
-                      <TableHead className="text-right">Equity</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {equity.entries.map((entry, i) => (
-                      <TableRow key={entry.investorId}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={cn(
-                                'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                                AVATAR_TONES[i % AVATAR_TONES.length],
-                              )}
-                            >
-                              {initials(entry.investorName)}
-                            </div>
-                            <span className="whitespace-normal break-words">{entry.investorName}</span>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="Investor Equity Overview"
+          description="Each investor's capital, profit share and expense share"
+          className="pb-3"
+          actions={
+            equity && equity.entries.length > 0 ? (
+              <Button variant="outline" size="sm" onClick={() => setBreakdownOpen(true)}>
+                <Layers />
+                View Breakdown
+              </Button>
+            ) : undefined
+          }
+        />
+
+        {equityLoading ? (
+          <TableSkeleton rows={3} />
+        ) : equityError ? (
+          <QueryErrorState error={equityErrorObj} onRetry={() => refetchEquity()} />
+        ) : !equity || equity.entries.length === 0 ? (
+          <EmptyState icon={PieChart} title="No investors yet" description="Add investors under the Investments page" />
+        ) : (
+          <>
+            <div className="hidden border-t border-border sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Investor</TableHead>
+                    <TableHead className="text-right">Share %</TableHead>
+                    <TableHead className="text-right">Investment</TableHead>
+                    <TableHead className="text-right">Profit Share</TableHead>
+                    <TableHead className="text-right">Expense Share</TableHead>
+                    <TableHead className="text-right">Equity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {equity.entries.map((entry, i) => (
+                    <TableRow key={entry.investorId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={cn(
+                              'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                              AVATAR_TONES[i % AVATAR_TONES.length],
+                            )}
+                          >
+                            {initials(entry.investorName)}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <span>{Number(entry.profitSharePercentage)}%</span>
-                            <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-primary"
-                                style={{ width: `${Math.min(100, Number(entry.profitSharePercentage))}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-normal break-words text-right">
-                          {formatCurrency(entry.totalInvestment)}
-                        </TableCell>
-                        <TableCell className="whitespace-normal break-words text-right text-success">
-                          {formatCurrency(entry.profitShare)}
-                        </TableCell>
-                        <TableCell className="whitespace-normal break-words text-right text-destructive">
-                          −{formatCurrency(entry.expenseShare)}
-                        </TableCell>
-                        <TableCell className="whitespace-normal break-words text-right font-semibold text-primary">
-                          {formatCurrency(entry.equity)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/40">
-                      <TableCell className="font-semibold">Total</TableCell>
-                      <TableCell className="text-right font-semibold">{Number(equity.totals.percentageTotal)}%</TableCell>
-                      <TableCell className="whitespace-normal break-words text-right font-semibold">
-                        {formatCurrency(equity.totals.totalInvestment)}
-                      </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right font-semibold text-success">
-                        {formatCurrency(equity.totals.totalProfit)}
-                      </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right font-semibold text-destructive">
-                        −{formatCurrency(equity.totals.totalExpenses)}
-                      </TableCell>
-                      <TableCell className="whitespace-normal break-words text-right font-semibold text-primary">
-                        {formatCurrency(equity.totals.totalEquity)}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="space-y-3 sm:hidden">
-                {equity.entries.map((entry, i) => (
-                  <div key={entry.investorId} className="rounded-lg border border-border p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <div
-                          className={cn(
-                            'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                            AVATAR_TONES[i % AVATAR_TONES.length],
-                          )}
-                        >
-                          {initials(entry.investorName)}
+                          <span className="whitespace-normal break-words">{entry.investorName}</span>
                         </div>
-                        <span className="break-words font-medium">{entry.investorName}</span>
-                      </div>
-                      <span className="shrink-0 text-sm text-muted-foreground">
-                        {Number(entry.profitSharePercentage)}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${Math.min(100, Number(entry.profitSharePercentage))}%` }}
-                      />
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Investment</p>
-                        <p className="break-words font-medium">{formatCurrency(entry.totalInvestment)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Profit Share</p>
-                        <p className="break-words font-medium text-success">{formatCurrency(entry.profitShare)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Expense Share</p>
-                        <p className="break-words font-medium text-destructive">−{formatCurrency(entry.expenseShare)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Equity</p>
-                        <p className="break-words font-semibold text-primary">{formatCurrency(entry.equity)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="tabular-nums">{Number(entry.profitSharePercentage)}%</span>
+                          <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${Math.min(100, Number(entry.profitSharePercentage))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(entry.totalInvestment)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums text-success">
+                        {formatCurrency(entry.profitShare)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums text-destructive">
+                        −{formatCurrency(entry.expenseShare)}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-semibold tabular-nums',
+                          Number(entry.equity) < 0 ? 'text-destructive' : 'text-foreground',
+                        )}
+                      >
+                        {formatCurrency(entry.equity)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-t-2 border-border bg-muted/50 hover:bg-muted/50">
+                    <TableCell className="font-semibold">Total</TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-semibold tabular-nums',
+                        Number(equity.totals.percentageTotal) !== 100 && 'text-destructive',
+                      )}
+                    >
+                      {Number(equity.totals.percentageTotal)}%
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {formatCurrency(equity.totals.totalInvestment)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-success">
+                      {formatCurrency(equity.totals.totalProfit)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-destructive">
+                      −{formatCurrency(equity.totals.totalExpenses)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right font-semibold tabular-nums',
+                        Number(equity.totals.totalEquity) < 0 ? 'text-destructive' : 'text-foreground',
+                      )}
+                    >
+                      {formatCurrency(equity.totals.totalEquity)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="space-y-3 p-4 sm:hidden">
+              {equity.entries.map((entry, i) => (
+                <div key={entry.investorId} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold">Total</span>
-                    <span className="text-sm font-semibold">{Number(equity.totals.percentageTotal)}%</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div
+                        className={cn(
+                          'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                          AVATAR_TONES[i % AVATAR_TONES.length],
+                        )}
+                      >
+                        {initials(entry.investorName)}
+                      </div>
+                      <span className="break-words font-medium">{entry.investorName}</span>
+                    </div>
+                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      {Number(entry.profitSharePercentage)}%
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.min(100, Number(entry.profitSharePercentage))}%` }}
+                    />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     <div>
                       <p className="text-xs text-muted-foreground">Investment</p>
-                      <p className="break-words font-semibold">{formatCurrency(equity.totals.totalInvestment)}</p>
+                      <p className="break-words font-medium tabular-nums">{formatCurrency(entry.totalInvestment)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Profit Share</p>
-                      <p className="break-words font-semibold text-success">{formatCurrency(equity.totals.totalProfit)}</p>
+                      <p className="break-words font-medium tabular-nums text-success">
+                        {formatCurrency(entry.profitShare)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Expense Share</p>
-                      <p className="break-words font-semibold text-destructive">
-                        −{formatCurrency(equity.totals.totalExpenses)}
+                      <p className="break-words font-medium tabular-nums text-destructive">
+                        −{formatCurrency(entry.expenseShare)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Equity</p>
-                      <p className="break-words font-semibold text-primary">{formatCurrency(equity.totals.totalEquity)}</p>
+                      <p
+                        className={cn(
+                          'break-words font-semibold tabular-nums',
+                          Number(entry.equity) < 0 ? 'text-destructive' : 'text-foreground',
+                        )}
+                      >
+                        {formatCurrency(entry.equity)}
+                      </p>
                     </div>
                   </div>
                 </div>
+              ))}
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-sm font-semibold tabular-nums">{Number(equity.totals.percentageTotal)}%</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Investment</p>
+                    <p className="break-words font-semibold tabular-nums">
+                      {formatCurrency(equity.totals.totalInvestment)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Profit Share</p>
+                    <p className="break-words font-semibold tabular-nums text-success">
+                      {formatCurrency(equity.totals.totalProfit)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Expense Share</p>
+                    <p className="break-words font-semibold tabular-nums text-destructive">
+                      −{formatCurrency(equity.totals.totalExpenses)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Equity</p>
+                    <p
+                      className={cn(
+                        'break-words font-semibold tabular-nums',
+                        Number(equity.totals.totalEquity) < 0 ? 'text-destructive' : 'text-foreground',
+                      )}
+                    >
+                      {formatCurrency(equity.totals.totalEquity)}
+                    </p>
+                  </div>
+                </div>
               </div>
+            </div>
 
+            <div className="space-y-3 border-t border-border px-4 py-3 sm:px-5">
               {Number(equity.totals.percentageTotal) !== 100 && (
-                <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
+                <p
+                  role="alert"
+                  className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+                >
                   Warning: profit share percentages sum to {Number(equity.totals.percentageTotal)}%, not 100%.
                 </p>
               )}
-
-              <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground sm:text-sm">
+              <p className="text-xs text-muted-foreground">
                 &quot;Profit share&quot; is each investor&apos;s cut of gross profit computed live from{' '}
-                <Link href="/admin/sales-analysis" className="text-primary hover:underline">
+                <Link href="/admin/sales-analysis" className="font-medium text-primary hover:underline">
                   Sales Analysis
                 </Link>{' '}
                 (all completed orders to date), weighted by their profit share %.
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="space-y-3 rounded-xl border border-border bg-card">
-        <div className="flex flex-col gap-3 p-4 sm:p-6 sm:pb-0">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-medium">History</h2>
-              {historyFetching && !historyLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground sm:hidden">
+          </>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <SectionHeader
+          title="History"
+          description={
+            <>
               Every investment, withdrawal, and expense affecting equity.
-            </p>
+              <span className="hidden sm:inline">
+                {' '}
+                Manage them from the{' '}
+                <Link href="/admin/investments" className="font-medium text-primary hover:underline">
+                  Investments
+                </Link>{' '}
+                and{' '}
+                <Link href="/admin/expenses" className="font-medium text-primary hover:underline">
+                  Expenses
+                </Link>{' '}
+                pages.
+              </span>
+            </>
+          }
+          isFetching={historyFetching && !historyLoading}
+          className="pb-3"
+        />
+        <FilterBar>
+          <div className="relative flex-1 sm:max-w-[16rem]">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search description or investor..."
+              value={search}
+              onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
+              className="pl-9"
+            />
           </div>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            Every investment, withdrawal, and expense affecting equity. Manage them from the{' '}
-            <Link href="/admin/investments" className="text-primary hover:underline">
-              Investments
-            </Link>{' '}
-            and{' '}
-            <Link href="/admin/expenses" className="text-primary hover:underline">
-              Expenses
-            </Link>{' '}
-            pages.
-          </p>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative flex-1 sm:min-w-[12rem]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search description or investor..."
-                value={search}
-                onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select
-              value={typeFilter}
-              onValueChange={(value) => resetPageAnd(setTypeFilter)(value as 'all' | HistoryType)}
-            >
-              <SelectTrigger className="sm:w-40">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="INVESTMENT">Investment</SelectItem>
-                <SelectItem value="WITHDRAWAL">Withdrawal</SelectItem>
-                <SelectItem value="EXPENSE">Expense</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={investorFilter} onValueChange={resetPageAnd(setInvestorFilter)}>
-              <SelectTrigger className="sm:w-40">
-                <SelectValue placeholder="All Investors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Investors</SelectItem>
-                {investorOptions.map((entry) => (
-                  <SelectItem key={entry.investorId} value={entry.investorId}>
-                    {entry.investorName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={typeFilter}
+            onValueChange={(value) => resetPageAnd(setTypeFilter)(value as 'all' | HistoryType)}
+          >
+            <SelectTrigger className="sm:w-40">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="INVESTMENT">Investment</SelectItem>
+              <SelectItem value="WITHDRAWAL">Withdrawal</SelectItem>
+              <SelectItem value="EXPENSE">Expense</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={investorFilter} onValueChange={resetPageAnd(setInvestorFilter)}>
+            <SelectTrigger className="sm:w-40">
+              <SelectValue placeholder="All Investors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Investors</SelectItem>
+              {investorOptions.map((entry) => (
+                <SelectItem key={entry.investorId} value={entry.investorId}>
+                  {entry.investorName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
             <Input type="date" value={dateFrom} onChange={(e) => resetPageAnd(setDateFrom)(e.target.value)} className="w-auto" />
             <span className="text-sm text-muted-foreground">to</span>
             <Input type="date" value={dateTo} onChange={(e) => resetPageAnd(setDateTo)(e.target.value)} className="w-auto" />
-            {filtersActive && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
           </div>
-        </div>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </FilterBar>
 
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          {historyLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : historyError ? (
-            <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
-          ) : history.length === 0 ? (
-            filtersActive ? (
-              <EmptyState
-                icon={Search}
-                title="No matching entries"
-                description="Try adjusting or clearing your filters"
-                action={
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState icon={PieChart} title="No history yet" description="Investments and expenses will appear here" />
-            )
+        {historyLoading ? (
+          <TableSkeleton rows={6} />
+        ) : historyError ? (
+          <QueryErrorState error={historyErrorObj} onRetry={() => refetchHistory()} />
+        ) : history.length === 0 ? (
+          filtersActive ? (
+            <EmptyState
+              icon={Search}
+              title="No matching entries"
+              description="Try adjusting or clearing your filters"
+              action={
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+            />
           ) : (
-            <>
-              <div className={cn('hidden sm:block', historyFetching && 'opacity-60 transition-opacity')}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Investor</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.map((row) => {
-                      const meta = TYPE_META[row.type];
-                      const Icon = meta.icon;
-                      const amount = Number(row.amount);
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell className="whitespace-normal break-words">{formatDate(row.date)}</TableCell>
-                          <TableCell>
-                            <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.className)}>
-                              <Icon className="size-4 shrink-0" />
-                              {meta.label}
-                            </span>
-                          </TableCell>
-                          <TableCell className="whitespace-normal break-words">{row.description}</TableCell>
-                          <TableCell className="whitespace-normal break-words">{row.investorName ?? '—'}</TableCell>
-                          <TableCell
-                            className={cn(
-                              'whitespace-normal break-words text-right font-medium',
-                              amount >= 0 ? 'text-success' : 'text-destructive',
-                            )}
-                          >
-                            {amount >= 0 ? '+' : ''}
-                            {formatCurrency(amount)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className={cn('space-y-3 sm:hidden', historyFetching && 'opacity-60 transition-opacity')}>
-                {history.map((row) => {
-                  const meta = TYPE_META[row.type];
-                  const Icon = meta.icon;
-                  const amount = Number(row.amount);
-                  return (
-                    <div key={row.id} className="rounded-lg border border-border p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', meta.className)}>
-                          <Icon className="size-4 shrink-0" />
-                          {meta.label}
-                        </span>
-                        <span
+            <EmptyState icon={PieChart} title="No history yet" description="Investments and expenses will appear here" />
+          )
+        ) : (
+          <>
+            <div className={cn('hidden sm:block', historyFetching && 'opacity-60 transition-opacity')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Investor</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((row) => {
+                    const meta = TYPE_META[row.type];
+                    const Icon = meta.icon;
+                    const amount = Number(row.amount);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="whitespace-normal break-words tabular-nums text-muted-foreground">
+                          {formatDate(row.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={meta.badge}>
+                            <Icon className="shrink-0" />
+                            {meta.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="min-w-[12rem] whitespace-normal break-words">{row.description}</TableCell>
+                        <TableCell className="whitespace-normal break-words">{row.investorName ?? '—'}</TableCell>
+                        <TableCell
                           className={cn(
-                            'shrink-0 break-words font-medium',
+                            'text-right font-medium tabular-nums',
                             amount >= 0 ? 'text-success' : 'text-destructive',
                           )}
                         >
                           {amount >= 0 ? '+' : ''}
                           {formatCurrency(amount)}
-                        </span>
-                      </div>
-                      <p className="mt-2 break-words text-sm font-medium">{row.description}</p>
-                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>{formatDate(row.date)}</span>
-                        <span className="break-words text-right">{row.investorName ?? '—'}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
-              <PaginationBar meta={historyResult?.meta} onPageChange={setHistoryPage} />
-            </>
-          )}
-        </div>
-      </section>
+            <div className={cn('space-y-3 p-4 sm:hidden', historyFetching && 'opacity-60 transition-opacity')}>
+              {history.map((row) => {
+                const meta = TYPE_META[row.type];
+                const Icon = meta.icon;
+                const amount = Number(row.amount);
+                return (
+                  <div key={row.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant={meta.badge}>
+                        <Icon className="shrink-0" />
+                        {meta.label}
+                      </Badge>
+                      <span
+                        className={cn(
+                          'shrink-0 break-words font-medium tabular-nums',
+                          amount >= 0 ? 'text-success' : 'text-destructive',
+                        )}
+                      >
+                        {amount >= 0 ? '+' : ''}
+                        {formatCurrency(amount)}
+                      </span>
+                    </div>
+                    <p className="mt-2 break-words text-sm font-medium">{row.description}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="tabular-nums">{formatDate(row.date)}</span>
+                      <span className="break-words text-right">{row.investorName ?? '—'}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <PaginationBar meta={historyResult?.meta} onPageChange={setHistoryPage} />
+          </>
+        )}
+      </div>
 
       <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
         <DialogContent className="max-w-2xl" title="Investor Breakdown">

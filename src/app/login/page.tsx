@@ -1,37 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import {
-  ArrowRight,
-  Boxes,
-  Eye,
-  EyeOff,
-  Lock,
-  ShieldCheck,
-  Store,
-  TrendingUp,
-  User,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, ShieldCheck, Store, User, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { LoginSplash, SPLASH_HOLD_MS } from '@/components/auth/login-splash';
+import { AuthErrorAlert, AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdminLogin, useDealerLogin } from '@/hooks/use-auth';
 import { getErrorMessage } from '@/lib/api/error';
@@ -48,54 +28,27 @@ const dealerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
-  { icon: Boxes, title: 'Smart Inventory', description: 'Real-time stock and product tracking' },
-  { icon: TrendingUp, title: 'Business Insights', description: 'Powerful analytics for better decisions' },
-  { icon: ShieldCheck, title: 'Secure & Reliable', description: 'Enterprise-grade security' },
-];
-
-function IconInput({
-  icon: Icon,
-  className,
-  focusRingClass,
-  ...props
-}: React.ComponentProps<typeof Input> & { icon: LucideIcon; focusRingClass?: string }) {
+function IconInput({ icon: Icon, className, ...props }: React.ComponentProps<typeof Input> & { icon: LucideIcon }) {
   return (
     <div className="relative">
-      <Icon className="pointer-events-none absolute left-3.5 top-1/2 size-4.5 -translate-y-1/2 text-slate-400" />
-      <Input
-        className={cn(
-          'h-11 pl-11 pr-4 bg-slate-900/70 border-slate-700/60 text-white placeholder:text-slate-400/80 rounded-xl transition-all duration-300 backdrop-blur-md',
-          focusRingClass || 'focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400',
-          className
-        )}
-        {...props}
-      />
+      <Icon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input className={cn('h-11 pl-10', className)} {...props} />
     </div>
   );
 }
 
-function PasswordInput({
-  focusRingClass,
-  ...props
-}: React.ComponentProps<typeof Input> & { focusRingClass?: string }) {
+function PasswordInput(props: React.ComponentProps<typeof Input>) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4.5 -translate-y-1/2 text-slate-400" />
-      <Input
-        {...props}
-        type={visible ? 'text' : 'password'}
-        className={cn(
-          'h-11 pl-11 pr-11 bg-slate-900/70 border-slate-700/60 text-white placeholder:text-slate-400/80 rounded-xl transition-all duration-300 backdrop-blur-md',
-          focusRingClass || 'focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400'
-        )}
-      />
+      <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input {...props} type={visible ? 'text' : 'password'} className="h-11 pl-10 pr-11" />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1"
+        className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         tabIndex={-1}
+        aria-label={visible ? 'Hide password' : 'Show password'}
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
@@ -106,47 +59,30 @@ function PasswordInput({
 function RememberAndForgot({
   remember,
   onRememberChange,
-  role,
 }: {
   remember: boolean;
   onRememberChange: (v: boolean) => void;
   role: 'ADMIN' | 'DEALER';
 }) {
-  const isAdmin = role === 'ADMIN';
   return (
-    <div className="flex items-center justify-between text-xs sm:text-sm">
-      <label className="flex cursor-pointer select-none items-center gap-2 text-slate-300 hover:text-white transition-colors">
+    <div className="flex items-center justify-between text-sm">
+      <label className="flex cursor-pointer select-none items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
         <input
           type="checkbox"
           checked={remember}
           onChange={(e) => onRememberChange(e.target.checked)}
-          className={cn(
-            'size-4 rounded border-slate-700 bg-slate-900 transition-colors',
-            isAdmin ? 'accent-purple-500' : 'accent-cyan-500'
-          )}
+          className="size-4 rounded border-input accent-primary"
         />
         <span>Remember me</span>
       </label>
-      <Link
-        href="/forgot-password"
-        className={cn(
-          'font-medium transition-colors hover:underline',
-          isAdmin ? 'text-purple-400 hover:text-purple-300' : 'text-cyan-400 hover:text-cyan-300'
-        )}
-      >
+      <Link href="/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
         Forgot password?
       </Link>
     </div>
   );
 }
 
-function AdminLoginForm({
-  remember,
-  onRememberChange,
-}: {
-  remember: boolean;
-  onRememberChange: (v: boolean) => void;
-}) {
+function AdminLoginForm({ remember, onRememberChange }: { remember: boolean; onRememberChange: (v: boolean) => void }) {
   const router = useRouter();
   const login = useAdminLogin();
   const form = useForm<z.infer<typeof adminSchema>>({
@@ -173,19 +109,11 @@ function AdminLoginForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Admin Email
-              </FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormControl>
-                <IconInput
-                  icon={User}
-                  placeholder="admin@electromart.com"
-                  autoComplete="username"
-                  focusRingClass="focus-visible:ring-rose-500/50 focus-visible:border-rose-400"
-                  {...field}
-                />
+                <IconInput icon={User} placeholder="admin@electromart.com" autoComplete="username" {...field} />
               </FormControl>
-              <FormMessage className="text-xs text-rose-400" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -194,30 +122,19 @@ function AdminLoginForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Password
-              </FormLabel>
+              <FormLabel>Password</FormLabel>
               <FormControl>
-                <PasswordInput
-                  autoComplete="current-password"
-                  focusRingClass="focus-visible:ring-rose-500/50 focus-visible:border-rose-400"
-                  {...field}
-                />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
-              <FormMessage className="text-xs text-rose-400" />
+              <FormMessage />
             </FormItem>
           )}
         />
         <RememberAndForgot remember={remember} onRememberChange={onRememberChange} role="ADMIN" />
-        <Button
-          type="submit"
-          className="group h-12 w-full rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-base shadow-lg shadow-rose-600/35 transition-all duration-300 hover:shadow-rose-600/55 hover:scale-[1.01] active:scale-[0.99]"
-          loading={login.isPending}
-        >
-          <span>Log in as Admin</span>
-          <span className="ml-auto flex size-7 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-1">
-            <ArrowRight className="size-4" />
-          </span>
+        {login.isError && <AuthErrorAlert message={getErrorMessage(login.error)} />}
+        <Button type="submit" size="lg" className="h-11 w-full text-[15px] shadow-md shadow-primary/25" loading={login.isPending}>
+          {login.isPending ? 'Signing in…' : 'Log in as Admin'}
+          {!login.isPending && <ArrowRight />}
         </Button>
       </form>
     </Form>
@@ -257,19 +174,11 @@ function DealerLoginForm({
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Dealer Username
-              </FormLabel>
+              <FormLabel>Username</FormLabel>
               <FormControl>
-                <IconInput
-                  icon={Store}
-                  placeholder="your_business_username"
-                  autoComplete="username"
-                  focusRingClass="focus-visible:ring-blue-600/50 focus-visible:border-blue-500"
-                  {...field}
-                />
+                <IconInput icon={Store} placeholder="your_business_username" autoComplete="username" {...field} />
               </FormControl>
-              <FormMessage className="text-xs text-rose-400" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -278,30 +187,19 @@ function DealerLoginForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Password
-              </FormLabel>
+              <FormLabel>Password</FormLabel>
               <FormControl>
-                <PasswordInput
-                  autoComplete="current-password"
-                  focusRingClass="focus-visible:ring-blue-600/50 focus-visible:border-blue-500"
-                  {...field}
-                />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
-              <FormMessage className="text-xs text-rose-400" />
+              <FormMessage />
             </FormItem>
           )}
         />
         <RememberAndForgot remember={remember} onRememberChange={onRememberChange} role="DEALER" />
-        <Button
-          type="submit"
-          className="group h-12 w-full rounded-xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white font-semibold text-base shadow-lg shadow-blue-950/40 transition-all duration-300 hover:shadow-blue-900/60"
-          loading={login.isPending}
-        >
-          <span>Log in as Dealer</span>
-          <span className="ml-auto flex size-7 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-1">
-            <ArrowRight className="size-4" />
-          </span>
+        {login.isError && <AuthErrorAlert message={getErrorMessage(login.error)} />}
+        <Button type="submit" size="lg" className="h-11 w-full text-[15px] shadow-md shadow-primary/25" loading={login.isPending}>
+          {login.isPending ? 'Signing in…' : 'Log in as Dealer'}
+          {!login.isPending && <ArrowRight />}
         </Button>
       </form>
     </Form>
@@ -310,12 +208,10 @@ function DealerLoginForm({
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<'ADMIN' | 'DEALER'>('DEALER');
+  const [role, setRole] = useState<'ADMIN' | 'DEALER'>('ADMIN');
   const [remember, setRemember] = useState(true);
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const user = useAuthStore((s) => s.user);
-
-  const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
     if (hasHydrated && user) {
@@ -324,212 +220,38 @@ export default function LoginPage() {
   }, [hasHydrated, user, router]);
 
   return (
-    <div
-      className="relative flex min-h-svh w-full overflow-hidden bg-[#030712] select-none"
-      style={{ '--login-splash-hold': `${SPLASH_HOLD_MS}ms` } as CSSProperties}
+    <AuthShell
+      role={role}
+      title="Log in to your account"
+      description="Enter your credentials to continue"
+      footer={<span>Need access? Contact your Electro Mart administrator.</span>}
     >
-      <LoginSplash />
+      <Tabs value={role} onValueChange={(v) => setRole(v as 'ADMIN' | 'DEALER')}>
+        <TabsList className="grid h-11 w-full grid-cols-2 gap-1 p-1 sm:w-full">
+          <TabsTrigger
+            value="ADMIN"
+            className="text-sm data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
+          >
+            <ShieldCheck />
+            Admin
+          </TabsTrigger>
+          <TabsTrigger
+            value="DEALER"
+            className="text-sm data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
+          >
+            <Store />
+            Dealer
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {/* Dynamic Role-Based Liquid Glow Background Orbs */}
-      <div
-        className={cn(
-          'absolute -top-32 -left-32 size-[450px] sm:size-[600px] blur-[120px] sm:blur-[150px] opacity-75 pointer-events-none transition-all duration-1000 ease-in-out',
-          isAdmin
-            ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-900'
-            : 'bg-gradient-to-br from-blue-600 via-sky-500 to-blue-800'
+      <div className="mt-6">
+        {role === 'ADMIN' ? (
+          <AdminLoginForm remember={remember} onRememberChange={setRemember} />
+        ) : (
+          <DealerLoginForm remember={remember} onRememberChange={setRemember} />
         )}
-        style={{ animation: 'liquid-float-1 15s infinite ease-in-out' }}
-      />
-      <div
-        className={cn(
-          'absolute -bottom-32 -right-32 size-[400px] sm:size-[550px] blur-[110px] sm:blur-[140px] opacity-70 pointer-events-none transition-all duration-1000 ease-in-out',
-          isAdmin
-            ? 'bg-gradient-to-tl from-red-500 via-rose-700 to-indigo-900'
-            : 'bg-gradient-to-tl from-sky-400 via-blue-600 to-indigo-900'
-        )}
-        style={{ animation: 'liquid-float-2 18s infinite ease-in-out' }}
-      />
-
-      {/* Atmospheric Background Photo with Dynamic Mask */}
-      <div className="absolute inset-0 pointer-events-none opacity-35">
-        <Image src="/login-bg.jpg" alt="" fill priority sizes="100vw" className="login-bg-zoom object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/40 to-[#030712]" />
       </div>
-
-      <div className="relative z-10 flex w-full flex-col lg:flex-row">
-        {/* Left Hero Column — Desktop & Tablet Showcase */}
-        <div className="hidden lg:flex lg:h-svh lg:w-[54%] lg:flex-col lg:justify-between lg:p-10 xl:w-[56%] xl:p-16">
-          {/* Top Branding Pill */}
-          <div className="login-rise-in flex items-center gap-3">
-            <div className="flex items-center justify-center p-2.5 rounded-xl border border-white/20 bg-slate-900/60 backdrop-blur-xl shadow-lg">
-              <Image
-                src="/logo-icon.png"
-                alt="ElectroMart"
-                width={36}
-                height={36}
-                className="size-8 drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-              />
-            </div>
-            <div>
-              <p className="text-base font-extrabold text-white tracking-wide">
-                <span className="text-blue-400">Electro</span> <span className="text-red-500">Mart</span>
-              </p>
-              <p className="text-xs text-slate-400 font-medium">Enterprise Management System</p>
-            </div>
-          </div>
-
-          {/* Hero Copy */}
-          <div className="login-rise-in max-w-xl space-y-5" style={{ '--delay': '0.1s' } as CSSProperties}>
-            <div
-              className={cn(
-                'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-500 shadow-md',
-                isAdmin
-                  ? 'border-red-500/40 bg-red-950/50 text-rose-300 shadow-[0_0_20px_rgba(239,68,68,0.3)]'
-                  : 'border-blue-500/40 bg-blue-950/50 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-              )}
-            >
-              {isAdmin ? (
-                <>
-                  <ShieldCheck className="size-4 text-red-400" />
-                  <span>Admin Command Portal</span>
-                </>
-              ) : (
-                <>
-                  <Store className="size-4 text-blue-400" />
-                  <span>Dealer Commerce Hub</span>
-                </>
-              )}
-            </div>
-
-            <h1 className="text-4xl font-black tracking-tight text-white xl:text-5xl leading-tight">
-              Powering Smart <br />
-              <span
-                className={cn(
-                  'text-transparent bg-clip-text',
-                  isAdmin
-                    ? 'bg-gradient-to-r from-red-400 via-rose-300 to-red-500'
-                    : 'bg-gradient-to-r from-blue-400 via-sky-300 to-blue-500'
-                )}
-              >
-                Electronics Commerce
-              </span>
-            </h1>
-
-            <p className="max-w-md text-base text-slate-300/90 leading-relaxed font-normal">
-              Unified B2B enterprise platform for real-time inventory management, automated billing, and dealer network analytics.
-            </p>
-          </div>
-
-          {/* Feature Cards Grid */}
-          <div className="grid grid-cols-3 gap-5">
-            {FEATURES.map((feature, index) => (
-              <div
-                key={feature.title}
-                className="login-rise-in group space-y-2.5 rounded-2xl border border-white/10 bg-slate-900/40 p-4 backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-slate-900/60 shadow-lg"
-                style={{ '--delay': `${0.25 + index * 0.1}s` } as CSSProperties}
-              >
-                <div
-                  className={cn(
-                    'flex size-10 items-center justify-center rounded-xl transition-all duration-300',
-                    isAdmin
-                      ? 'bg-red-500/20 text-rose-300 group-hover:bg-red-500/30'
-                      : 'bg-blue-500/20 text-blue-300 group-hover:bg-blue-500/30'
-                  )}
-                >
-                  <feature.icon className="size-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{feature.title}</p>
-                  <p className="mt-1 text-xs text-slate-400 leading-snug">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Form Column — Liquid Glassy Card */}
-        <div className="flex flex-1 items-center justify-center p-4 sm:p-6 md:p-10 lg:h-svh lg:overflow-y-auto">
-          <div className="w-full max-w-md">
-            <div
-              className={cn(
-                'login-card-in relative my-6 w-full rounded-3xl border p-6 sm:p-8 backdrop-blur-3xl shadow-2xl transition-all duration-700 ease-out',
-                isAdmin
-                  ? 'border-red-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(239,68,68,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
-                  : 'border-blue-400/40 bg-slate-950/45 shadow-[0_30px_70px_rgba(59,130,246,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)]'
-              )}
-            >
-              {/* iOS Liquid Glass Top Specular Highlight Overlay */}
-              <div className="absolute inset-x-0 top-0 h-32 rounded-t-3xl bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none" />
-
-              {/* Logo Header */}
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <Image
-                  src="/logo-full.png"
-                  alt="Electro Mart"
-                  width={934}
-                  height={557}
-                  priority
-                  className="h-auto w-36 sm:w-44 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-                />
-              </div>
-
-              <div className="relative z-10 mt-4 text-center">
-                <h2
-                  className={cn(
-                    'text-xl sm:text-2xl font-bold tracking-tight text-transparent bg-clip-text',
-                    isAdmin
-                      ? 'bg-gradient-to-r from-red-400 via-rose-200 to-pink-300'
-                      : 'bg-gradient-to-r from-blue-400 via-sky-200 to-cyan-300'
-                  )}
-                >
-                  Log in to your account
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300/80 mt-1">
-                  Enter your credentials to continue
-                </p>
-              </div>
-
-              {/* Segmented iOS Tabs */}
-              <Tabs
-                value={role}
-                onValueChange={(v) => setRole(v as 'ADMIN' | 'DEALER')}
-                className="relative z-10 mt-6"
-              >
-                <TabsList className="grid h-12 w-full grid-cols-2 gap-1.5 rounded-xl border border-white/10 bg-slate-900/80 p-1 backdrop-blur-md shadow-inner">
-                  <TabsTrigger
-                    value="DEALER"
-                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-900 data-[state=active]:to-indigo-900 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-950/50 text-slate-400 hover:text-white"
-                  >
-                    <Store className="size-4" />
-                    Dealer
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="ADMIN"
-                    className="gap-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-600/30 text-slate-400 hover:text-white"
-                  >
-                    <ShieldCheck className="size-4" />
-                    Admin
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              <div className="relative z-10 mt-6">
-                {role === 'ADMIN' ? (
-                  <AdminLoginForm remember={remember} onRememberChange={setRemember} />
-                ) : (
-                  <DealerLoginForm remember={remember} onRememberChange={setRemember} />
-                )}
-              </div>
-
-              <p className="relative z-10 mt-6 text-center text-xs text-slate-400">
-                &copy; {new Date().getFullYear()} Electro Mart. All rights reserved.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
-
-
