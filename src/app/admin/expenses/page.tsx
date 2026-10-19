@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreHorizontal, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink, MoreHorizontal, Plus, Receipt, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -27,6 +29,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ExpenseFormDialog } from '@/components/admin/expense-form-dialog';
@@ -35,6 +39,15 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { Expense } from '@/lib/api/types';
+
+function PayoutBadge({ expense, className }: { expense: Expense; className?: string }) {
+  if (!expense.representativeSettlement) return null;
+  return (
+    <Badge variant="info" className={className} title="Commission settlement payout — reverse the settlement's payment to correct it">
+      Commission payout · {expense.representativeSettlement.settlementNumber}
+    </Badge>
+  );
+}
 
 export default function ExpensesPage() {
   const [page, setPage] = useState(1);
@@ -89,6 +102,43 @@ export default function ExpensesPage() {
   }
 
   const total = (data?.data ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // A commission settlement payout is locked: the backend rejects editing/deleting it, and the
+  // correction path is reversing the settlement's payment instead.
+  const expenseActions = (expense: Expense, className?: string) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className={className} aria-label="Expense actions">
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {expense.representativeSettlement ? (
+          <>
+            <DropdownMenuLabel className="max-w-64 whitespace-normal text-xs font-normal text-muted-foreground">
+              This is a commission settlement payout and can&apos;t be edited or deleted. Reverse the
+              settlement&apos;s payment instead.
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/commission/settlements/${expense.representativeSettlement.id}`}>
+                <ExternalLink />
+                View settlement {expense.representativeSettlement.settlementNumber}
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem onClick={() => openEdit(expense)}>Edit</DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => setDeletingExpense(expense)}>
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="space-y-6">
@@ -189,7 +239,12 @@ export default function ExpensesPage() {
                   {data.data.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell className="text-muted-foreground">{formatDate(expense.expenseDate)}</TableCell>
-                      <TableCell className="whitespace-normal break-words font-medium">{expense.description}</TableCell>
+                      <TableCell className="whitespace-normal break-words font-medium">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span>{expense.description}</span>
+                          <PayoutBadge expense={expense} />
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatCurrency(expense.amount)}
                       </TableCell>
@@ -197,20 +252,7 @@ export default function ExpensesPage() {
                         {expense.remarks ?? '—'}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Expense actions">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(expense)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem variant="destructive" onClick={() => setDeletingExpense(expense)}>
-                              <Trash2 />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {expenseActions(expense)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -222,26 +264,11 @@ export default function ExpensesPage() {
               {data.data.map((expense) => (
                 <div key={expense.id} className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="break-words font-medium">{expense.description}</p>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="-mr-2 -mt-1 shrink-0"
-                          aria-label="Expense actions"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(expense)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onClick={() => setDeletingExpense(expense)}>
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{expense.description}</p>
+                      <PayoutBadge expense={expense} className="mt-1" />
+                    </div>
+                    {expenseActions(expense, '-mr-2 -mt-1 shrink-0')}
                   </div>
                   <p className="mt-1 break-words text-lg font-semibold tabular-nums">
                     {formatCurrency(expense.amount)}

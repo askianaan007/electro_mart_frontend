@@ -162,7 +162,8 @@ export function SupplierStatementPrintLayout({
         </div>
       )}
 
-      <SectionTitle>Transport Charges</SectionTitle>
+      {/* Transport is supplier-borne — deducted from the payable, so shown negative. */}
+      <SectionTitle>Transport Charges (Deducted)</SectionTitle>
       <table className="mt-[3mm] w-full border-collapse text-[9.5pt]">
         <thead>
           <tr>
@@ -181,7 +182,7 @@ export function SupplierStatementPrintLayout({
                 <td className="border border-black px-2 py-1.5">{index + 1}</td>
                 <td className="border border-black px-2 py-1.5">{formatShortDate(line.date)}</td>
                 <td className="border border-black px-2 py-1.5">{line.invoiceNumber}</td>
-                <td className="border border-black px-2 py-1.5 text-right">{formatCurrency(line.amount)}</td>
+                <td className="border border-black px-2 py-1.5 text-right">−{formatCurrency(line.amount)}</td>
               </tr>
             ))
           )}
@@ -191,7 +192,7 @@ export function SupplierStatementPrintLayout({
         <div className="flex justify-end break-inside-avoid">
           <div className="-mt-px flex w-[40%] min-w-[65mm] justify-between border border-black bg-[#F4C430] px-3 py-1.5 text-[10pt] font-bold">
             <span>TOTAL AMOUNT</span>
-            <span>{formatCurrency(transportTotal)}</span>
+            <span>−{formatCurrency(transportTotal)}</span>
           </div>
         </div>
       )}
@@ -234,8 +235,8 @@ export function SupplierStatementPrintLayout({
 
       <div className="mt-[8mm] text-[10pt] leading-relaxed">
         <p>Gross Purchase Amount: {formatCurrency(purchaseTotal)}</p>
-        {transportTotal > 0 && <p>Transportation Charges: {formatCurrency(transportTotal)}</p>}
-        {returnTotal > 0 && <p>Purchase Returns: −{formatCurrency(returnTotal)}</p>}
+        {transportTotal > 0 && <p>Less Transportation Charges: −{formatCurrency(transportTotal)}</p>}
+        {returnTotal > 0 && <p>Less Purchase Returns: −{formatCurrency(returnTotal)}</p>}
         <p className="mt-[3mm] text-[11pt] font-bold">Net Amount Payable: {formatCurrency(netPayable)}</p>
       </div>
 

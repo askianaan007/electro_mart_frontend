@@ -11,12 +11,20 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useCreateExpense, useUpdateExpense } from '@/hooks/use-expenses';
 import { getErrorMessage } from '@/lib/api/error';
+import { businessToday } from '@/lib/utils';
 import type { Expense } from '@/lib/api/types';
 
 const schema = z.object({
   description: z.string().min(1, 'Description is required'),
-  amount: z.string().refine((v) => Number(v) > 0, 'Enter a valid amount'),
-  expenseDate: z.string().min(1, 'Date is required'),
+  amount: z
+    .string()
+    .refine((v) => v !== '' && Number(v) > 0, 'Enter a valid amount')
+    .refine((v) => /^\d*(\.\d{0,2})?$/.test(v.trim()), 'At most 2 decimal places')
+    .refine((v) => Number(v) <= 1_000_000_000, 'Amount cannot exceed 1,000,000,000'),
+  expenseDate: z
+    .string()
+    .min(1, 'Date is required')
+    .refine((v) => v <= businessToday(), 'Date cannot be in the future'),
   remarks: z.string(),
 });
 
@@ -26,7 +34,7 @@ function defaultValuesFor(expense?: Expense): FormValues {
   return {
     description: expense?.description ?? '',
     amount: expense ? String(expense.amount) : '',
-    expenseDate: expense?.expenseDate.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    expenseDate: expense?.expenseDate.slice(0, 10) ?? businessToday(),
     remarks: expense?.remarks ?? '',
   };
 }
@@ -102,7 +110,7 @@ export function ExpenseFormDialog({
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0.01} step="0.01" className="tabular-nums" {...field} />
+                      <Input type="number" min={0.01} max={1_000_000_000} step="0.01" className="tabular-nums" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -115,7 +123,7 @@ export function ExpenseFormDialog({
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" max={businessToday()} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

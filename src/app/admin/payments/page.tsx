@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useInvoices } from '@/hooks/use-invoices';
 import {
+  undoErrorMessage,
   useDeletedPayments,
   usePayments,
   useReturnPayment,
@@ -379,31 +380,38 @@ function PaymentHistoryTab({
     setPage(1);
   }
 
-  function undo(paymentId: string, doneMessage = 'Change undone') {
-    undoPayment.mutate(paymentId, {
-      onSuccess: () => toast.success(doneMessage),
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
+  // `revisionId` is the lastChange the user is undoing, so a stale/doubled
+  // undo gets a 409 instead of silently undoing an older change.
+  function undo(paymentId: string, revisionId: string | undefined, doneMessage = 'Change undone') {
+    undoPayment.mutate(
+      { id: paymentId, revisionId },
+      {
+        onSuccess: () => toast.success(doneMessage),
+        onError: (error) => toast.error(undoErrorMessage(error)),
+      },
+    );
   }
 
   // Every change can be taken back: the toast carries an Undo, and the row
-  // keeps an "Undo" button until the change is undone.
-  const undoAction = (paymentId: string, doneMessage?: string) => ({
-    action: { label: 'Undo', onClick: () => undo(paymentId, doneMessage) },
+  // keeps an "Undo" button until the change is undone. The toast's undo uses
+  // the revision the mutation response names (edits, cheque-status changes
+  // and deletes all return it).
+  const undoAction = (paymentId: string, revisionId: string | undefined, doneMessage?: string) => ({
+    action: { label: 'Undo', onClick: () => undo(paymentId, revisionId, doneMessage) },
   });
 
   function markCheque(paymentId: string, status: ChequeStatus) {
     updateChequeStatus.mutate(
       { id: paymentId, status },
       {
-        onSuccess: () => {
+        onSuccess: (updated) => {
           const message =
             status === 'CLEARED'
               ? 'Cheque marked cleared — now counted in Liquid Cash'
               : status === 'RETURNED'
                 ? 'Cheque marked returned — dealer balance restored'
                 : 'Cheque set back to pending';
-          toast.success(message, undoAction(paymentId, 'Cheque status change undone'));
+          toast.success(message, undoAction(paymentId, updated?.lastChange?.id, 'Cheque status change undone'));
         },
         onError: (error) => toast.error(getErrorMessage(error)),
       },
@@ -414,7 +422,8 @@ function PaymentHistoryTab({
     if (!deletePayment) return;
     const id = deletePayment.id;
     deletePaymentMutation.mutate(id, {
-      onSuccess: () => toast.success('Payment deleted — dealer balance restored', undoAction(id, 'Payment restored')),
+      onSuccess: (result) =>
+        toast.success('Payment deleted — dealer balance restored', undoAction(id, result?.revisionId, 'Payment restored')),
       onError: (error) => toast.error(getErrorMessage(error)),
     });
     setDeletePayment(null);
@@ -440,7 +449,7 @@ function PaymentHistoryTab({
   function rowBusy(payment: Payment) {
     return (
       (updateChequeStatus.isPending && updateChequeStatus.variables?.id === payment.id) ||
-      (undoPayment.isPending && undoPayment.variables === payment.id)
+      (undoPayment.isPending && undoPayment.variables?.id === payment.id)
     );
   }
 
@@ -473,7 +482,7 @@ function PaymentHistoryTab({
             className="h-8 text-muted-foreground hover:text-foreground"
             disabled={busy}
             title={`Undo the last change (${formatDate(payment.lastChange.createdAt)})`}
-            onClick={() => undo(payment.id)}
+            onClick={() => undo(payment.id, payment.lastChange?.id)}
           >
             <History className="size-3.5" />
             {UNDO_LABELS[payment.lastChange.action]}
@@ -749,11 +758,15 @@ function DeletedPaymentsTab() {
   const undoPayment = useUndoPayment();
   const { data, isLoading, isFetching, isError, error, refetch } = useDeletedPayments({ page, limit: 20 });
 
+  // DeletedPayment carries no lastChange, so restore goes without a revisionId.
   function restore(paymentId: string) {
-    undoPayment.mutate(paymentId, {
-      onSuccess: () => toast.success('Payment restored — dealer balance and invoice status updated'),
-      onError: (error) => toast.error(getErrorMessage(error)),
-    });
+    undoPayment.mutate(
+      { id: paymentId },
+      {
+        onSuccess: () => toast.success('Payment restored — dealer balance and invoice status updated'),
+        onError: (error) => toast.error(undoErrorMessage(error)),
+      },
+    );
   }
 
   return (
@@ -807,7 +820,7 @@ function DeletedPaymentsTab() {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={undoPayment.isPending && undoPayment.variables === payment.id}
+                        disabled={undoPayment.isPending && undoPayment.variables?.id === payment.id}
                         onClick={() => restore(payment.id)}
                       >
                         <ArchiveRestore className="size-3.5" />
@@ -841,7 +854,7 @@ function DeletedPaymentsTab() {
                   size="sm"
                   variant="outline"
                   className="mt-3"
-                  disabled={undoPayment.isPending && undoPayment.variables === payment.id}
+                  disabled={undoPayment.isPending && undoPayment.variables?.id === payment.id}
                   onClick={() => restore(payment.id)}
                 >
                   <ArchiveRestore className="size-3.5" />

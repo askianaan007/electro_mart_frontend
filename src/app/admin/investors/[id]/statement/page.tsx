@@ -19,17 +19,22 @@ import { useInvestor } from '@/hooks/use-investors';
 import { useEquitySummary } from '@/hooks/use-equity';
 import { api } from '@/lib/api/endpoints';
 import { fetchAllPages } from '@/lib/api/fetch-all-pages';
+import { businessToday } from '@/lib/utils';
 import { downloadCsv } from '@/lib/csv';
 import { PrintButton } from '@/components/print-button';
 
+// Pure string / UTC arithmetic: local-Date + toISOString shifts the day in
+// Sri Lanka (UTC+05:30) — the month end came out a day early and, just after
+// midnight, "this month" could still be last month.
 function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
+  return businessToday().slice(0, 7);
 }
 
 function lastDayOfMonth(month: string) {
   const [year, mon] = month.split('-').map(Number);
-  const last = new Date(year, mon, 0);
-  return last.toISOString().slice(0, 10);
+  // Day 0 of the next month is the last day of this one.
+  const days = new Date(Date.UTC(year, mon, 0)).getUTCDate();
+  return `${month}-${String(days).padStart(2, '0')}`;
 }
 
 function monthLabel(month: string) {

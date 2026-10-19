@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -10,14 +10,20 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreatePayment, useUndoPayment, useUpdatePayment } from '@/hooks/use-payments';
+import { DuplicateConfirmDialog } from '@/components/admin/duplicate-confirm-dialog';
+import { undoErrorMessage, useCreatePayment, useUndoPayment, useUpdatePayment } from '@/hooks/use-payments';
+import { isPossibleDuplicate } from '@/lib/api/duplicate';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency } from '@/lib/utils';
+import { businessToday, formatCurrency } from '@/lib/utils';
 import type { Invoice, Payment } from '@/lib/api/types';
 
 const schema = z
   .object({
-    amount: z.string().refine((v) => Number(v) > 0, 'Enter a valid amount'),
+    // Mirrors the backend: > 0, at most 2 decimals, ≤ 1,000,000,000.
+    amount: z
+      .string()
+      .refine((v) => /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0, 'Enter a valid amount (up to 2 decimals)')
+      .refine((v) => Number(v) <= 1_000_000_000, 'Amount cannot exceed 1,000,000,000'),
     mode: z.enum(['CASH', 'CHEQUE', 'BANK_TRANSFER']),
     reference: z.string(),
     paymentDate: z.string().min(1, 'Payment date is required'),
@@ -28,6 +34,9 @@ const schema = z
     remarks: z.string(),
   })
   .superRefine((data, ctx) => {
+    if (data.paymentDate && data.paymentDate > businessToday()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentDate'], message: 'Payment date cannot be in the future' });
+    }
     if (data.mode !== 'CHEQUE') return;
     if (!data.bankName.trim()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['bankName'], message: 'Bank name is required for cheques' });
@@ -40,7 +49,7 @@ const schema = z
     }
     if (!data.collectedDate) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['collectedDate'], message: 'Collected date is required' });
-    } else if (data.collectedDate > new Date().toISOString().slice(0, 10)) {
+    } else if (data.collectedDate > businessToday()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['collectedDate'], message: 'Collected date cannot be in the future' });
     }
   });
@@ -52,11 +61,11 @@ function defaultValuesFor(payment?: Payment | null): FormValues {
     amount: payment ? String(payment.amount) : '',
     mode: payment?.mode ?? 'CASH',
     reference: payment?.reference ?? '',
-    paymentDate: payment ? payment.paymentDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    paymentDate: payment ? payment.paymentDate.slice(0, 10) : businessToday(),
     bankName: payment?.bankName ?? '',
     chequeNumber: payment?.chequeNumber ?? '',
     chequeDate: payment?.chequeDate ? payment.chequeDate.slice(0, 10) : '',
-    collectedDate: payment?.collectedDate ? payment.collectedDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    collectedDate: payment?.collectedDate ? payment.collectedDate.slice(0, 10) : businessToday(),
     remarks: payment?.remarks ?? '',
   };
 }
@@ -78,6 +87,12 @@ export function RecordPaymentDialog({
   const updatePayment = useUpdatePayment();
   const undoPayment = useUndoPayment();
   const pending = createPayment.isPending || updatePayment.isPending;
+  // Set when the backend flags the new payment as a POSSIBLE_DUPLICATE: the
+  // exact body that was refused, resent with confirmDuplicate only on confirm.
+  const [duplicate, setDuplicate] = useState<{
+    message: string;
+    body: Parameters<typeof createPayment.mutate>[0];
+  } | null>(null);
 
   // A RETURNED (bounced) cheque never paid anything, so it doesn't eat into
   // what's left on the invoice — mirrors isEffectivePayment on the backend.
@@ -101,6 +116,7 @@ export function RecordPaymentDialog({
 
   useEffect(() => {
     if (open) {
+      setDuplicate(null);
       form.reset(
         payment
           ? defaultValuesFor(payment)
@@ -111,6 +127,24 @@ export function RecordPaymentDialog({
   }, [open, payment?.id, effectiveInvoice?.id]);
 
   const mode = form.watch('mode');
+
+  function submitCreate(body: Parameters<typeof createPayment.mutate>[0]) {
+    createPayment.mutate(body, {
+      onSuccess: () => {
+        setDuplicate(null);
+        toast.success('Payment recorded');
+        onOpenChange(false);
+      },
+      onError: (error) => {
+        if (isPossibleDuplicate(error) && !body.confirmDuplicate) {
+          setDuplicate({ message: error.message, body });
+          return;
+        }
+        setDuplicate(null);
+        toast.error(getErrorMessage(error));
+      },
+    });
+  }
 
   const onSubmit = form.handleSubmit((values) => {
     const payload = {
@@ -129,15 +163,20 @@ export function RecordPaymentDialog({
       updatePayment.mutate(
         { id: payment.id, ...payload },
         {
-          onSuccess: () => {
+          onSuccess: (updated) => {
+            // Pin the undo to this edit's revision when the response carries it.
+            const revisionId = updated?.lastChange?.id;
             toast.success('Payment updated', {
               action: {
                 label: 'Undo',
                 onClick: () =>
-                  undoPayment.mutate(payment.id, {
-                    onSuccess: () => toast.success('Edit undone'),
-                    onError: (error) => toast.error(getErrorMessage(error)),
-                  }),
+                  undoPayment.mutate(
+                    { id: payment.id, revisionId },
+                    {
+                      onSuccess: () => toast.success('Edit undone'),
+                      onError: (error) => toast.error(undoErrorMessage(error)),
+                    },
+                  ),
               },
             });
             onOpenChange(false);
@@ -147,16 +186,7 @@ export function RecordPaymentDialog({
       );
     } else {
       if (!effectiveInvoice) return;
-      createPayment.mutate(
-        { invoiceId: effectiveInvoice.id, ...payload },
-        {
-          onSuccess: () => {
-            toast.success('Payment recorded');
-            onOpenChange(false);
-          },
-          onError: (error) => toast.error(getErrorMessage(error)),
-        },
-      );
+      submitCreate({ invoiceId: effectiveInvoice.id, ...payload });
     }
   });
 
@@ -222,7 +252,7 @@ export function RecordPaymentDialog({
                   <FormItem>
                     <FormLabel>Payment date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" max={businessToday()} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -282,7 +312,7 @@ export function RecordPaymentDialog({
                       <FormItem>
                         <FormLabel>Collected date</FormLabel>
                         <FormControl>
-                          <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
+                          <Input type="date" max={businessToday()} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -333,6 +363,12 @@ export function RecordPaymentDialog({
             </DialogFooter>
           </form>
         </Form>
+        <DuplicateConfirmDialog
+          message={duplicate?.message ?? null}
+          pending={createPayment.isPending}
+          onCancel={() => setDuplicate(null)}
+          onConfirm={() => duplicate && submitCreate({ ...duplicate.body, confirmDuplicate: true })}
+        />
       </DialogContent>
     </Dialog>
   );

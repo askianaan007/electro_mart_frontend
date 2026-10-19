@@ -4,7 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, Coins, HandCoins, Plus, Search, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Coins,
+  HandCoins,
+  PackageCheck,
+  Plus,
+  Search,
+  Trash2,
+  Truck,
+  Undo2,
+  Wallet,
+} from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -168,9 +180,26 @@ export default function SupplierCreditDetailPage() {
     return <PageSkeleton />;
   }
 
-  /** Cheque badge that opens the transitions valid right now (same rules as before). */
+  const hasTransport = Number(data.totalTransportCharges) > 0;
+  const hasReplacements = Number(data.totalReplacements ?? 0) > 0;
+  const hasRefunds = Number(data.totalRefundsReceived ?? 0) > 0;
+  const statCount = (4 + Number(hasTransport) + Number(hasReplacements) + Number(hasRefunds)) as 4 | 5 | 6 | 7;
+
+  /**
+   * Cheque badge that opens only the transitions the backend allows right now:
+   * PENDING → CLEARED / RETURNED, and CLEARED / RETURNED → PENDING within 1 day
+   * of the status change. CLEARED ↔ RETURNED directly is never allowed.
+   */
   function settlementStatusControl(payment: SupplierPayment) {
     if (!payment.chequeStatus) return <span className="text-muted-foreground">—</span>;
+    if (payment.mode === 'CHEQUE' && payment.chequeStatus !== 'PENDING' && !canRevertToPending(payment)) {
+      // Locked — say why instead of showing a dead control.
+      return (
+        <span title="Status is final — it can only be reverted to pending within 1 day of the last status change">
+          <ChequeStatusBadge status={payment.chequeStatus} />
+        </span>
+      );
+    }
     const busy = updateChequeStatus.isPending && updateChequeStatus.variables?.paymentId === payment.id;
     const options =
       payment.mode === 'CHEQUE' && payment.chequeStatus === 'PENDING'
@@ -277,15 +306,25 @@ export default function SupplierCreditDetailPage() {
         }
       />
 
+      {/* Balance = purchases − returns + replacements − settled − transport + refunds received.
+          Replacements / refunds only show when non-zero. */}
       <div
         className={cn(
           'grid gap-4 sm:grid-cols-2',
-          Number(data.totalTransportCharges) > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-4',
+          { 4: 'xl:grid-cols-4', 5: 'xl:grid-cols-5', 6: 'xl:grid-cols-3', 7: 'xl:grid-cols-4' }[statCount],
         )}
       >
         <StatCard label="Total Purchases" value={formatCurrency(data.totalPurchases)} icon={Truck} />
         <StatCard label="Returns" value={`−${formatCurrency(data.totalReturns)}`} icon={Undo2} tone="warning" />
-        {Number(data.totalTransportCharges) > 0 && (
+        {hasReplacements && (
+          <StatCard
+            label="Replacements"
+            value={`+${formatCurrency(data.totalReplacements ?? 0)}`}
+            icon={PackageCheck}
+            hint="Goods received in place of returns"
+          />
+        )}
+        {hasTransport && (
           <StatCard
             label="Transport Charges"
             value={`−${formatCurrency(data.totalTransportCharges)}`}
@@ -295,6 +334,14 @@ export default function SupplierCreditDetailPage() {
           />
         )}
         <StatCard label="Settled" value={`−${formatCurrency(data.totalSettled)}`} icon={Wallet} tone="success" />
+        {hasRefunds && (
+          <StatCard
+            label="Refunds Received"
+            value={`+${formatCurrency(data.totalRefundsReceived ?? 0)}`}
+            icon={HandCoins}
+            hint="Cash the supplier paid back"
+          />
+        )}
         <StatCard
           label="Credit Balance"
           value={formatCurrency(data.creditBalance)}
