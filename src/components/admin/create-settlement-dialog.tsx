@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,8 @@ export function CreateSettlementDialog({
     if (open) form.reset({ representativeId: '', periodStart: '', periodEnd: '' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const periodStart = useWatch({ control: form.control, name: 'periodStart' });
 
   const onSubmit = form.handleSubmit((values) => {
     createSettlement.mutate(values, {
@@ -114,9 +116,9 @@ export function CreateSettlementDialog({
                 name="periodEnd"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Period end</FormLabel>
+                    <FormLabel>Period end (inclusive)</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" min={periodStart || undefined} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -125,7 +127,7 @@ export function CreateSettlementDialog({
             </div>
             <p className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
               Batches every pending commission line for this representative created within the period into a new
-              settlement.
+              settlement. Both dates are inclusive — the end date covers that whole day.
             </p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

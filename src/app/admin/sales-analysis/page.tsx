@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   Calendar,
   Download,
+  Info,
   LineChart,
   PiggyBank,
   Receipt,
@@ -33,7 +34,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { api } from '@/lib/api/endpoints';
 import { fetchAllPages } from '@/lib/api/fetch-all-pages';
 import { downloadCsv } from '@/lib/csv';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { businessToday, cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { SalesAnalysisRow } from '@/lib/api/types';
 
 function downloadSalesAnalysisCsv(filename: string, rows: SalesAnalysisRow[]) {
@@ -102,13 +103,16 @@ export default function SalesAnalysisPage() {
     setIsExporting(true);
     try {
       const allRows = await fetchAllPages((page, limit) => api.salesAnalysis.list({ ...filters, page, limit }));
-      downloadSalesAnalysisCsv(`sales-analysis-${new Date().toISOString().slice(0, 10)}.csv`, allRows);
+      downloadSalesAnalysisCsv(`sales-analysis-${businessToday()}.csv`, allRows);
     } finally {
       setIsExporting(false);
     }
   }
 
   const isNetProfitPositive = Number(summary?.netProfit ?? 0) >= 0;
+  // With a dealer or search filter the backend can't attribute expenses, so it
+  // leaves them out and netProfit is just gross profit.
+  const expensesExcluded = summary?.expensesIncluded === false;
 
   return (
     <div className="space-y-6 select-none">
@@ -166,19 +170,27 @@ export default function SalesAnalysisPage() {
             />
             <StatCard
               label="Total expenses"
-              value={formatCurrency(summary.totalExpenses)}
+              value={expensesExcluded ? '—' : formatCurrency(summary.totalExpenses)}
               icon={Receipt}
               tone="warning"
+              hint={expensesExcluded ? 'Not applied while filtered' : undefined}
             />
             <StatCard
               label="Net profit"
               value={formatCurrency(summary.netProfit)}
               icon={PiggyBank}
               tone={isNetProfitPositive ? 'success' : 'destructive'}
-              hint="Bottom line after expenses"
+              hint={expensesExcluded ? 'Before expenses (filter applied)' : 'Bottom line after expenses'}
               className="sm:col-span-2 lg:col-span-1"
               valueClassName={isNetProfitPositive ? 'text-success' : 'text-destructive'}
             />
+            {expensesExcluded && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground sm:col-span-2 lg:col-span-3 xl:col-span-5">
+                <Info className="mt-px size-3.5 shrink-0" />
+                Expenses aren&apos;t attributed to dealers, so they&apos;re excluded while a dealer or search filter is
+                applied.
+              </p>
+            )}
           </div>
         )
       )}

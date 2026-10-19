@@ -57,6 +57,14 @@ function buildRows(data: BalanceSheetResponse): Row[] {
     amount: data.assets.current.chequesInHand,
     kind: 'item',
   });
+  if (data.assets.current.refundChequesReceivable !== undefined) {
+    push({
+      label: 'Refund Cheques Receivable',
+      sub: 'Supplier refund cheques received — not yet cleared',
+      amount: data.assets.current.refundChequesReceivable,
+      kind: 'item',
+    });
+  }
   push({ label: 'Inventory', sub: 'Valued at current cost', amount: data.assets.current.inventory, kind: 'item' });
   push({ label: 'Supplier Advances', amount: data.assets.current.supplierAdvances, kind: 'item' });
   push({ label: 'Prepaid Expenses', amount: data.assets.current.prepaidExpenses, kind: 'item' });
@@ -77,6 +85,14 @@ function buildRows(data: BalanceSheetResponse): Row[] {
     amount: data.liabilities.current.supplierChequesIssued,
     kind: 'item',
   });
+  if (data.liabilities.current.refundChequesIssued !== undefined) {
+    push({
+      label: 'Refund Cheques Issued',
+      sub: 'Customer refund cheques written — not yet cleared',
+      amount: data.liabilities.current.refundChequesIssued,
+      kind: 'item',
+    });
+  }
   push({ label: 'Tax Payable', amount: data.liabilities.current.taxPayable, kind: 'item' });
   push({ label: 'Accrued Expenses', amount: data.liabilities.current.accruedExpenses, kind: 'item' });
   push({ label: 'Customer Advances', amount: data.liabilities.current.customerAdvances, kind: 'item' });
@@ -99,7 +115,23 @@ function buildRows(data: BalanceSheetResponse): Row[] {
     amount: data.equity.accumulatedEarnings,
     kind: 'item',
   });
+  if (data.equity.cashAdjustments !== undefined) {
+    push({
+      label: 'Opening balance & cash adjustments',
+      sub: 'Opening Liquid Cash balance plus evidenced corrections',
+      amount: data.equity.cashAdjustments,
+      kind: 'item',
+    });
+  }
   push({ label: 'TOTAL EQUITY', amount: data.equity.totalEquity, kind: 'total' });
+  if (data.equity.investorEquity !== undefined) {
+    push({
+      label: 'Investor Equity (Equity ledger)',
+      sub: 'Contributions plus attributed earnings — for reference',
+      amount: data.equity.investorEquity,
+      kind: 'note',
+    });
+  }
 
   push({ label: 'MEMORANDUM (excluded from totals above)', amount: null, kind: 'section' });
   push({
@@ -125,6 +157,14 @@ function buildRows(data: BalanceSheetResponse): Row[] {
     amount: data.reconciliation.knownUnallocatedEquityDifference,
     kind: 'item',
   });
+  if (data.reconciliation.knownTransportChargeDifference !== undefined) {
+    push({
+      label: 'Known Transport Charge Difference',
+      sub: 'Transport charges deducted from payables (unrecorded counterpart)',
+      amount: data.reconciliation.knownTransportChargeDifference,
+      kind: 'item',
+    });
+  }
   push({ label: 'Total Known Difference', amount: data.reconciliation.knownDifference, kind: 'subtotal' });
   push({ label: 'Unexplained Difference', amount: data.reconciliation.unexplainedDifference, kind: 'total' });
   push({
@@ -255,6 +295,9 @@ export async function downloadBalanceSheetPdf(data: BalanceSheetResponse, filena
     const cols = [
       { label: 'Known Order-Timing Gap', value: data.reconciliation.knownOrderTimingDifference },
       { label: 'Known Unallocated Equity', value: data.reconciliation.knownUnallocatedEquityDifference },
+      ...(data.reconciliation.knownTransportChargeDifference !== undefined
+        ? [{ label: 'Known Transport Charge Gap', value: data.reconciliation.knownTransportChargeDifference }]
+        : []),
       { label: 'Total Known Difference', value: data.reconciliation.knownDifference },
       { label: 'Unexplained Difference', value: data.reconciliation.unexplainedDifference },
     ];
@@ -330,6 +373,9 @@ export async function downloadBalanceSheetPdf(data: BalanceSheetResponse, filena
     { label: 'Accounts Receivable', value: n(data.assets.current.accountsReceivable), color: BLUE },
     { label: 'Cheques in Hand', value: n(data.assets.current.chequesInHand), color: AMBER },
     { label: 'Inventory', value: n(data.assets.current.inventory), color: PURPLE },
+    ...(data.assets.current.refundChequesReceivable !== undefined
+      ? [{ label: 'Refund Cheques Receivable', value: n(data.assets.current.refundChequesReceivable), color: AMBER }]
+      : []),
   ];
   for (const item of assetItems) {
     const pct = Math.max(Math.round((item.value / assetsTotal) * 100), 0);
@@ -358,9 +404,15 @@ export async function downloadBalanceSheetPdf(data: BalanceSheetResponse, filena
   const leItems: { label: string; value: number; color: [number, number, number] }[] = [
     { label: 'Accounts Payable', value: n(data.liabilities.current.accountsPayable), color: RED },
     { label: 'Supplier Cheques Issued', value: n(data.liabilities.current.supplierChequesIssued), color: AMBER },
+    ...(data.liabilities.current.refundChequesIssued !== undefined
+      ? [{ label: 'Refund Cheques Issued', value: n(data.liabilities.current.refundChequesIssued), color: AMBER }]
+      : []),
     { label: 'Capital Contributions', value: n(data.equity.capitalContributions), color: BLUE },
     { label: 'Owner Withdrawals', value: Math.abs(n(data.equity.ownerWithdrawals)), color: PURPLE },
     { label: 'Accumulated Earnings', value: Math.max(n(data.equity.accumulatedEarnings), 0), color: GREEN },
+    ...(data.equity.cashAdjustments !== undefined
+      ? [{ label: 'Opening Balance & Cash Adjustments', value: Math.abs(n(data.equity.cashAdjustments)), color: SLATE_500 }]
+      : []),
   ];
   for (const item of leItems) {
     const pct = Math.max(Math.round((item.value / liabAndEq) * 100), 0);
@@ -420,6 +472,10 @@ export async function downloadBalanceSheetPdf(data: BalanceSheetResponse, filena
         cellData.cell.styles.fontStyle = 'bold';
         cellData.cell.styles.fillColor = GOLD;
         cellData.cell.styles.textColor = SLATE_900;
+      } else if (row.kind === 'note') {
+        // Reference figures shown beside the statement, not part of it.
+        cellData.cell.styles.fontStyle = 'italic';
+        cellData.cell.styles.textColor = SLATE_500;
       }
       if (cellData.column.index === 2 && row.amount !== null) {
         const amt = n(row.amount);

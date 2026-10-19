@@ -229,7 +229,11 @@ export interface CreditSummaryEntry {
   totalPurchases: string;
   totalTransportCharges: string;
   totalReturns: string;
+  /** Goods received in place of returned ones — adds back to the payable. */
+  totalReplacements?: string;
   totalSettled: string;
+  /** Cash the supplier paid back to clear a credit they owed us. */
+  totalRefundsReceived?: string;
   creditBalance: string;
 }
 
@@ -240,7 +244,9 @@ export interface CreditsSummary {
     totalPurchases: string;
     totalTransportCharges: string;
     totalReturns: string;
+    totalReplacements?: string;
     totalSettled: string;
+    totalRefundsReceived?: string;
     totalCreditBalance: string;
   };
 }
@@ -250,7 +256,9 @@ export interface SupplierCreditDetail {
   totalPurchases: string;
   totalTransportCharges: string;
   totalReturns: string;
+  totalReplacements?: string;
   totalSettled: string;
+  totalRefundsReceived?: string;
   creditBalance: string;
 }
 
@@ -329,8 +337,8 @@ export interface Payment {
   chequeDate: string | null;
   collectedDate: string | null;
   remarks: string | null;
-  /** Admin list only: the newest change that can still be undone. */
-  lastChange?: { action: PaymentChangeAction; createdAt: string } | null;
+  /** Admin list only: the newest change that can still be undone. Send its `id` with the undo. */
+  lastChange?: { id: string; action: PaymentChangeAction; createdAt: string } | null;
 }
 
 export type PaymentChangeAction = 'UPDATED' | 'CHEQUE_STATUS' | 'DELETED';
@@ -361,6 +369,12 @@ export interface Investment {
   investmentDate: string;
   reason: string;
   remarks: string | null;
+  /** Cheque entries only. null on a cheque recorded before tracking existed (counts as cleared). */
+  chequeStatus: ChequeStatus | null;
+  chequeStatusUpdatedAt: string | null;
+  chequeNumber: string | null;
+  bankName: string | null;
+  chequeDate: string | null;
   createdAt: string;
 }
 
@@ -370,6 +384,55 @@ export interface Expense {
   amount: string;
   expenseDate: string;
   remarks: string | null;
+  createdAt: string;
+  /** Set when this expense is a commission settlement's payout — it can't be edited or deleted. */
+  representativeSettlement?: { id: string; settlementNumber: string; status: SettlementStatus } | null;
+}
+
+export type RefundParty = 'DEALER' | 'SUPPLIER';
+
+/** Money returned to a dealer who holds a credit, or received from a supplier who owes us one. */
+export interface Refund {
+  id: string;
+  refundNumber: string;
+  party: RefundParty;
+  dealerId: string | null;
+  dealer?: { id: string; businessName: string } | null;
+  supplierId: string | null;
+  supplier?: { id: string; name: string } | null;
+  amount: string;
+  mode: PaymentMode;
+  refundDate: string;
+  reference: string | null;
+  reason: string;
+  chequeStatus: ChequeStatus | null;
+  chequeStatusUpdatedAt: string | null;
+  chequeNumber: string | null;
+  bankName: string | null;
+  chequeDate: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+}
+
+export type CashAdjustmentType = 'OPENING_BALANCE' | 'ADJUSTMENT' | 'SETTLEMENT_REVERSAL';
+
+/** An evidenced change to Liquid Cash with no other source record (opening balance, correction). */
+export interface CashAdjustment {
+  id: string;
+  adjustmentNumber: string;
+  type: CashAdjustmentType;
+  /** Signed: + adds to Liquid Cash, − takes away. */
+  amount: string;
+  adjustmentDate: string;
+  reason: string;
+  evidenceReference: string | null;
+  reversalOfId: string | null;
+  reversalOf?: { id: string; adjustmentNumber: string } | null;
+  reversedBy?: { id: string; adjustmentNumber: string } | null;
+  settlementId: string | null;
+  settlement?: { id: string; settlementNumber: string } | null;
+  admin?: { id: string; name: string } | null;
   createdAt: string;
 }
 
@@ -406,21 +469,70 @@ export interface EquityHistoryEntry {
   createdAt: string;
 }
 
-export type LiquidCashEntryType = 'INVESTMENT' | 'DEALER_PAYMENT' | 'SUPPLIER_PAYMENT' | 'EXPENSE';
+export type LiquidCashEntryType =
+  | 'INVESTMENT'
+  | 'DEALER_PAYMENT'
+  | 'SUPPLIER_PAYMENT'
+  | 'EXPENSE'
+  | 'REFUND'
+  | 'ADJUSTMENT';
 
 export interface LiquidCashSummary {
   balance: number;
+  /** Net capital: deposits − withdrawals. */
   totalInvestments: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
   totalCollected: number;
   totalPaidToSuppliers: number;
   totalExpensesPaid: number;
+  totalRefundsPaid: number;
+  totalRefundsReceived: number;
+  /** Signed sum of corrections and settlement-payout reversals (not the opening balance). */
+  totalAdjustments: number;
+  openingBalance: number;
+  /** Legacy rows dated in the future — not yet in `balance`. */
+  scheduled: number;
   pendingDealerCheques: number;
+  pendingDealerChequeCount: number;
   pendingSupplierCheques: number;
+  pendingSupplierChequeCount: number;
+  pendingInvestmentCheques: number;
+  pendingWithdrawalCheques: number;
+  pendingRefundChequesOut: number;
+  pendingRefundChequesIn: number;
+  /** Every uncleared cheque coming in. Never net this against pendingOut. */
+  pendingIn: number;
+  /** Every uncleared cheque going out. */
+  pendingOut: number;
 }
+
+/** What happened in a Liquid Cash history row. Later events are dated corrections to an earlier entry. */
+export type LiquidCashEvent =
+  | 'RECORDED'
+  | 'EDITED'
+  | 'DELETED'
+  | 'UNDONE'
+  | 'RESTORED'
+  | 'CANCELLED'
+  | 'CHEQUE_PENDING'
+  | 'CHEQUE_CLEARED'
+  | 'CHEQUE_RETURNED'
+  | 'OPENING_BALANCE'
+  | 'OPENING_BALANCE_REVERSAL'
+  | 'ADJUSTMENT'
+  | 'ADJUSTMENT_REVERSAL'
+  | 'SETTLEMENT_REVERSAL'
+  | (string & {});
 
 export interface LiquidCashHistoryEntry {
   id: string;
+  /** The source record (payment, investment, …) — shared by its correction rows. */
+  sourceId: string;
   type: LiquidCashEntryType;
+  event: LiquidCashEvent;
+  /** Dated after now — shown, but not in the current balance. */
+  isFuture: boolean;
   status: ChequeStatus | null;
   date: string;
   description: string;
@@ -435,14 +547,22 @@ export interface LiquidCashHistoryEntry {
   createdAt: string;
 }
 
-export type CreditBalanceEntryType = 'PURCHASE' | 'TRANSPORT_CHARGE' | 'PURCHASE_RETURN' | 'SETTLEMENT';
+export type CreditBalanceEntryType =
+  | 'PURCHASE'
+  | 'TRANSPORT_CHARGE'
+  | 'PURCHASE_RETURN'
+  | 'REPLACEMENT'
+  | 'SETTLEMENT'
+  | 'REFUND';
 
 export interface CreditBalanceSummary {
   balance: number;
   totalPurchases: number;
   totalTransportCharges: number;
   totalReturns: number;
+  totalReplacements?: number;
   totalSettled: number;
+  totalRefundsReceived?: number;
   /** Already included in `balance` — informational: what would bounce back onto the balance if returned. */
   pendingChequeSettlements: number;
 }
@@ -482,6 +602,8 @@ export interface BalanceSheetResponse {
       cashAndBank: string;
       accountsReceivable: string;
       chequesInHand: string;
+      /** Supplier refund cheques received, not yet cleared. */
+      refundChequesReceivable?: string;
       inventory: string;
       supplierAdvances: null;
       prepaidExpenses: null;
@@ -499,6 +621,8 @@ export interface BalanceSheetResponse {
     current: {
       accountsPayable: string;
       supplierChequesIssued: string;
+      /** Dealer refund cheques written, not yet cleared. */
+      refundChequesIssued?: string;
       taxPayable: null;
       accruedExpenses: null;
       customerAdvances: null;
@@ -514,6 +638,10 @@ export interface BalanceSheetResponse {
     capitalContributions: string;
     ownerWithdrawals: string;
     accumulatedEarnings: string;
+    /** EquityService's total — contributions plus attributed earnings. */
+    investorEquity?: string;
+    /** Opening balance + cash adjustments. */
+    cashAdjustments?: string;
     totalEquity: string;
   };
   summary: {
@@ -526,6 +654,8 @@ export interface BalanceSheetResponse {
   reconciliation: {
     knownOrderTimingDifference: string;
     knownUnallocatedEquityDifference: string;
+    /** Transport charges deducted from payables with no recorded counterpart (see accountingWarnings). */
+    knownTransportChargeDifference?: string;
     knownDifference: string;
     unexplainedDifference: string;
     inFlightOrderCount: number;
@@ -596,6 +726,8 @@ export interface SalesAnalysisSummary {
   totalBuying: string;
   totalProfit: string;
   totalExpenses: string;
+  /** false when a dealer/search filter is applied — expenses can't be attributed, so netProfit = totalProfit. */
+  expensesIncluded?: boolean;
   netProfit: string;
 }
 
@@ -628,7 +760,10 @@ export interface AdminDashboardSummary {
   totalPurchaseReturnChangePct: number | null;
   netPurchase: number;
   netPurchaseChangePct: number | null;
+  /** This month's change in Liquid Cash — everything, including capital. */
   netCashFlow: number;
+  /** This month's change in Liquid Cash excluding investments, withdrawals and adjustments. */
+  operatingCashFlow?: number;
   profit: number;
   profitChangePct: number | null;
   totalExpenses: number;
@@ -677,7 +812,7 @@ export type RepresentativeStatus = 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'INACTIV
 export type AssignmentScopeType = 'CATEGORY' | 'PRODUCT' | 'BRAND' | 'CAMPAIGN';
 export type CommissionType = 'PERCENTAGE' | 'FIXED';
 export type CommissionLineStatus = 'PENDING' | 'APPROVED' | 'SETTLED' | 'REVERSED';
-export type SettlementStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
+export type SettlementStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'REVERSED';
 export type CollectionStatus = 'PENDING_VERIFICATION' | 'CONFIRMED' | 'REJECTED';
 export type BannerLinkType = 'NONE' | 'CATEGORY' | 'PRODUCT' | 'BRAND' | 'EXTERNAL_URL';
 
@@ -838,6 +973,10 @@ export interface RepresentativeSettlement {
   approvedByAdminId: string | null;
   approvedAt: string | null;
   rejectedReason: string | null;
+  /** How a cash/bank-transfer payout was made (receipt or transfer reference). */
+  reference?: string | null;
+  reversedAt?: string | null;
+  reversalReason?: string | null;
   paidAt: string | null;
   createdAt: string;
   lines?: CommissionLedgerEntry[];

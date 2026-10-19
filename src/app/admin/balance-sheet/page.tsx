@@ -26,7 +26,7 @@ import { StatCard } from '@/components/stat-card';
 import { PageHeader } from '@/components/page-header';
 import { useBalanceSheetSummary } from '@/hooks/use-balance-sheet';
 import { downloadBalanceSheetPdf } from '@/lib/balance-sheet-pdf';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { businessToday, cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { BalanceSheetResponse, ReconciliationStatus } from '@/lib/api/types';
 
 const STATUS_META: Record<
@@ -138,6 +138,7 @@ function ReconciliationBanner({ data }: { data: BalanceSheetResponse }) {
   const meta = STATUS_META[data.reconciliation.status];
   const Icon = meta.icon;
   const showBreakdown = data.reconciliation.status !== 'BALANCED';
+  const transportDifference = data.reconciliation.knownTransportChargeDifference;
 
   return (
     <div className={cn('rounded-xl border p-4 shadow-xs sm:p-5', meta.border, meta.bg)}>
@@ -165,7 +166,12 @@ function ReconciliationBanner({ data }: { data: BalanceSheetResponse }) {
       </div>
 
       {showBreakdown && (
-        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className={cn(
+            'mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2',
+            transportDifference !== undefined ? 'lg:grid-cols-5' : 'lg:grid-cols-4',
+          )}
+        >
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-xs font-medium text-muted-foreground">Known Order Timing Gap</p>
             <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', amountTone(data.reconciliation.knownOrderTimingDifference))}>
@@ -189,6 +195,17 @@ function ReconciliationBanner({ data }: { data: BalanceSheetResponse }) {
               Investor share total: {data.reconciliation.investorPercentageTotal}%
             </p>
           </div>
+          {transportDifference !== undefined && (
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs font-medium text-muted-foreground">Known Transport Charge Difference</p>
+              <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', amountTone(transportDifference))}>
+                {signedCurrency(transportDifference)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Transport charges deducted from payables (unrecorded counterpart)
+              </p>
+            </div>
+          )}
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-xs font-medium text-muted-foreground">Total Known Difference</p>
             <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', amountTone(data.reconciliation.knownDifference))}>
@@ -240,11 +257,13 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
   const ar = Number(data.assets.current.accountsReceivable) || 0;
   const cheques = Number(data.assets.current.chequesInHand) || 0;
   const inv = Number(data.assets.current.inventory) || 0;
+  const refundCheques = Number(data.assets.current.refundChequesReceivable) || 0;
 
   const cashPct = Math.max(Math.round((cash / assets) * 100), 0);
   const arPct = Math.max(Math.round((ar / assets) * 100), 0);
   const chequesPct = Math.max(Math.round((cheques / assets) * 100), 0);
   const invPct = Math.max(Math.round((inv / assets) * 100), 0);
+  const refundChequesPct = Math.max(Math.round((refundCheques / assets) * 100), 0);
 
   // Liabilities vs Equity Pct
   const liabPct = Math.max(Math.round((liabilities / liabAndEq) * 100), 0);
@@ -317,6 +336,14 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
               barClassName="bg-warning"
             />
             <CompositionBar label="Product Inventory (At Current Cost)" value={inv} pct={invPct} barClassName="bg-purple" />
+            {data.assets.current.refundChequesReceivable !== undefined && (
+              <CompositionBar
+                label="Refund Cheques Receivable (Suppliers)"
+                value={refundCheques}
+                pct={refundChequesPct}
+                barClassName="bg-info"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -338,6 +365,14 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
                     {formatCurrency(data.liabilities.current.supplierChequesIssued)}
                   </span>
                 </div>
+                {data.liabilities.current.refundChequesIssued !== undefined && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Refund Cheques Issued</span>
+                    <span className="font-medium tabular-nums">
+                      {formatCurrency(data.liabilities.current.refundChequesIssued)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between gap-3 border-t border-border bg-muted/50 px-3 py-2.5 text-sm font-semibold">
                 <span className="text-foreground">Total Current Liabilities</span>
@@ -365,6 +400,14 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
                     {formatCurrency(data.equity.accumulatedEarnings)}
                   </span>
                 </div>
+                {data.equity.cashAdjustments !== undefined && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Opening balance &amp; cash adjustments</span>
+                    <span className={cn('font-medium tabular-nums', amountTone(data.equity.cashAdjustments))}>
+                      {formatCurrency(data.equity.cashAdjustments)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between gap-3 border-t border-border bg-muted/50 px-3 py-2.5 text-sm font-semibold">
                 <span className="text-foreground">Total Net Equity</span>
@@ -372,6 +415,12 @@ function BalanceSheetDiagramView({ data }: { data: BalanceSheetResponse }) {
                   {formatCurrency(data.equity.totalEquity)}
                 </span>
               </div>
+              {data.equity.investorEquity !== undefined && (
+                <div className="flex justify-between gap-3 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                  <span>Investor equity (Equity ledger)</span>
+                  <span className="tabular-nums">{formatCurrency(data.equity.investorEquity)}</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -389,7 +438,7 @@ export default function BalanceSheetPage() {
     if (!data) return;
     setIsExporting(true);
     try {
-      await downloadBalanceSheetPdf(data, `balance-sheet-${new Date().toISOString().slice(0, 10)}.pdf`);
+      await downloadBalanceSheetPdf(data, `balance-sheet-${businessToday()}.pdf`);
     } finally {
       setIsExporting(false);
     }
@@ -485,6 +534,13 @@ export default function BalanceSheetPage() {
                       value={data.assets.current.chequesInHand}
                       sub="Pending dealer cheques — recorded but not cleared"
                     />
+                    {data.assets.current.refundChequesReceivable !== undefined && (
+                      <LineItem
+                        label="Refund Cheques Receivable"
+                        value={data.assets.current.refundChequesReceivable}
+                        sub="Supplier refund cheques received — not yet cleared"
+                      />
+                    )}
                     <LineItem label="Product Inventory" value={data.assets.current.inventory} sub="Valued at current wholesale cost" />
                     <LineItem label="Supplier Advances" value={data.assets.current.supplierAdvances} />
                     <LineItem label="Prepaid Expenses" value={data.assets.current.prepaidExpenses} />
@@ -513,6 +569,13 @@ export default function BalanceSheetPage() {
                       value={data.liabilities.current.supplierChequesIssued}
                       sub="Pending supplier cheques — written but not cleared"
                     />
+                    {data.liabilities.current.refundChequesIssued !== undefined && (
+                      <LineItem
+                        label="Refund Cheques Issued"
+                        value={data.liabilities.current.refundChequesIssued}
+                        sub="Customer refund cheques written — not yet cleared"
+                      />
+                    )}
                     <LineItem label="Tax Payable" value={data.liabilities.current.taxPayable} />
                     <LineItem label="Accrued Expenses" value={data.liabilities.current.accruedExpenses} />
                     <LineItem label="Customer Advances" value={data.liabilities.current.customerAdvances} />
@@ -552,7 +615,20 @@ export default function BalanceSheetPage() {
                       value={data.equity.accumulatedEarnings}
                       sub="All-time gross sales profit − operational expenses"
                     />
+                    {data.equity.cashAdjustments !== undefined && (
+                      <LineItem
+                        label="Opening balance & cash adjustments"
+                        value={data.equity.cashAdjustments}
+                        sub="Opening Liquid Cash balance plus evidenced corrections"
+                      />
+                    )}
                     <SectionTotal label="Total Net Equity" value={data.equity.totalEquity} grand />
+                    {data.equity.investorEquity !== undefined && (
+                      <p className="mt-2 flex justify-between gap-3 px-3 text-xs text-muted-foreground">
+                        <span>Investor equity (Equity ledger: contributions + attributed earnings)</span>
+                        <span className="shrink-0 tabular-nums">{formatCurrency(data.equity.investorEquity)}</span>
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 

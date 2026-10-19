@@ -24,6 +24,7 @@ import {
   Coins,
   Scale,
   FileSpreadsheet,
+  RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -65,6 +66,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Customer', href: '/admin/dealers', icon: Users },
       { label: 'Invoices', href: '/admin/invoices', icon: Receipt },
       { label: 'Payments', href: '/admin/payments', icon: Wallet },
+      { label: 'Refunds', href: '/admin/refunds', icon: RotateCcw },
     ],
   },
  

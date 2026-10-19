@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { expenseKeys } from './use-expenses';
+import { equityKeys } from './use-equity';
+import { liquidCashKeys } from './use-liquid-cash';
+import { balanceSheetKeys } from './use-balance-sheet';
+import { dashboardKeys } from './use-dashboard';
+import { cashAdjustmentKeys } from './use-cash-adjustments';
 import type { PaginationParams, PaymentMode, SettlementStatus } from '@/lib/api/types';
 
 export const commissionKeys = {
@@ -49,6 +55,20 @@ function invalidateSettlements(queryClient: ReturnType<typeof useQueryClient>, i
   if (id) queryClient.invalidateQueries({ queryKey: commissionKeys.settlementDetail(id) });
 }
 
+// Paying (cash/transfer), clearing a payout cheque or reversing a payment touches the books:
+// the payout expense, Liquid Cash (incl. the reversal adjustment), equity, balance sheet and
+// dashboard — plus the representative's commission summaries, since lines change status.
+function invalidateSettlementMoney(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: commissionKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['representatives'] });
+  queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+  queryClient.invalidateQueries({ queryKey: equityKeys.all });
+  queryClient.invalidateQueries({ queryKey: liquidCashKeys.all });
+  queryClient.invalidateQueries({ queryKey: balanceSheetKeys.all });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+  queryClient.invalidateQueries({ queryKey: cashAdjustmentKeys.all });
+}
+
 export function useCreateSettlement() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -79,7 +99,7 @@ export function usePaySettlement(id: string) {
   return useMutation({
     mutationFn: (data: { mode: PaymentMode; reference?: string; chequeNumber?: string; bankName?: string; chequeDate?: string }) =>
       api.commission.paySettlement(id, data),
-    onSuccess: () => invalidateSettlements(queryClient, id),
+    onSuccess: () => invalidateSettlementMoney(queryClient),
   });
 }
 
@@ -87,6 +107,14 @@ export function useUpdateSettlementChequeStatus(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (status: 'CLEARED' | 'RETURNED') => api.commission.updateSettlementChequeStatus(id, status),
-    onSuccess: () => invalidateSettlements(queryClient, id),
+    onSuccess: () => invalidateSettlementMoney(queryClient),
+  });
+}
+
+export function useReverseSettlementPayment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string) => api.commission.reverseSettlementPayment(id, reason),
+    onSuccess: () => invalidateSettlementMoney(queryClient),
   });
 }

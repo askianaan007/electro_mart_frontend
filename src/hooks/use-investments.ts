@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
 import { equityKeys } from './use-equity';
-import type { PaginationParams } from '@/lib/api/types';
+import { liquidCashKeys } from './use-liquid-cash';
+import { balanceSheetKeys } from './use-balance-sheet';
+import { dashboardKeys } from './use-dashboard';
+import type { ChequeStatus, PaginationParams } from '@/lib/api/types';
 
 export type InvestmentParams = PaginationParams & {
   investorId?: string;
@@ -33,14 +36,21 @@ export function useInvestment(id: string | undefined) {
   });
 }
 
+// Investment entries feed investor equity, Liquid Cash (cleared/non-cheque entries only),
+// the balance sheet and the dashboard — refresh all of them after any write.
+function invalidateInvestmentData(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: investmentKeys.all });
+  queryClient.invalidateQueries({ queryKey: equityKeys.all });
+  queryClient.invalidateQueries({ queryKey: liquidCashKeys.all });
+  queryClient.invalidateQueries({ queryKey: balanceSheetKeys.all });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+}
+
 export function useCreateInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investments.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
-      queryClient.invalidateQueries({ queryKey: equityKeys.all });
-    },
+    onSuccess: () => invalidateInvestmentData(queryClient),
   });
 }
 
@@ -48,10 +58,7 @@ export function useUpdateInvestment(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.investments.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
-      queryClient.invalidateQueries({ queryKey: equityKeys.all });
-    },
+    onSuccess: () => invalidateInvestmentData(queryClient),
   });
 }
 
@@ -59,9 +66,15 @@ export function useDeleteInvestment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.investments.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: investmentKeys.all });
-      queryClient.invalidateQueries({ queryKey: equityKeys.all });
-    },
+    onSuccess: () => invalidateInvestmentData(queryClient),
+  });
+}
+
+export function useUpdateInvestmentChequeStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ChequeStatus }) =>
+      api.investments.updateChequeStatus(id, status),
+    onSuccess: () => invalidateInvestmentData(queryClient),
   });
 }

@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePaySettlement } from '@/hooks/use-commission';
 import { getErrorMessage } from '@/lib/api/error';
@@ -64,7 +64,7 @@ export function PaySettlementDialog({
 
     const payload: { mode: PaymentMode; reference?: string; chequeNumber?: string; bankName?: string; chequeDate?: string } = {
       mode: values.mode,
-      reference: values.reference || undefined,
+      reference: values.mode !== 'CHEQUE' ? values.reference.trim() || undefined : undefined,
       chequeNumber: values.mode === 'CHEQUE' ? values.chequeNumber : undefined,
       bankName: values.mode === 'CHEQUE' ? values.bankName : undefined,
       chequeDate: values.mode === 'CHEQUE' ? values.chequeDate : undefined,
@@ -160,8 +160,16 @@ export function PaySettlementDialog({
                   <FormItem>
                     <FormLabel>Reference (optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder={mode === 'BANK_TRANSFER' ? 'Transfer reference' : 'Receipt number'}
+                        {...field}
+                      />
                     </FormControl>
+                    <FormDescription>
+                      {mode === 'BANK_TRANSFER'
+                        ? 'The bank transfer reference, for reconciliation.'
+                        : 'The cash receipt / voucher number, if any.'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -170,7 +178,9 @@ export function PaySettlementDialog({
 
             {mode === 'CHEQUE' && (
               <p className="rounded-lg border border-info/20 bg-info/10 p-3 text-xs text-info">
-                The commission expense is recorded once this cheque is marked cleared, not immediately.
+                The commission expense is recorded once this cheque is marked cleared, not immediately. Until then the
+                settlement can&apos;t be rejected or paid again — if the cheque bounces or is cancelled, mark it
+                returned first.
               </p>
             )}
 

@@ -22,12 +22,15 @@ function MetricTile({
   value,
   icon: Icon,
   change,
+  hint,
   tone = 'primary',
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
   change?: number | null;
+  /** A short secondary line under the value. */
+  hint?: string;
   tone?: keyof typeof TONES;
 }) {
   return (
@@ -38,6 +41,7 @@ function MetricTile({
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs text-muted-foreground">{label}</p>
         <p className="mt-0.5 break-words text-sm font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
+        {hint && <p className="mt-0.5 break-words text-[11px] text-muted-foreground tabular-nums">{hint}</p>}
         {typeof change === 'number' && (
           <span
             className={cn(
@@ -87,9 +91,17 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
             tone="primary"
           />
           <MetricTile
-            label="Net Cash Flow"
+            label="Net cash flow (this month)"
             value={formatCurrency(data.netCashFlow)}
             icon={Landmark}
+            // netCashFlow is the whole month's change in Liquid Cash, capital
+            // included; operatingCashFlow strips investments, withdrawals and
+            // adjustments back out.
+            hint={
+              typeof data.operatingCashFlow === 'number'
+                ? `Operating (excl. capital): ${formatCurrency(data.operatingCashFlow)}`
+                : 'Change in Liquid Cash this month'
+            }
             tone="purple"
           />
           <MetricTile

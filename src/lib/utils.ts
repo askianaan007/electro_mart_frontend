@@ -43,3 +43,12 @@ export function initials(name: string): string {
     .map((part) => part[0]?.toUpperCase())
     .join('');
 }
+
+/**
+ * Today's business date (Sri Lanka, UTC+05:30) as YYYY-MM-DD — for a date
+ * input's `max` and default value. `new Date().toISOString().slice(0, 10)`
+ * is the UTC date, which is still yesterday between 00:00 and 05:30 here.
+ */
+export function businessToday(now: Date = new Date()): string {
+  return new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+}

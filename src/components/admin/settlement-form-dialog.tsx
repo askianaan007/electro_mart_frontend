@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,15 +17,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DuplicateConfirmDialog } from '@/components/admin/duplicate-confirm-dialog';
 import { useCreateSettlement } from '@/hooks/use-credits';
+import { isPossibleDuplicate } from '@/lib/api/duplicate';
 import { getErrorMessage } from '@/lib/api/error';
-import { formatCurrency } from '@/lib/utils';
+import { businessToday, formatCurrency } from '@/lib/utils';
 
 const schema = z.object({
-  amount: z.string().refine((v) => Number(v) > 0, 'Enter a valid amount'),
+  // Mirrors the backend: > 0, at most 2 decimals, ≤ 1,000,000,000.
+  amount: z
+    .string()
+    .refine((v) => /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0, 'Enter a valid amount (up to 2 decimals)')
+    .refine((v) => Number(v) <= 1_000_000_000, 'Amount cannot exceed 1,000,000,000'),
   mode: z.enum(['CASH', 'CHEQUE', 'BANK_TRANSFER']),
   reference: z.string(),
-  paymentDate: z.string().min(1, 'Date is required'),
+  // The payment date can't be in the future; the cheque deposit date can.
+  paymentDate: z
+    .string()
+    .min(1, 'Date is required')
+    .refine((v) => v <= businessToday(), 'Payment date cannot be in the future'),
   chequeDepositDate: z.string(),
   remarks: z.string(),
 });
@@ -46,6 +56,10 @@ export function SettlementFormDialog({
   creditBalance: string;
 }) {
   const createSettlement = useCreateSettlement(supplierId);
+  type SettlementBody = Parameters<typeof createSettlement.mutate>[0];
+  // Set when the backend flags the settlement as a POSSIBLE_DUPLICATE: the
+  // exact body that was refused, resent with confirmDuplicate only on confirm.
+  const [duplicate, setDuplicate] = useState<{ message: string; body: SettlementBody } | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,7 +67,7 @@ export function SettlementFormDialog({
       amount: '',
       mode: 'CASH',
       reference: '',
-      paymentDate: new Date().toISOString().slice(0, 10),
+      paymentDate: businessToday(),
       chequeDepositDate: '',
       remarks: '',
     },
@@ -61,11 +75,12 @@ export function SettlementFormDialog({
 
   useEffect(() => {
     if (open) {
+      setDuplicate(null);
       form.reset({
         amount: '',
         mode: 'CASH',
         reference: '',
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: businessToday(),
         chequeDepositDate: '',
         remarks: '',
       });
@@ -74,31 +89,38 @@ export function SettlementFormDialog({
 
   const mode = form.watch('mode');
 
+  function submit(body: SettlementBody) {
+    createSettlement.mutate(body, {
+      onSuccess: () => {
+        setDuplicate(null);
+        toast.success(body.mode === 'CHEQUE' ? 'Cheque recorded — pending until it clears' : 'Settlement recorded');
+        onOpenChange(false);
+      },
+      onError: (error) => {
+        if (isPossibleDuplicate(error) && !body.confirmDuplicate) {
+          setDuplicate({ message: error.message, body });
+          return;
+        }
+        setDuplicate(null);
+        toast.error(getErrorMessage(error));
+      },
+    });
+  }
+
   const onSubmit = form.handleSubmit((values) => {
     if (values.mode === 'CHEQUE' && !values.chequeDepositDate) {
       form.setError('chequeDepositDate', { message: 'Deposit date is required for cheque settlements' });
       return;
     }
 
-    createSettlement.mutate(
-      {
-        amount: Number(values.amount),
-        mode: values.mode,
-        reference: values.reference || undefined,
-        paymentDate: values.paymentDate,
-        chequeDepositDate: values.mode === 'CHEQUE' ? values.chequeDepositDate : undefined,
-        remarks: values.remarks || undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success(
-            values.mode === 'CHEQUE' ? 'Cheque recorded — pending until it clears' : 'Settlement recorded',
-          );
-          onOpenChange(false);
-        },
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
-    );
+    submit({
+      amount: Number(values.amount),
+      mode: values.mode,
+      reference: values.reference || undefined,
+      paymentDate: values.paymentDate,
+      chequeDepositDate: values.mode === 'CHEQUE' ? values.chequeDepositDate : undefined,
+      remarks: values.remarks || undefined,
+    });
   });
 
   return (
@@ -159,7 +181,7 @@ export function SettlementFormDialog({
                   <FormItem>
                     <FormLabel>Payment date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" max={businessToday()} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -223,6 +245,12 @@ export function SettlementFormDialog({
             </DialogFooter>
           </form>
         </Form>
+        <DuplicateConfirmDialog
+          message={duplicate?.message ?? null}
+          pending={createSettlement.isPending}
+          onCancel={() => setDuplicate(null)}
+          onConfirm={() => duplicate && submit({ ...duplicate.body, confirmDuplicate: true })}
+        />
       </DialogContent>
     </Dialog>
   );

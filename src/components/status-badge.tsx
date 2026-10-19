@@ -44,6 +44,7 @@ const SETTLEMENT_STATUS_MAP: Record<string, { label: string; variant: BadgeProps
   APPROVED: { label: 'Approved', variant: 'info' },
   REJECTED: { label: 'Rejected', variant: 'destructive' },
   PAID: { label: 'Paid', variant: 'success' },
+  REVERSED: { label: 'Reversed', variant: 'warning' },
 };
 
 const COLLECTION_STATUS_MAP: Record<string, { label: string; variant: BadgeProps['variant'] }> = {

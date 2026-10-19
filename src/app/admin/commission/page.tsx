@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
 import { SettlementStatusBadge } from '@/components/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/stat-card';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -131,6 +132,7 @@ export default function CommissionPage() {
               <SelectItem value="APPROVED">Approved</SelectItem>
               <SelectItem value="REJECTED">Rejected</SelectItem>
               <SelectItem value="PAID">Paid</SelectItem>
+              <SelectItem value="REVERSED">Reversed</SelectItem>
             </SelectContent>
           </Select>
           {filtersActive && (
@@ -192,7 +194,15 @@ export default function CommissionPage() {
                         {formatCurrency(settlement.totalCommission)}
                       </TableCell>
                       <TableCell>
-                        <SettlementStatusBadge status={settlement.status} />
+                        <div className="flex flex-wrap items-center gap-1">
+                          <SettlementStatusBadge status={settlement.status} />
+                          {/* An approved settlement with a cheque out is awaiting clearance (or was returned). */}
+                          {settlement.status === 'APPROVED' && settlement.chequeStatus && (
+                            <Badge variant={settlement.chequeStatus === 'RETURNED' ? 'destructive' : 'warning'}>
+                              Cheque {settlement.chequeStatus.toLowerCase()}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Banknote,
   Clock,
   Download,
   FileDown,
   HandCoins,
   Loader2,
   Package,
+  PackageCheck,
   Search,
   Truck,
   Undo2,
@@ -45,7 +47,11 @@ const TYPE_META: Record<CreditBalanceEntryType, { label: string; icon: typeof Pa
   PURCHASE: { label: 'Purchase', icon: Package, tone: 'text-primary' },
   TRANSPORT_CHARGE: { label: 'Transport Charge', icon: Truck, tone: 'text-destructive' },
   PURCHASE_RETURN: { label: 'Purchase Return', icon: Undo2, tone: 'text-destructive' },
+  // Goods received in place of returned ones — adds back to the payable.
+  REPLACEMENT: { label: 'Replacement', icon: PackageCheck, tone: 'text-primary' },
   SETTLEMENT: { label: 'Settlement', icon: HandCoins, tone: 'text-destructive' },
+  // Cash a supplier paid back to clear a credit they owed us — adds back.
+  REFUND: { label: 'Refund Received', icon: Banknote, tone: 'text-primary' },
 };
 
 const STATUS_META: Record<StatusKey, { label: string; variant: 'warning' | 'success' | 'destructive' }> = {
@@ -295,7 +301,8 @@ export default function CreditBalancePage() {
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Purchases − transport charges − purchase returns − settlements paid, all-time.
+            Purchases − purchase returns + replacements − settlements paid − transport charges + refunds received,
+            all-time.
           </p>
         </div>
       </section>
@@ -313,7 +320,14 @@ export default function CreditBalancePage() {
           </div>
         ) : summaryError ? null : (
           summary && (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div
+              className={cn(
+                'grid gap-4 sm:grid-cols-2',
+                { 4: 'xl:grid-cols-4', 5: 'xl:grid-cols-5', 6: 'xl:grid-cols-3' }[
+                  (4 + Number(!!summary.totalReplacements) + Number(!!summary.totalRefundsReceived)) as 4 | 5 | 6
+                ],
+              )}
+            >
               <FlowTile
                 label="Purchases"
                 value={formatCurrency(summary.totalPurchases)}
@@ -341,6 +355,28 @@ export default function CreditBalancePage() {
                 footnote="Goods sent back to suppliers"
                 footnoteLabel="Credited Back"
               />
+              {!!summary.totalReplacements && (
+                <FlowTile
+                  label="Replacements"
+                  value={`+${formatCurrency(summary.totalReplacements)}`}
+                  icon={PackageCheck}
+                  tone="default"
+                  direction="adds"
+                  footnote="Goods received in place of returns"
+                  footnoteLabel="Added Back"
+                />
+              )}
+              {!!summary.totalRefundsReceived && (
+                <FlowTile
+                  label="Refunds Received"
+                  value={`+${formatCurrency(summary.totalRefundsReceived)}`}
+                  icon={Banknote}
+                  tone="purple"
+                  direction="adds"
+                  footnote="Cash suppliers paid back to us"
+                  footnoteLabel="Added Back"
+                />
+              )}
               <FlowTile
                 label="Transport Charges"
                 value={`−${formatCurrency(summary.totalTransportCharges)}`}
@@ -352,7 +388,7 @@ export default function CreditBalancePage() {
               />
 
               {/* Pending Cheque Settlements — full-width */}
-              <div className="rounded-xl border border-border bg-card p-4 shadow-xs sm:col-span-2 sm:p-5 xl:col-span-4">
+              <div className="col-span-full rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple/10 text-purple">
