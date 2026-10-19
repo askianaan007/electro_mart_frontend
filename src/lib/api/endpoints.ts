@@ -5,7 +5,10 @@ import type {
   AuthResponse,
   Category,
   ChequeStatus,
-  CreditsSummary, 
+  CreditsSummary,
+  CashAdjustment,
+  Refund,
+  RefundParty,
   DealerDashboardSummary,
   Dealer,
   DealerDetail,
@@ -332,6 +335,8 @@ export const api = {
       chequeDate?: string;
       collectedDate?: string;
       remarks?: string;
+      /** Resend after a 409 POSSIBLE_DUPLICATE the user confirmed. */
+      confirmDuplicate?: boolean;
     }) => apiClient.post<Payment>('/payments', data).then((r) => r.data),
     update: (
       id: string,
@@ -347,8 +352,10 @@ export const api = {
         remarks?: string;
       },
     ) => apiClient.patch<Payment>(`/payments/${id}`, data).then((r) => r.data),
-    remove: (id: string) => apiClient.delete<{ message: string }>(`/payments/${id}`).then((r) => r.data),
-    undo: (id: string) => apiClient.post<Payment>(`/payments/${id}/undo`).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string; revisionId?: string }>(`/payments/${id}`).then((r) => r.data),
+    /** `revisionId` = the `lastChange.id` the user saw, so a stale or doubled undo is refused (409). */
+    undo: (id: string, revisionId?: string) =>
+      apiClient.post<Payment>(`/payments/${id}/undo`, revisionId ? { revisionId } : {}).then((r) => r.data),
     listDeleted: (params: PaginationParams) =>
       apiClient.get<Paginated<DeletedPayment>>('/payments/deleted', { params: buildParams(params) }).then((r) => r.data),
     updateChequeStatus: (id: string, status: ChequeStatus) =>
@@ -395,6 +402,39 @@ export const api = {
     update: (id: string, data: Record<string, unknown>) =>
       apiClient.patch<Investment>(`/investments/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/investments/${id}`).then((r) => r.data),
+    updateChequeStatus: (id: string, status: ChequeStatus) =>
+      apiClient.patch<Investment>(`/investments/${id}/cheque-status`, { status }).then((r) => r.data),
+  },
+
+  refunds: {
+    list: (params: PaginationParams & { party?: RefundParty; dealerId?: string; supplierId?: string }) =>
+      apiClient.get<Paginated<Refund>>('/refunds', { params: buildParams(params) }).then((r) => r.data),
+    available: (party: RefundParty, id: string) =>
+      apiClient
+        .get<{ party: RefundParty; id: string; availableCredit: number }>(
+          `/refunds/available/${party === 'DEALER' ? 'dealer' : 'supplier'}/${id}`,
+        )
+        .then((r) => r.data),
+    create: (data: Record<string, unknown>) => apiClient.post<Refund>('/refunds', data).then((r) => r.data),
+    updateChequeStatus: (id: string, status: 'CLEARED' | 'RETURNED') =>
+      apiClient.patch<Refund>(`/refunds/${id}/cheque-status`, { status }).then((r) => r.data),
+    cancel: (id: string, reason: string) =>
+      apiClient.patch<Refund>(`/refunds/${id}/cancel`, { reason }).then((r) => r.data),
+  },
+
+  cashAdjustments: {
+    list: (params: PaginationParams) =>
+      apiClient.get<Paginated<CashAdjustment>>('/cash-adjustments', { params: buildParams(params) }).then((r) => r.data),
+    create: (data: {
+      type: 'OPENING_BALANCE' | 'ADJUSTMENT';
+      amount: number;
+      adjustmentDate: string;
+      reason: string;
+      evidenceReference: string;
+      password: string;
+    }) => apiClient.post<CashAdjustment>('/cash-adjustments', data).then((r) => r.data),
+    reverse: (id: string, data: { reason: string; password: string }) =>
+      apiClient.post<CashAdjustment>(`/cash-adjustments/${id}/reverse`, data).then((r) => r.data),
   },
 
   expenses: {
@@ -507,6 +547,7 @@ export const api = {
         paymentDate: string;
         chequeDepositDate?: string;
         remarks?: string;
+        confirmDuplicate?: boolean;
       },
     ) => apiClient.post<SupplierPayment>(`/credits/${supplierId}/settlements`, data).then((r) => r.data),
     updateChequeStatus: (paymentId: string, status: ChequeStatus) =>
@@ -677,6 +718,10 @@ export const api = {
         .then((r) => r.data),
     receipt: (id: string) =>
       apiClient.get<RepresentativeSettlement>(`/commission/settlements/${id}/receipt`).then((r) => r.data),
+    reverseSettlementPayment: (id: string, reason: string) =>
+      apiClient
+        .patch<RepresentativeSettlement>(`/commission/settlements/${id}/reverse-payment`, { reason })
+        .then((r) => r.data),
   },
 
   // Customer Collection Management (version2_changes_backend.md §14) — admin review queue.

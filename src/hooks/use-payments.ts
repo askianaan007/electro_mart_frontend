@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { ApiError } from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/api/error';
 import { invoiceKeys } from './use-invoices';
 import { dealerKeys } from './use-dealers';
 import { dashboardKeys } from './use-dashboard';
@@ -61,7 +63,9 @@ type PaymentInput = {
 export function useCreatePayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: PaymentInput & { invoiceId: string }) => api.payments.create(data),
+    // `confirmDuplicate` is only sent after the user confirms a 409 POSSIBLE_DUPLICATE.
+    mutationFn: (data: PaymentInput & { invoiceId: string; confirmDuplicate?: boolean }) =>
+      api.payments.create(data),
     onSuccess: () => invalidatePaymentRelated(queryClient),
   });
 }
@@ -82,12 +86,28 @@ export function useReturnPayment() {
   });
 }
 
-/** Undoes a payment's latest edit / cheque-status change, or restores it if deleted. */
+/** A 409 from undo means the change the user saw was already undone (or superseded). */
+function isStaleUndo(error: unknown) {
+  return error instanceof ApiError && error.statusCode === 409;
+}
+
+export function undoErrorMessage(error: unknown) {
+  return isStaleUndo(error) ? 'That change has already been undone — the list has been refreshed.' : getErrorMessage(error);
+}
+
+/**
+ * Undoes a payment's latest edit / cheque-status change, or restores it if deleted.
+ * Pass `revisionId` (the `lastChange.id` the user is looking at) whenever it's
+ * known, so a stale or doubled undo is refused instead of undoing an older change.
+ */
 export function useUndoPayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.payments.undo(id),
+    mutationFn: (vars: { id: string; revisionId?: string }) => api.payments.undo(vars.id, vars.revisionId),
     onSuccess: () => invalidatePaymentRelated(queryClient),
+    onError: (error) => {
+      if (isStaleUndo(error)) invalidatePaymentRelated(queryClient);
+    },
   });
 }
 

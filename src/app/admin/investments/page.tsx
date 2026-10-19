@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, MoreHorizontal, Plus, Search, TrendingUp, Trash2 } from 'lucide-react';
+import { CheckCircle2, FileText, MoreHorizontal, Plus, RotateCcw, Search, TrendingUp, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { ChequeStatusBadge } from '@/components/status-badge';
 import { EmptyState } from '@/components/empty-state';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PaginationBar } from '@/components/pagination-bar';
@@ -29,17 +30,41 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { InvestorFormDialog } from '@/components/admin/investor-form-dialog';
 import { InvestmentFormDialog } from '@/components/admin/investment-form-dialog';
 import { InvestorStatementDialog } from '@/components/admin/investor-statement-dialog';
 import { useAllInvestors, useDeleteInvestor } from '@/hooks/use-investors';
-import { useDeleteInvestment, useInvestments } from '@/hooks/use-investments';
+import { useDeleteInvestment, useInvestments, useUpdateInvestmentChequeStatus } from '@/hooks/use-investments';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { Investment, Investor } from '@/lib/api/types';
+import type { ChequeStatus, Investment, Investor } from '@/lib/api/types';
+
+// Mirrors the backend's INVESTMENT cheque rule: a cleared/returned cheque can be reverted to
+// pending only within 1 day of being marked (a mis-click correction window).
+const CHEQUE_REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function canRevertCheque(investment: Investment) {
+  if (investment.chequeStatus !== 'CLEARED' && investment.chequeStatus !== 'RETURNED') return false;
+  if (!investment.chequeStatusUpdatedAt) return false;
+  return Date.now() - new Date(investment.chequeStatusUpdatedAt).getTime() <= CHEQUE_REVERT_WINDOW_MS;
+}
+
+/** Cheque status for cheque entries; a CHEQUE row with no status predates tracking and counts as cleared. */
+function InvestmentChequeBadge({ investment }: { investment: Investment }) {
+  if (investment.mode !== 'CHEQUE') return null;
+  if (!investment.chequeStatus) {
+    return (
+      <Badge variant="muted" title="Recorded before cheque tracking — counts as cleared">
+        Cleared (legacy)
+      </Badge>
+    );
+  }
+  return <ChequeStatusBadge status={investment.chequeStatus} />;
+}
 
 export default function InvestmentsPage() {
   const [investorFormOpen, setInvestorFormOpen] = useState(false);
@@ -105,6 +130,7 @@ export default function InvestmentsPage() {
 
   const deleteInvestor = useDeleteInvestor();
   const deleteInvestment = useDeleteInvestment();
+  const updateChequeStatus = useUpdateInvestmentChequeStatus();
 
   function confirmDeleteInvestor() {
     if (!deletingInvestor) return;
@@ -132,6 +158,23 @@ export default function InvestmentsPage() {
         setDeletingInvestment(null);
       },
     });
+  }
+
+  function changeChequeStatus(investment: Investment, status: ChequeStatus) {
+    updateChequeStatus.mutate(
+      { id: investment.id, status },
+      {
+        onSuccess: () =>
+          toast.success(
+            status === 'PENDING'
+              ? 'Cheque reverted to pending'
+              : status === 'CLEARED'
+                ? 'Cheque marked cleared — it now counts toward Liquid Cash and equity'
+                : 'Cheque marked returned',
+          ),
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
   }
 
   function clearLedgerFilters() {
@@ -184,6 +227,38 @@ export default function InvestmentsPage() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {investment.mode === 'CHEQUE' && investment.chequeStatus === 'PENDING' && (
+          <>
+            <DropdownMenuItem
+              disabled={updateChequeStatus.isPending}
+              onClick={() => changeChequeStatus(investment, 'CLEARED')}
+            >
+              <CheckCircle2 />
+              Mark cleared
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={updateChequeStatus.isPending}
+              onClick={() => changeChequeStatus(investment, 'RETURNED')}
+            >
+              <XCircle />
+              Mark returned (bounced)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {investment.mode === 'CHEQUE' && canRevertCheque(investment) && (
+          <>
+            <DropdownMenuItem
+              disabled={updateChequeStatus.isPending}
+              onClick={() => changeChequeStatus(investment, 'PENDING')}
+            >
+              <RotateCcw />
+              Revert to pending
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           onClick={() => {
             setEditingInvestment(investment);
@@ -463,7 +538,10 @@ export default function InvestmentsPage() {
                         {investment.investor?.name ?? '—'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="muted">{investment.mode.replace('_', ' ')}</Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant="muted">{investment.mode.replace('_', ' ')}</Badge>
+                          <InvestmentChequeBadge investment={investment} />
+                        </div>
                       </TableCell>
                       <TableCell
                         className={cn(
@@ -488,7 +566,10 @@ export default function InvestmentsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="break-words font-medium">{investment.investor?.name ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground">{investment.mode.replace('_', ' ')}</p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                        <span className="text-xs text-muted-foreground">{investment.mode.replace('_', ' ')}</span>
+                        <InvestmentChequeBadge investment={investment} />
+                      </div>
                     </div>
                     {investmentActions(investment, '-mr-2 -mt-1 shrink-0')}
                   </div>

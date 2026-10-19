@@ -56,6 +56,8 @@ export function useCreateSettlement(supplierId: string) {
       paymentDate: string;
       chequeDepositDate?: string;
       remarks?: string;
+      // Only sent after the user confirms a 409 POSSIBLE_DUPLICATE.
+      confirmDuplicate?: boolean;
     }) => api.credits.createSettlement(supplierId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditKeys.all });

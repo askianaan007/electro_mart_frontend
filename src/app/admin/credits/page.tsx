@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Coins, HandCoins, Receipt, Search, Wallet } from 'lucide-react';
+import { Coins, HandCoins, Receipt, Search, Truck, Wallet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,14 @@ export default function CreditsPage() {
     onlyOutstanding: outstandingOnly || undefined,
   });
 
+  // Optional breakdown columns only appear when some supplier on this page has them.
+  // Balance = purchases − returns + replacements − settled − transport + refunds received.
+  const entries = data?.entries ?? [];
+  const showTransport = entries.some((e) => Number(e.totalTransportCharges) > 0);
+  const showReplacements = entries.some((e) => Number(e.totalReplacements ?? 0) > 0);
+  const showRefunds = entries.some((e) => Number(e.totalRefundsReceived ?? 0) > 0);
+  const hasTotalTransport = !!data && Number(data.totals.totalTransportCharges) > 0;
+
   function clearFilters() {
     setSearch('');
     setOutstandingOnly(false);
@@ -56,7 +64,7 @@ export default function CreditsPage() {
         </div>
       ) : (
         data && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={cn('grid gap-4 sm:grid-cols-2', hasTotalTransport ? 'xl:grid-cols-5' : 'xl:grid-cols-4')}>
             <StatCard label="Total Purchases" value={formatCurrency(data.totals.totalPurchases)} icon={Receipt} />
             <StatCard
               label="Total Returns"
@@ -64,6 +72,15 @@ export default function CreditsPage() {
               icon={Receipt}
               tone="warning"
             />
+            {hasTotalTransport && (
+              <StatCard
+                label="Transport Charges"
+                value={`−${formatCurrency(data.totals.totalTransportCharges)}`}
+                icon={Truck}
+                tone="warning"
+                hint="Deducted from credit"
+              />
+            )}
             <StatCard
               label="Total Settled"
               value={`−${formatCurrency(data.totals.totalSettled)}`}
@@ -139,7 +156,10 @@ export default function CreditsPage() {
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Total Purchases</TableHead>
                     <TableHead className="text-right">Returns</TableHead>
+                    {showReplacements && <TableHead className="text-right">Replacements</TableHead>}
+                    {showTransport && <TableHead className="text-right">Transport</TableHead>}
                     <TableHead className="text-right">Settled</TableHead>
+                    {showRefunds && <TableHead className="text-right">Refunds Received</TableHead>}
                     <TableHead className="text-right">Credit Balance</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -157,9 +177,26 @@ export default function CreditsPage() {
                       <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
                         −{formatCurrency(entry.totalReturns)}
                       </TableCell>
+                      {showReplacements && (
+                        <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
+                          {Number(entry.totalReplacements ?? 0) > 0 ? `+${formatCurrency(entry.totalReplacements ?? 0)}` : '—'}
+                        </TableCell>
+                      )}
+                      {showTransport && (
+                        <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
+                          {Number(entry.totalTransportCharges) > 0 ? `−${formatCurrency(entry.totalTransportCharges)}` : '—'}
+                        </TableCell>
+                      )}
                       <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
                         −{formatCurrency(entry.totalSettled)}
                       </TableCell>
+                      {showRefunds && (
+                        <TableCell className="whitespace-normal break-words text-right tabular-nums text-muted-foreground">
+                          {Number(entry.totalRefundsReceived ?? 0) > 0
+                            ? `+${formatCurrency(entry.totalRefundsReceived ?? 0)}`
+                            : '—'}
+                        </TableCell>
+                      )}
                       <TableCell className="whitespace-normal break-words text-right font-semibold tabular-nums">
                         {formatCurrency(entry.creditBalance)}
                       </TableCell>
@@ -195,6 +232,24 @@ export default function CreditsPage() {
                       <p className="text-muted-foreground">Settled</p>
                       <p className="break-words font-medium">−{formatCurrency(entry.totalSettled)}</p>
                     </div>
+                    {Number(entry.totalReplacements ?? 0) > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Replacements</p>
+                        <p className="break-words font-medium">+{formatCurrency(entry.totalReplacements ?? 0)}</p>
+                      </div>
+                    )}
+                    {Number(entry.totalTransportCharges) > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Transport</p>
+                        <p className="break-words font-medium">−{formatCurrency(entry.totalTransportCharges)}</p>
+                      </div>
+                    )}
+                    {Number(entry.totalRefundsReceived ?? 0) > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Refunds</p>
+                        <p className="break-words font-medium">+{formatCurrency(entry.totalRefundsReceived ?? 0)}</p>
+                      </div>
+                    )}
                   </div>
                 </Link>
               ))}
