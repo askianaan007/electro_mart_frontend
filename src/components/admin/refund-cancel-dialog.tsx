@@ -52,7 +52,8 @@ export function RefundCancelDialog({ refund, onClose }: { refund: Refund | null;
           <DialogTitle>Cancel refund {refund?.refundNumber}?</DialogTitle>
           <DialogDescription>
             This restores {partyName}&apos;s credit of {refund ? formatCurrency(refund.amount) : ''} and is recorded
-            as a dated correction in Liquid Cash — the original entry stays in the history. This can&apos;t be undone.
+            as a dated correction in Liquid Cash — the original entry stays in the history. You can restore it later
+            if this was a mistake.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

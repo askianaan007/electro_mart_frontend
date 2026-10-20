@@ -6,6 +6,7 @@ import { Pencil, Search, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/loading-state';
 import { EmptyState } from '@/components/empty-state';
@@ -36,8 +37,11 @@ import type { PurchaseReturn } from '@/lib/api/types';
 
 const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// A cancellation return is undone only by reinstating its order.
 function canEditPurchaseReturn(purchaseReturn: PurchaseReturn) {
-  return Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+  return (
+    !purchaseReturn.isCancellation && Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS
+  );
 }
 
 export function PurchaseReturnsTab() {
@@ -189,7 +193,14 @@ export function PurchaseReturnsTab() {
                     <TableCell className="whitespace-normal break-words">
                       {formatDate(purchaseReturn.returnDate)}
                     </TableCell>
-                    <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
+                    <TableCell className="font-medium">
+                      {purchaseReturn.returnNumber}
+                      {purchaseReturn.isCancellation && (
+                        <Badge variant="muted" className="ml-2">
+                          Cancellation
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="whitespace-normal break-words">
                       {purchaseReturn.supplier?.name ?? '—'}
                     </TableCell>
@@ -243,7 +254,14 @@ export function PurchaseReturnsTab() {
             {data.data.map((purchaseReturn) => (
               <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="break-words font-medium">{purchaseReturn.returnNumber}</span>
+                  <span className="break-words font-medium">
+                    {purchaseReturn.returnNumber}
+                    {purchaseReturn.isCancellation && (
+                      <Badge variant="muted" className="ml-2">
+                        Cancellation
+                      </Badge>
+                    )}
+                  </span>
                   <span className="shrink-0 break-words font-semibold tabular-nums text-destructive">
                     −{formatCurrency(purchaseReturn.totalAmount)}
                   </span>

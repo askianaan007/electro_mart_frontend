@@ -180,6 +180,9 @@ export interface Purchase {
   adminId: string;
   admin?: { id: string; name: string; email: string };
   createdAt: string;
+  /** Set when the order was called off; its remaining goods went back as a cancellation return. */
+  cancelledAt: string | null;
+  cancelReason: string | null;
   items: PurchaseItem[];
   purchaseReturns?: { totalAmount: string }[];
 }
@@ -205,6 +208,8 @@ export interface PurchaseReturn {
   totalAmount: string;
   returnDate: string;
   createdAt: string;
+  /** Created by cancelling its purchase — undone only by reinstating that purchase. */
+  isCancellation: boolean;
   items: PurchaseReturnItem[];
 }
 
@@ -400,6 +405,9 @@ export interface Refund {
   dealer?: { id: string; businessName: string } | null;
   supplierId: string | null;
   supplier?: { id: string; name: string } | null;
+  /** Supplier refunds only: the order the refunded money was paid toward. */
+  purchaseId: string | null;
+  purchase?: { id: string; invoiceNumber: string } | null;
   amount: string;
   mode: PaymentMode;
   refundDate: string;

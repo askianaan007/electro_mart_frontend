@@ -3,6 +3,8 @@ import { api } from '@/lib/api/endpoints';
 import { productKeys } from './use-products';
 import { inventoryKeys } from './use-inventory';
 import { creditKeys } from './use-credits';
+import { creditBalanceKeys } from './use-credit-balance';
+import { balanceSheetKeys } from './use-balance-sheet';
 import type { PaginationParams } from '@/lib/api/types';
 
 export type PurchaseParams = PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string };
@@ -82,5 +84,36 @@ export function useDeletePurchase() {
       queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
+  });
+}
+
+// Cancelling or reinstating an order adds/removes its cancellation return:
+// stock, the supplier's payable and everything built on either move.
+function invalidateCancellationRelated(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['purchase-returns'] });
+  queryClient.invalidateQueries({ queryKey: ['refunds'] });
+  queryClient.invalidateQueries({ queryKey: productKeys.all });
+  queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: creditKeys.all });
+  queryClient.invalidateQueries({ queryKey: creditBalanceKeys.all });
+  queryClient.invalidateQueries({ queryKey: balanceSheetKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+}
+
+export function useCancelPurchase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; reason: string; cancelDate: string }) =>
+      api.purchases.cancel(vars.id, { reason: vars.reason, cancelDate: vars.cancelDate }),
+    onSuccess: () => invalidateCancellationRelated(queryClient),
+  });
+}
+
+export function useReinstatePurchase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.purchases.reinstate(id),
+    onSuccess: () => invalidateCancellationRelated(queryClient),
   });
 }

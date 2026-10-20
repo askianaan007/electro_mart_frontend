@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Coins, Pencil, Trash2, Truck, Undo2, Wallet } from 'lucide-react';
+import { Ban, Coins, Pencil, RotateCcw, Trash2, Truck, Undo2, Unlink, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -25,8 +25,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PurchaseReturnFormDialog } from '@/components/admin/purchase-return-form-dialog';
-import { useDeletePurchase, usePurchase } from '@/hooks/use-purchases';
-import { useDeletePurchaseReturn, usePurchaseReturnsForPurchase } from '@/hooks/use-purchase-returns';
+import { CancelPurchaseDialog } from '@/components/admin/cancel-purchase-dialog';
+import { PurchaseRefundCard } from '@/components/admin/purchase-refund-card';
+import { UnlinkedReturnsNotice } from '@/components/admin/unlinked-returns-notice';
+import { useDeletePurchase, usePurchase, useReinstatePurchase } from '@/hooks/use-purchases';
+import {
+  useDeletePurchaseReturn,
+  usePurchaseReturnsForPurchase,
+  useUnlinkPurchaseReturn,
+} from '@/hooks/use-purchase-returns';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PurchaseReturn } from '@/lib/api/types';
@@ -34,7 +41,9 @@ import type { PurchaseReturn } from '@/lib/api/types';
 const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function canEditPurchaseReturn(purchaseReturn: PurchaseReturn) {
-  return Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+  return (
+    !purchaseReturn.isCancellation && Date.now() - new Date(purchaseReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS
+  );
 }
 
 export default function PurchaseDetailPage() {
@@ -52,8 +61,13 @@ export default function PurchaseDetailPage() {
   const [editingReturn, setEditingReturn] = useState<PurchaseReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<PurchaseReturn | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reinstateOpen, setReinstateOpen] = useState(false);
+  const [unlinkingReturn, setUnlinkingReturn] = useState<PurchaseReturn | null>(null);
   const deletePurchase = useDeletePurchase();
   const deletePurchaseReturn = useDeletePurchaseReturn();
+  const reinstatePurchase = useReinstatePurchase();
+  const unlinkPurchaseReturn = useUnlinkPurchaseReturn();
 
   if (isError) {
     return (
@@ -80,6 +94,8 @@ export default function PurchaseDetailPage() {
   // partial return, which would otherwise mislabel it as fully returned.
   const isFullyReturned = returnedValue >= grossValue && grossValue > 0;
   const hasTransportCharges = transportCharges > 0;
+  const isCancelled = !!purchase.cancelledAt;
+  const canUnlinkReturn = (purchaseReturn: PurchaseReturn) => !isCancelled && !purchaseReturn.isCancellation;
 
   function confirmDelete() {
     deletePurchase.mutate(id, {
@@ -92,6 +108,24 @@ export default function PurchaseDetailPage() {
         setDeleteOpen(false);
       },
     });
+  }
+
+  function confirmReinstate() {
+    reinstatePurchase.mutate(id, {
+      onSuccess: () => toast.success('Order reinstated — goods back in stock'),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+    setReinstateOpen(false);
+  }
+
+  function confirmUnlinkReturn() {
+    if (!unlinkingReturn) return;
+    const { returnNumber } = unlinkingReturn;
+    unlinkPurchaseReturn.mutate(unlinkingReturn.id, {
+      onSuccess: () => toast.success(`${returnNumber} unlinked from this order`),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+    setUnlinkingReturn(null);
   }
 
   function confirmDeleteReturn() {
@@ -112,33 +146,65 @@ export default function PurchaseDetailPage() {
         description={
           <>
             Invoice {purchase.invoiceNumber} &middot; {formatDate(purchase.purchaseDate)}
+            {isCancelled && (
+              <>
+                {' '}
+                &middot; Cancelled {formatDate(purchase.cancelledAt as string)}
+                {purchase.cancelReason ? ` — ${purchase.cancelReason}` : ''}
+              </>
+            )}
           </>
         }
         onBack={() => router.back()}
         meta={
-          hasReturns && (
-            <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
-              {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
+          isCancelled ? (
+            <Badge variant="destructive">
+              <Ban className="size-3" />
+              Cancelled
             </Badge>
+          ) : (
+            hasReturns && (
+              <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
+                {isFullyReturned ? 'Fully Returned' : 'Partially Returned'}
+              </Badge>
+            )
           )
         }
         actions={
-          <>
-            <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
-              <Undo2 />
-              Record Return
+          isCancelled ? (
+            <Button variant="outline" onClick={() => setReinstateOpen(true)} loading={reinstatePurchase.isPending}>
+              <RotateCcw />
+              Reinstate Order
             </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/admin/purchases/${id}/edit`}>
-                <Pencil />
-                Edit
-              </Link>
-            </Button>
-            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          </>
+          ) : (
+            <>
+              {!isFullyReturned && (
+                <Button variant="outline" onClick={() => setReturnFormOpen(true)}>
+                  <Undo2 />
+                  Record Return
+                </Button>
+              )}
+              <Button variant="outline" asChild>
+                <Link href={`/admin/purchases/${id}/edit`}>
+                  <Pencil />
+                  Edit
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setCancelOpen(true)}
+                disabled={returnsLoading}
+              >
+                <Ban />
+                Cancel Order
+              </Button>
+              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+                <Trash2 />
+                Delete
+              </Button>
+            </>
+          )
         }
       />
 
@@ -161,6 +227,8 @@ export default function PurchaseDetailPage() {
         )}
         <StatCard label="Net Value" value={formatCurrency(netValue)} icon={Coins} tone="success" />
       </div>
+
+      <UnlinkedReturnsNotice purchase={purchase} returns={purchaseReturns ?? []} />
 
       <Card className="overflow-hidden">
         <CardHeader className="pb-3 sm:pb-3">
@@ -239,35 +307,56 @@ export default function PurchaseDetailPage() {
                   <TableBody>
                     {purchaseReturns.map((purchaseReturn) => (
                       <TableRow key={purchaseReturn.id}>
-                        <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
+                        <TableCell className="font-medium">
+                          {purchaseReturn.returnNumber}
+                          {purchaseReturn.isCancellation && (
+                            <Badge variant="muted" className="ml-2">
+                              Cancellation
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-normal break-words">{formatDate(purchaseReturn.returnDate)}</TableCell>
                         <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
                         <TableCell className="text-right font-medium tabular-nums text-destructive">
                           −{formatCurrency(purchaseReturn.totalAmount)}
                         </TableCell>
                         <TableCell>
-                          {canEditPurchaseReturn(purchaseReturn) && (
-                            <div className="flex justify-end gap-1">
+                          <div className="flex justify-end gap-1">
+                            {canUnlinkReturn(purchaseReturn) && (
                               <Button
                                 size="icon"
                                 variant="ghost"
                                 className="size-8"
-                                aria-label="Edit return"
-                                onClick={() => setEditingReturn(purchaseReturn)}
+                                aria-label="Unlink return from this order"
+                                title="Unlink from this order"
+                                onClick={() => setUnlinkingReturn(purchaseReturn)}
                               >
-                                <Pencil className="size-3.5" />
+                                <Unlink className="size-3.5" />
                               </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="size-8 text-destructive hover:text-destructive"
-                                aria-label="Delete return"
-                                onClick={() => setDeletingReturn(purchaseReturn)}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </div>
-                          )}
+                            )}
+                            {canEditPurchaseReturn(purchaseReturn) && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-8"
+                                  aria-label="Edit return"
+                                  onClick={() => setEditingReturn(purchaseReturn)}
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-8 text-destructive hover:text-destructive"
+                                  aria-label="Delete return"
+                                  onClick={() => setDeletingReturn(purchaseReturn)}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -287,7 +376,14 @@ export default function PurchaseDetailPage() {
                 {purchaseReturns.map((purchaseReturn) => (
                   <div key={purchaseReturn.id} className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 break-words font-medium">{purchaseReturn.returnNumber}</span>
+                      <span className="min-w-0 break-words font-medium">
+                        {purchaseReturn.returnNumber}
+                        {purchaseReturn.isCancellation && (
+                          <Badge variant="muted" className="ml-2">
+                            Cancellation
+                          </Badge>
+                        )}
+                      </span>
                       <span className="shrink-0 font-semibold tabular-nums text-destructive">
                         −{formatCurrency(purchaseReturn.totalAmount)}
                       </span>
@@ -295,8 +391,16 @@ export default function PurchaseDetailPage() {
                     <div className="mt-2 break-words text-xs text-muted-foreground">
                       {formatDate(purchaseReturn.returnDate)} &middot; {purchaseReturn.reason}
                     </div>
-                    {canEditPurchaseReturn(purchaseReturn) && (
+                    {(canUnlinkReturn(purchaseReturn) || canEditPurchaseReturn(purchaseReturn)) && (
                       <div className="mt-3 flex items-center justify-end gap-2 border-t border-border pt-3">
+                        {canUnlinkReturn(purchaseReturn) && (
+                          <Button size="sm" variant="outline" onClick={() => setUnlinkingReturn(purchaseReturn)}>
+                            <Unlink className="size-3.5" />
+                            Unlink
+                          </Button>
+                        )}
+                        {canEditPurchaseReturn(purchaseReturn) && (
+                          <>
                         <Button
                           size="sm"
                           variant="outline"
@@ -316,6 +420,8 @@ export default function PurchaseDetailPage() {
                           <Trash2 className="size-3.5" />
                           Delete
                         </Button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -330,7 +436,15 @@ export default function PurchaseDetailPage() {
         </CardContent>
       </Card>
 
+      <PurchaseRefundCard purchase={purchase} />
+
       <PurchaseReturnFormDialog open={returnFormOpen} onOpenChange={setReturnFormOpen} purchase={purchase} />
+      <CancelPurchaseDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        purchase={purchase}
+        returns={purchaseReturns ?? []}
+      />
       <PurchaseReturnFormDialog
         open={!!editingReturn}
         onOpenChange={(open) => !open && setEditingReturn(null)}
@@ -343,8 +457,9 @@ export default function PurchaseDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this purchase?</AlertDialogTitle>
             <AlertDialogDescription>
-              This reverses the stock it added (and any returns recorded against it). If that stock has already
-              been sold, deletion will fail rather than go negative.
+              Only for an order entered by mistake — to call off a real order, use Cancel Order so its history is
+              kept. This reverses the stock it added; if that stock has already been sold, deletion will fail rather
+              than go negative.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -379,6 +494,38 @@ export default function PurchaseDetailPage() {
             >
               Delete
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reinstateOpen} onOpenChange={setReinstateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reinstate order #{purchase.invoiceNumber}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The cancellation return is removed: its goods come back into stock and {purchase.supplier.name} is owed
+              for them again. Refunds already recorded stay as they are — edit or cancel them separately if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep cancelled</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReinstate}>Reinstate</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unlinkingReturn} onOpenChange={(open) => !open && setUnlinkingReturn(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink {unlinkingReturn?.returnNumber} from this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It becomes a return not tied to any order. Stock, the supplier balance and Liquid Cash don&apos;t
+              change, but this order will no longer count those units as returned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUnlinkReturn}>Unlink</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

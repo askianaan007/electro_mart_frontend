@@ -17,6 +17,7 @@ import {
   Undo2,
   Wallet,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,7 +33,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ChequeStatusBadge } from '@/components/status-badge';
 import { RowActionsMenu, StatusMenuBadge } from '@/components/row-actions';
 import { SettlementFormDialog } from '@/components/admin/settlement-form-dialog';
-import { StandalonePurchaseReturnFormDialog } from '@/components/admin/standalone-purchase-return-form-dialog';
+import { RefundFormDialog } from '@/components/admin/refund-form-dialog';
+import { useRefundRowActions } from '@/components/admin/refund-row-actions';
 import {
   useDeleteSettlement,
   useSupplierCreditDetail,
@@ -41,6 +43,7 @@ import {
 } from '@/hooks/use-credits';
 import { usePurchases } from '@/hooks/use-purchases';
 import { usePurchaseReturns } from '@/hooks/use-purchase-returns';
+import { useRefunds } from '@/hooks/use-refunds';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   AlertDialog,
@@ -54,7 +57,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
-import type { ChequeStatus, PaymentMode, SupplierPayment } from '@/lib/api/types';
+import type { ChequeStatus, PaymentMode, PurchaseReturn, SupplierPayment } from '@/lib/api/types';
 
 const CHEQUE_REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SETTLEMENT_DELETE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -70,12 +73,27 @@ function canDeleteSettlement(payment: SupplierPayment) {
   return Date.now() - new Date(payment.createdAt).getTime() <= SETTLEMENT_DELETE_WINDOW_MS;
 }
 
+/** Which order a return was against — or a nudge that it isn't tied to one. */
+function returnOrder(purchaseReturn: PurchaseReturn) {
+  if (!purchaseReturn.purchase) return <span className="text-muted-foreground">Not linked</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <Link href={`/admin/purchases/${purchaseReturn.purchase.id}`} className="text-primary hover:underline">
+        #{purchaseReturn.purchase.invoiceNumber}
+      </Link>
+      {purchaseReturn.isCancellation && <Badge variant="muted">Cancellation</Badge>}
+    </span>
+  );
+}
+
 export default function SupplierCreditDetailPage() {
   const { supplierId } = useParams<{ supplierId: string }>();
   const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useSupplierCreditDetail(supplierId);
   const [settlementOpen, setSettlementOpen] = useState(false);
-  const [returnFormOpen, setReturnFormOpen] = useState(false);
+  const [refundFormOpen, setRefundFormOpen] = useState(false);
+  const [refundsPage, setRefundsPage] = useState(1);
+  const refundActions = useRefundRowActions();
   const [revertPayment, setRevertPayment] = useState<SupplierPayment | null>(null);
   const [deletePayment, setDeletePayment] = useState<SupplierPayment | null>(null);
   const updateChequeStatus = useUpdateChequeStatus();
@@ -165,6 +183,15 @@ export default function SupplierCreditDetailPage() {
     dateTo: returnsDateTo || undefined,
   });
 
+  const {
+    data: refunds,
+    isLoading: refundsLoading,
+    isFetching: refundsFetching,
+    isError: refundsIsError,
+    error: refundsError,
+    refetch: refetchRefunds,
+  } = useRefunds({ supplierId, page: refundsPage, limit: 10 });
+
   if (isError) {
     return (
       <div className="space-y-6">
@@ -184,6 +211,9 @@ export default function SupplierCreditDetailPage() {
   const hasReplacements = Number(data.totalReplacements ?? 0) > 0;
   const hasRefunds = Number(data.totalRefundsReceived ?? 0) > 0;
   const statCount = (4 + Number(hasTransport) + Number(hasReplacements) + Number(hasRefunds)) as 4 | 5 | 6 | 7;
+  // Negative: we've paid more than we now owe (returns, a cancelled order's advance) — the supplier owes us.
+  const owedToUs = Number(data.creditBalance) < 0 ? -Number(data.creditBalance) : 0;
+  const showRefunds = owedToUs > 0 || (refunds?.meta.total ?? 0) > 0;
 
   /**
    * Cheque badge that opens only the transitions the backend allows right now:
@@ -299,10 +329,18 @@ export default function SupplierCreditDetailPage() {
         description="Credit (payable) history"
         onBack={() => router.back()}
         actions={
-          <Button onClick={() => setSettlementOpen(true)}>
-            <Plus />
-            Record Settlement
-          </Button>
+          <>
+            {owedToUs > 0 && (
+              <Button variant="outline" onClick={() => setRefundFormOpen(true)}>
+                <HandCoins />
+                Record Refund
+              </Button>
+            )}
+            <Button onClick={() => setSettlementOpen(true)}>
+              <Plus />
+              Record Settlement
+            </Button>
+          </>
         }
       />
 
@@ -342,12 +380,17 @@ export default function SupplierCreditDetailPage() {
             hint="Cash the supplier paid back"
           />
         )}
-        <StatCard
-          label="Credit Balance"
-          value={formatCurrency(data.creditBalance)}
-          icon={Coins}
-          hint="Currently owed"
-        />
+        {owedToUs > 0 ? (
+          <StatCard
+            label="Supplier Owes You"
+            value={formatCurrency(owedToUs)}
+            icon={Coins}
+            tone="success"
+            hint="Record the refund when it's received"
+          />
+        ) : (
+          <StatCard label="Credit Balance" value={formatCurrency(data.creditBalance)} icon={Coins} hint="Currently owed" />
+        )}
       </div>
 
       {/* Settlements */}
@@ -685,14 +728,9 @@ export default function SupplierCreditDetailPage() {
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
         <SectionHeader
           title="Returns"
+          description="Record returns from the order they came on, so it tracks what's left to return."
           isFetching={returnsFetching && !returnsLoading}
           className="pb-3"
-          actions={
-            <Button variant="outline" size="sm" onClick={() => setReturnFormOpen(true)}>
-              <Undo2 />
-              Record Return
-            </Button>
-          }
         />
         <FilterBar>
           <div className="relative flex-1 sm:max-w-[12rem]">
@@ -762,6 +800,7 @@ export default function SupplierCreditDetailPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Return #</TableHead>
+                    <TableHead>Order</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
@@ -773,6 +812,7 @@ export default function SupplierCreditDetailPage() {
                         {formatDate(purchaseReturn.returnDate)}
                       </TableCell>
                       <TableCell className="font-medium">{purchaseReturn.returnNumber}</TableCell>
+                      <TableCell className="whitespace-normal">{returnOrder(purchaseReturn)}</TableCell>
                       <TableCell className="whitespace-normal break-words">{purchaseReturn.reason}</TableCell>
                       <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums text-destructive">
                         −{formatCurrency(purchaseReturn.totalAmount)}
@@ -793,6 +833,7 @@ export default function SupplierCreditDetailPage() {
                     </span>
                   </div>
                   <p className="mt-1 break-words text-sm text-muted-foreground">{purchaseReturn.reason}</p>
+                  <div className="mt-1 text-xs">{returnOrder(purchaseReturn)}</div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatDate(purchaseReturn.returnDate)}</p>
                 </div>
               ))}
@@ -803,11 +844,92 @@ export default function SupplierCreditDetailPage() {
         )}
       </div>
 
-      <StandalonePurchaseReturnFormDialog
-        open={returnFormOpen}
-        onOpenChange={setReturnFormOpen}
-        supplierId={data.supplier.id}
+      {showRefunds && (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <SectionHeader
+            title="Refunds received"
+            description="Money the supplier paid back. A cheque counts in Liquid Cash only once marked cleared."
+            isFetching={refundsFetching && !refundsLoading}
+            className="pb-3"
+          />
+          {refundsLoading ? (
+            <TableSkeleton rows={2} />
+          ) : refundsIsError ? (
+            <QueryErrorState error={refundsError} onRetry={() => refetchRefunds()} />
+          ) : !refunds || refunds.data.length === 0 ? (
+            <EmptyState
+              icon={HandCoins}
+              title="Nothing received yet"
+              description={`${data.supplier.name} owes you ${formatCurrency(owedToUs)}. Record it when it's paid back.`}
+            />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Refund #</TableHead>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-10" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {refunds.data.map((refund) => (
+                      <TableRow key={refund.id} className={cn(refund.cancelledAt && 'opacity-60')}>
+                        <TableCell>{formatDate(refund.refundDate)}</TableCell>
+                        <TableCell className="font-medium">{refund.refundNumber}</TableCell>
+                        <TableCell>
+                          {refund.purchase ? (
+                            <Link
+                              href={`/admin/purchases/${refund.purchase.id}`}
+                              className="text-primary hover:underline"
+                            >
+                              #{refund.purchase.invoiceNumber}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-normal">
+                          {refund.mode === 'BANK_TRANSFER' ? 'Bank transfer' : refund.mode === 'CHEQUE' ? 'Cheque' : 'Cash'}
+                          {refund.mode === 'CHEQUE' && refund.chequeNumber && (
+                            <div className="text-xs text-muted-foreground">#{refund.chequeNumber}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {refundActions.statusControl(refund) ??
+                              (!refund.cancelledAt && <span className="text-sm text-success">Received</span>)}
+                            {refundActions.cancelledBadge(refund)}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className={cn('text-right font-medium tabular-nums', refund.cancelledAt && 'line-through')}
+                        >
+                          +{formatCurrency(refund.amount)}
+                        </TableCell>
+                        <TableCell>{refundActions.menu(refund)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <PaginationBar meta={refunds.meta} onPageChange={setRefundsPage} />
+            </>
+          )}
+        </div>
+      )}
+
+      <RefundFormDialog
+        open={refundFormOpen}
+        onOpenChange={setRefundFormOpen}
+        supplier={{ id: data.supplier.id, name: data.supplier.name }}
       />
+      {refundActions.dialogs}
 
       <SettlementFormDialog
         open={settlementOpen}

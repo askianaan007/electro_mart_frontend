@@ -61,6 +61,10 @@ function purchaseTotals(purchase: Purchase) {
   };
 }
 
+function CancelledBadge() {
+  return <Badge variant="destructive">Cancelled</Badge>;
+}
+
 function ReturnedBadge({ isFullyReturned }: { isFullyReturned: boolean }) {
   return (
     <Badge variant={isFullyReturned ? 'destructive' : 'warning'}>
@@ -280,7 +284,11 @@ export default function PurchasesPage() {
                                 >
                                   {purchase.supplier.name}
                                 </Link>
-                                {hasReturns && <ReturnedBadge isFullyReturned={isFullyReturned} />}
+                                {purchase.cancelledAt ? (
+                                  <CancelledBadge />
+                                ) : (
+                                  hasReturns && <ReturnedBadge isFullyReturned={isFullyReturned} />
+                                )}
                               </div>
                             </TableCell>
                             <TableCell className="whitespace-normal break-words">{purchase.invoiceNumber}</TableCell>
@@ -359,9 +367,9 @@ export default function PurchasesPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        {hasReturns && (
+                        {(hasReturns || purchase.cancelledAt) && (
                           <div className="mt-2">
-                            <ReturnedBadge isFullyReturned={isFullyReturned} />
+                            {purchase.cancelledAt ? <CancelledBadge /> : <ReturnedBadge isFullyReturned={isFullyReturned} />}
                           </div>
                         )}
                         <div className="mt-3 flex items-end justify-between gap-2">

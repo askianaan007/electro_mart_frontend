@@ -13,6 +13,7 @@ export type RefundParams = PaginationParams & {
   party?: RefundParty;
   dealerId?: string;
   supplierId?: string;
+  purchaseId?: string;
 };
 
 export const refundKeys = {
@@ -56,6 +57,7 @@ export type RefundInput = {
   party: RefundParty;
   dealerId?: string;
   supplierId?: string;
+  purchaseId?: string;
   amount: number;
   mode: PaymentMode;
   refundDate: string;
@@ -75,10 +77,28 @@ export function useCreateRefund() {
   });
 }
 
+export type RefundUpdateInput = Omit<RefundInput, 'party' | 'dealerId' | 'supplierId' | 'confirmDuplicate'>;
+
+export function useUpdateRefund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; data: RefundUpdateInput }) => api.refunds.update(vars.id, vars.data),
+    onSuccess: () => invalidateRefundRelated(queryClient),
+  });
+}
+
+export function useRestoreRefund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.refunds.restore(id),
+    onSuccess: () => invalidateRefundRelated(queryClient),
+  });
+}
+
 export function useUpdateRefundChequeStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; status: Exclude<ChequeStatus, 'PENDING'> }) =>
+    mutationFn: (vars: { id: string; status: ChequeStatus }) =>
       api.refunds.updateChequeStatus(vars.id, vars.status),
     onSuccess: () => invalidateRefundRelated(queryClient),
   });

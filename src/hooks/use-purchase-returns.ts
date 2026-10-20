@@ -5,7 +5,13 @@ import { inventoryKeys } from './use-inventory';
 import { creditKeys } from './use-credits';
 import type { PaginationParams } from '@/lib/api/types';
 
-export type PurchaseReturnParams = PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string };
+export type PurchaseReturnParams = PaginationParams & {
+  supplierId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  /** true: only returns tied to a purchase; false: only standalone ones. */
+  linked?: boolean;
+};
 
 export const purchaseReturnKeys = {
   all: ['purchase-returns'] as const,
@@ -76,6 +82,23 @@ export function useUpdatePurchaseReturn() {
         returnDate: data.returnDate,
         items: data.items,
       }),
+    onSuccess: () => invalidatePurchaseReturnRelated(queryClient),
+  });
+}
+
+/** Ties a standalone return to the purchase its goods came from — no money or stock moves. */
+export function useLinkPurchaseReturn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; purchaseId: string }) => api.purchaseReturns.link(vars.id, vars.purchaseId),
+    onSuccess: () => invalidatePurchaseReturnRelated(queryClient),
+  });
+}
+
+export function useUnlinkPurchaseReturn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.purchaseReturns.unlink(id),
     onSuccess: () => invalidatePurchaseReturnRelated(queryClient),
   });
 }

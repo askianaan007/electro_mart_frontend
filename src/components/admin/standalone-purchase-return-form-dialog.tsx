@@ -123,6 +123,8 @@ export function StandalonePurchaseReturnFormDialog({
           <DialogTitle>{isEdit ? 'Edit return' : 'Record a return'}</DialogTitle>
           <DialogDescription>
             For damaged or defective stock that doesn&apos;t need to be matched against a particular purchase bill.
+            Returning goods from a specific order, or calling an order off? Open that purchase and use Record Return or
+            Cancel Order there, so the order keeps track of what&apos;s been sent back.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

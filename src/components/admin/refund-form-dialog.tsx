@@ -14,10 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DuplicateConfirmDialog } from '@/components/admin/duplicate-confirm-dialog';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
-import { useCreateRefund, useRefundAvailable, type RefundInput } from '@/hooks/use-refunds';
+import {
+  useCreateRefund,
+  useRefundAvailable,
+  useUpdateRefund,
+  type RefundInput,
+  type RefundUpdateInput,
+} from '@/hooks/use-refunds';
 import { getErrorMessage } from '@/lib/api/error';
 import { isPossibleDuplicate } from '@/lib/api/duplicate';
 import { businessToday, cn, formatCurrency } from '@/lib/utils';
+import type { Refund, RefundParty } from '@/lib/api/types';
 
 const MAX_AMOUNT = 1_000_000_000;
 
@@ -56,14 +63,32 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-function defaultValues(): FormValues {
+function defaultValues(
+  refund?: Refund | null,
+  supplier?: { id: string } | null,
+  purchase?: { invoiceNumber: string } | null,
+): FormValues {
+  if (refund) {
+    return {
+      party: refund.party,
+      counterpartyId: (refund.party === 'DEALER' ? refund.dealerId : refund.supplierId) ?? '',
+      amount: String(Number(refund.amount)),
+      mode: refund.mode,
+      refundDate: refund.refundDate.slice(0, 10),
+      reason: refund.reason,
+      reference: refund.reference ?? '',
+      chequeNumber: refund.chequeNumber ?? '',
+      bankName: refund.bankName ?? '',
+      chequeDate: refund.chequeDate?.slice(0, 10) ?? '',
+    };
+  }
   return {
-    party: 'DEALER',
-    counterpartyId: '',
+    party: supplier ? 'SUPPLIER' : 'DEALER',
+    counterpartyId: supplier?.id ?? '',
     amount: '',
     mode: 'CASH',
     refundDate: businessToday(),
-    reason: '',
+    reason: purchase ? `Advance paid on order #${purchase.invoiceNumber}` : '',
     reference: '',
     chequeNumber: '',
     bankName: '',
@@ -71,13 +96,40 @@ function defaultValues(): FormValues {
   };
 }
 
+/** What a refund currently takes off its party's credit — 0 once cancelled or bounced. */
+function countedAmount(refund: Refund) {
+  if (refund.cancelledAt || (refund.mode === 'CHEQUE' && refund.chequeStatus === 'RETURNED')) return 0;
+  return Number(refund.amount);
+}
+
 /**
  * Records a refund: paying back a dealer who holds a credit with us (cash
  * out), or a supplier paying back a credit they owe us (cash in). The amount
  * is capped at the party's current credit, fetched from the backend.
+ *
+ * Pass `supplier` (and optionally `purchase`) to record a supplier's refund
+ * from their page or an order's page, or `refund` to correct an existing one
+ * — its own amount counts toward what's available, since it is replaced.
  */
-export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function RefundFormDialog({
+  open,
+  onOpenChange,
+  supplier,
+  purchase,
+  refund,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  supplier?: { id: string; name: string } | null;
+  purchase?: { id: string; invoiceNumber: string } | null;
+  refund?: Refund | null;
+}) {
+  const isEdit = !!refund;
+  const presetParty: RefundParty | null = refund?.party ?? (supplier ? 'SUPPLIER' : null);
+  const linkedPurchase = refund ? (refund.purchase ?? null) : (purchase ?? null);
   const createRefund = useCreateRefund();
+  const updateRefund = useUpdateRefund();
+  const pending = createRefund.isPending || updateRefund.isPending;
   const { data: dealers } = useAllCustomer();
   const { data: suppliers } = useAllSuppliers();
   // The body refused as a possible duplicate, kept so a confirmation resends it unchanged.
@@ -90,16 +142,19 @@ export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpen
 
   useEffect(() => {
     if (open) {
-      form.reset(defaultValues());
+      form.reset(defaultValues(refund, supplier, purchase));
       setDuplicate(null);
     }
-  }, [open, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, refund?.id, supplier?.id, purchase?.id]);
 
   const party = form.watch('party');
   const counterpartyId = form.watch('counterpartyId');
   const mode = form.watch('mode');
   const available = useRefundAvailable(party, counterpartyId || undefined);
-  const availableCredit = available.data ? Number(available.data.availableCredit) : null;
+  const availableCredit = available.data
+    ? Number(available.data.availableCredit) + (refund ? countedAmount(refund) : 0)
+    : null;
   const noCredit = availableCredit !== null && availableCredit <= 0;
   const isDealer = party === 'DEALER';
 
@@ -121,6 +176,19 @@ export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpen
     });
   }
 
+  function submitEdit(id: string, data: RefundUpdateInput) {
+    updateRefund.mutate(
+      { id, data },
+      {
+        onSuccess: (updated) => {
+          toast.success(`Refund ${updated.refundNumber} updated`);
+          onOpenChange(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      },
+    );
+  }
+
   const onSubmit = form.handleSubmit((values) => {
     const amount = Number(values.amount);
     if (availableCredit === null) {
@@ -132,7 +200,23 @@ export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpen
       return;
     }
     const isCheque = values.mode === 'CHEQUE';
+    const details = {
+      amount,
+      mode: values.mode,
+      refundDate: values.refundDate,
+      reason: values.reason.trim(),
+      reference: values.reference.trim() || undefined,
+      chequeNumber: isCheque ? values.chequeNumber.trim() : undefined,
+      bankName: isCheque ? values.bankName.trim() : undefined,
+      chequeDate: isCheque ? values.chequeDate : undefined,
+      purchaseId: (refund ? refund.purchaseId : purchase?.id) ?? undefined,
+    };
+    if (refund) {
+      submitEdit(refund.id, details);
+      return;
+    }
     submit({
+      ...details,
       party: values.party,
       dealerId: values.party === 'DEALER' ? values.counterpartyId : undefined,
       supplierId: values.party === 'SUPPLIER' ? values.counterpartyId : undefined,
@@ -150,16 +234,32 @@ export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpen
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent title="Record refund">
+        <DialogContent title={isEdit ? 'Edit refund' : 'Record refund'}>
           <DialogHeader>
-            <DialogTitle>Record a refund</DialogTitle>
+            <DialogTitle>
+              {isEdit
+                ? `Edit refund ${refund.refundNumber}`
+                : supplier
+                  ? `Refund received from ${supplier.name}`
+                  : 'Record a refund'}
+            </DialogTitle>
             <DialogDescription>
-              Pay back a customer who holds a credit with you, or record a supplier paying back a credit they owe you.
+              {isEdit
+                ? 'Corrections are kept in the history — Liquid Cash shows the change as a dated correction.'
+                : supplier
+                  ? 'Record money the supplier has actually paid back. Until it arrives, leave it as owed — nothing is added to Liquid Cash.'
+                  : 'Pay back a customer who holds a credit with you, or record a supplier paying back a credit they owe you.'}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={onSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              {linkedPurchase && (
+                <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">For order </span>
+                  <span className="font-medium">#{linkedPurchase.invoiceNumber}</span>
+                </p>
+              )}
+              <div className={cn('grid gap-4 sm:grid-cols-2', presetParty && 'hidden')}>
                 <FormField
                   control={form.control}
                   name="party"
@@ -397,10 +497,10 @@ export function RefundFormDialog({ open, onOpenChange }: { open: boolean; onOpen
                 </Button>
                 <Button
                   type="submit"
-                  loading={createRefund.isPending}
+                  loading={pending}
                   disabled={!counterpartyId || availableCredit === null || noCredit}
                 >
-                  Record refund
+                  {isEdit ? 'Save changes' : 'Record refund'}
                 </Button>
               </DialogFooter>
             </form>

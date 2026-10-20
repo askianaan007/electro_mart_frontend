@@ -227,10 +227,15 @@ export const api = {
       },
     ) => apiClient.patch<Purchase>(`/purchases/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchases/${id}`).then((r) => r.data),
+    cancel: (id: string, data: { reason: string; cancelDate: string }) =>
+      apiClient.post<Purchase>(`/purchases/${id}/cancel`, data).then((r) => r.data),
+    reinstate: (id: string) => apiClient.post<Purchase>(`/purchases/${id}/reinstate`).then((r) => r.data),
   },
 
   purchaseReturns: {
-    list: (params: PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string }) =>
+    list: (
+      params: PaginationParams & { supplierId?: string; dateFrom?: string; dateTo?: string; linked?: boolean },
+    ) =>
       apiClient
         .get<Paginated<PurchaseReturn>>('/purchase-returns', { params: buildParams(params) })
         .then((r) => r.data),
@@ -253,6 +258,9 @@ export const api = {
       },
     ) => apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchase-returns/${id}`).then((r) => r.data),
+    link: (id: string, purchaseId: string) =>
+      apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}/link`, { purchaseId }).then((r) => r.data),
+    unlink: (id: string) => apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}/unlink`).then((r) => r.data),
   },
 
   orders: {
@@ -407,7 +415,9 @@ export const api = {
   },
 
   refunds: {
-    list: (params: PaginationParams & { party?: RefundParty; dealerId?: string; supplierId?: string }) =>
+    list: (
+      params: PaginationParams & { party?: RefundParty; dealerId?: string; supplierId?: string; purchaseId?: string },
+    ) =>
       apiClient.get<Paginated<Refund>>('/refunds', { params: buildParams(params) }).then((r) => r.data),
     available: (party: RefundParty, id: string) =>
       apiClient
@@ -416,10 +426,13 @@ export const api = {
         )
         .then((r) => r.data),
     create: (data: Record<string, unknown>) => apiClient.post<Refund>('/refunds', data).then((r) => r.data),
-    updateChequeStatus: (id: string, status: 'CLEARED' | 'RETURNED') =>
+    update: (id: string, data: Record<string, unknown>) =>
+      apiClient.patch<Refund>(`/refunds/${id}`, data).then((r) => r.data),
+    updateChequeStatus: (id: string, status: ChequeStatus) =>
       apiClient.patch<Refund>(`/refunds/${id}/cheque-status`, { status }).then((r) => r.data),
     cancel: (id: string, reason: string) =>
       apiClient.patch<Refund>(`/refunds/${id}/cancel`, { reason }).then((r) => r.data),
+    restore: (id: string) => apiClient.patch<Refund>(`/refunds/${id}/restore`).then((r) => r.data),
   },
 
   cashAdjustments: {
