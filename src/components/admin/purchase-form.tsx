@@ -25,7 +25,7 @@ import { PageHeader } from '@/components/page-header';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { SearchPicker } from '@/components/search-picker';
 import { ProductPickerRow, productForCode, productSearchText } from '@/components/admin/product-line-parts';
-import { QuickAddProductDialog } from '@/components/admin/quick-add-product-dialog';
+import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { CameraScanDialog } from '@/components/scan/camera-scan-dialog';
 import { SerialScanInput, type SerialScanState } from '@/components/scan/serial-scan-input';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
@@ -768,11 +768,12 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         </form>
       </Form>
 
-      <QuickAddProductDialog
+      <ProductFormDialog
         open={quickAddOpen}
         onOpenChange={setQuickAddOpen}
         onCreated={handleProductCreated}
         initialBarcode={quickAddBarcode}
+        fromPurchase
       />
 
       {cameraOpen && (
