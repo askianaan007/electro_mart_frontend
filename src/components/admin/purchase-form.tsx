@@ -227,6 +227,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         description:
           "New box? Tap New product — this code is saved as its barcode. A unit serial goes in the product's Serial numbers box.",
         action: { label: 'New product', onClick: () => openQuickAdd(null, code) },
+
       });
     } catch (error) {
       scanBeep(false);
@@ -775,6 +776,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         initialBarcode={quickAddBarcode}
         fromPurchase
       />
+
 
       {cameraOpen && (
         <CameraScanDialog
