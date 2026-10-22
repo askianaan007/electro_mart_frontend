@@ -79,6 +79,7 @@ import type {
   ProductUnitStatus,
   SerialContext,
   SerialCoverageRow,
+  UnlabelledStock,
   SerialScanResult,
   SerialVerdict,
   UnitDetail,
@@ -561,6 +562,10 @@ export const api = {
       apiClient
         .get<SerialCoverageRow[]>('/product-units/coverage', { params: buildParams({ productId }) })
         .then((r) => r.data),
+    missing: () =>
+      apiClient.get<{ productId: string; missing: number }[]>('/product-units/missing').then((r) => r.data),
+    unlabelled: (productId: string) =>
+      apiClient.get<UnlabelledStock>(`/product-units/unlabelled/${productId}`).then((r) => r.data),
     scan: (code: string) =>
       apiClient.get<SerialScanResult>(`/product-units/scan/${encodeURIComponent(code)}`).then((r) => r.data),
     get: (id: string) => apiClient.get<UnitDetail>(`/product-units/${id}`).then((r) => r.data),

@@ -2,7 +2,19 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, CheckCircle2, Layers, MoreHorizontal, Package, Plus, Search, Tags, Trash2, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Barcode,
+  CheckCircle2,
+  Layers,
+  MoreHorizontal,
+  Package,
+  Plus,
+  Search,
+  Tags,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +45,7 @@ import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { ProductAvailabilityOverrideDialog } from '@/components/admin/product-availability-override-dialog';
 import { ProductCommissionRulesDialog } from '@/components/admin/product-commission-rules-dialog';
+import { ProductBarcodesDialog } from '@/components/scan/product-barcodes-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { PageHeader } from '@/components/page-header';
@@ -41,6 +54,7 @@ import { TableSkeleton } from '@/components/loading-state';
 import { useDeleteProduct, useProducts, useSetProductStatus } from '@/hooks/use-products';
 import { useAllCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useMissingSerials } from '@/hooks/use-product-units';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Product } from '@/lib/api/types';
@@ -50,11 +64,13 @@ function ProductRowActions({
   onDeleteRequest,
   onAvailabilityOverride,
   onCommissionRules,
+  onAddBarcodes,
 }: {
   product: Product;
   onDeleteRequest: () => void;
   onAvailabilityOverride: () => void;
   onCommissionRules: () => void;
+  onAddBarcodes: () => void;
 }) {
   const setStatus = useSetProductStatus();
 
@@ -77,21 +93,49 @@ function ProductRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {product.currentStock > 0 && (
+          <DropdownMenuItem onClick={onAddBarcodes}>
+            <Barcode className="size-4" />
+            Add barcodes
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={toggleStatus}>
           {product.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onAvailabilityOverride}>
-          Rep availability override
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onCommissionRules}>
-          Commission rules
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onAvailabilityOverride}>Rep availability override</DropdownMenuItem>
+        <DropdownMenuItem onClick={onCommissionRules}>Commission rules</DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onClick={onDeleteRequest}>
           <Trash2 className="size-4" />
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Tap to register barcodes for pieces bought without them. */
+function MissingBarcodesBadge({
+  count,
+  onClick,
+  className,
+}: {
+  count: number | undefined;
+  onClick: () => void;
+  className?: string;
+}) {
+  if (!count) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-foreground transition-colors hover:bg-warning/20 dark:text-warning',
+        className,
+      )}
+    >
+      <Barcode className="size-3.5" />
+      {count} missing barcode{count === 1 ? '' : 's'}
+    </button>
   );
 }
 
@@ -109,6 +153,8 @@ export default function ProductsPage() {
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [availabilityOverrideProduct, setAvailabilityOverrideProduct] = useState<Product | null>(null);
   const [commissionRulesProduct, setCommissionRulesProduct] = useState<Product | null>(null);
+  const [barcodesProduct, setBarcodesProduct] = useState<Product | null>(null);
+  const { data: missingSerials } = useMissingSerials();
 
   const deleteProduct = useDeleteProduct();
   const { data: categories } = useAllCategories();
@@ -284,7 +330,11 @@ export default function ProductsPage() {
               }
             />
           ) : (
-            <EmptyState icon={Package} title="No products found" description="Products added to catalog will display here" />
+            <EmptyState
+              icon={Package}
+              title="No products found"
+              description="Products added to catalog will display here"
+            />
           )
         ) : (
           <>
@@ -308,7 +358,13 @@ export default function ProductsPage() {
                         <button onClick={() => openEdit(product)} className="group flex items-center gap-3 text-left">
                           <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
                             {product.imageUrl ? (
-                              <Image src={product.imageUrl} alt={product.name} width={40} height={40} className="object-cover" />
+                              <Image
+                                src={product.imageUrl}
+                                alt={product.name}
+                                width={40}
+                                height={40}
+                                className="object-cover"
+                              />
                             ) : (
                               <Package className="size-[18px] text-muted-foreground" />
                             )}
@@ -322,6 +378,11 @@ export default function ProductsPage() {
                             )}
                           </div>
                         </button>
+                        <MissingBarcodesBadge
+                          count={missingSerials?.get(product.id)}
+                          onClick={() => setBarcodesProduct(product)}
+                          className="ml-12 mt-1"
+                        />
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground md:table-cell">
                         {product.category ?? '—'}
@@ -350,6 +411,7 @@ export default function ProductsPage() {
                           onDeleteRequest={() => setDeletingProduct(product)}
                           onAvailabilityOverride={() => setAvailabilityOverrideProduct(product)}
                           onCommissionRules={() => setCommissionRulesProduct(product)}
+                          onAddBarcodes={() => setBarcodesProduct(product)}
                         />
                       </TableCell>
                     </TableRow>
@@ -363,10 +425,19 @@ export default function ProductsPage() {
               {data.data.map((product) => (
                 <div key={product.id} className="space-y-3 rounded-lg border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <button onClick={() => openEdit(product)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
                       <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
                         {product.imageUrl ? (
-                          <Image src={product.imageUrl} alt={product.name} width={40} height={40} className="object-cover" />
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            width={40}
+                            height={40}
+                            className="object-cover"
+                          />
                         ) : (
                           <Package className="size-[18px] text-muted-foreground" />
                         )}
@@ -380,6 +451,11 @@ export default function ProductsPage() {
                     </button>
                     <AccountStatusBadge status={product.status} />
                   </div>
+                  <MissingBarcodesBadge
+                    count={missingSerials?.get(product.id)}
+                    onClick={() => setBarcodesProduct(product)}
+                    className="w-full justify-center py-2"
+                  />
 
                   <div className="flex items-center justify-between border-t border-border pt-3">
                     <div>
@@ -402,6 +478,7 @@ export default function ProductsPage() {
                       onDeleteRequest={() => setDeletingProduct(product)}
                       onAvailabilityOverride={() => setAvailabilityOverrideProduct(product)}
                       onCommissionRules={() => setCommissionRulesProduct(product)}
+                      onAddBarcodes={() => setBarcodesProduct(product)}
                     />
                   </div>
                 </div>
@@ -426,21 +503,20 @@ export default function ProductsPage() {
         product={commissionRulesProduct}
       />
 
+      <ProductBarcodesDialog product={barcodesProduct} onOpenChange={(open) => !open && setBarcodesProduct(null)} />
+
       <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this product?</AlertDialogTitle>
             <AlertDialogDescription>
-              &quot;{deletingProduct?.name}&quot; will be permanently removed. This only works if it has no order
-              or purchase history — otherwise deactivate it instead.
+              &quot;{deletingProduct?.name}&quot; will be permanently removed. This only works if it has no order or
+              purchase history — otherwise deactivate it instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className={buttonVariants({ variant: 'destructive' })}
-            >
+            <AlertDialogAction onClick={confirmDelete} className={buttonVariants({ variant: 'destructive' })}>
               Delete Product
             </AlertDialogAction>
           </AlertDialogFooter>

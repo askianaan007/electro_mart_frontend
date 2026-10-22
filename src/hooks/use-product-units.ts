@@ -3,6 +3,7 @@ import { api } from '@/lib/api/endpoints';
 import { orderKeys } from './use-orders';
 import { purchaseKeys } from './use-purchases';
 import { invoiceKeys } from './use-invoices';
+import { productKeys } from './use-products';
 import type { PaginationParams, ProductUnitCondition, ProductUnitStatus, SerialContext } from '@/lib/api/types';
 
 export type UnitListParams = PaginationParams & {
@@ -18,6 +19,8 @@ export const productUnitKeys = {
   list: (params: UnitListParams) => [...productUnitKeys.all, 'list', params] as const,
   detail: (id: string) => [...productUnitKeys.all, 'detail', id] as const,
   coverage: (productId?: string) => [...productUnitKeys.all, 'coverage', productId ?? 'all'] as const,
+  missing: () => [...productUnitKeys.all, 'missing'] as const,
+  unlabelled: (productId: string) => [...productUnitKeys.all, 'unlabelled', productId] as const,
   scan: (code: string) => [...productUnitKeys.all, 'scan', code] as const,
   orderUnits: (orderId: string) => [...productUnitKeys.all, 'order', orderId] as const,
   validate: (key: unknown) => [...productUnitKeys.all, 'validate', key] as const,
@@ -30,6 +33,8 @@ function invalidateUnitRelated(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: orderKeys.all });
   queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
   queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+  // Registering a serial turns tracking on for the product.
+  queryClient.invalidateQueries({ queryKey: productKeys.all });
 }
 
 export function useProductUnits(params: UnitListParams, enabled = true) {
@@ -54,6 +59,23 @@ export function useSerialCoverage(productId?: string, enabled = true) {
     queryKey: productUnitKeys.coverage(productId),
     queryFn: () => api.productUnits.coverage(productId),
     enabled,
+  });
+}
+
+/** productId → pieces still without a serial (tracked products only). */
+export function useMissingSerials() {
+  return useQuery({
+    queryKey: productUnitKeys.missing(),
+    queryFn: api.productUnits.missing,
+    select: (rows) => new Map(rows.map((row) => [row.productId, row.missing])),
+  });
+}
+
+export function useUnlabelledStock(productId: string | undefined) {
+  return useQuery({
+    queryKey: productUnitKeys.unlabelled(productId ?? ''),
+    queryFn: () => api.productUnits.unlabelled(productId as string),
+    enabled: !!productId,
   });
 }
 
