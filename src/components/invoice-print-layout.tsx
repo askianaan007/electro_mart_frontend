@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/lib/api/types';
 
 const PAGE_HEIGHT_MM = 297;
@@ -10,7 +10,7 @@ const CAPACITY_SINGLE_PAGE = 20; // Page 1 with Bill To AND Summary totals
 const CAPACITY_FIRST_PAGE = 18; // Page 1 with Bill To, NO Summary totals
 const CAPACITY_MIDDLE_PAGE = 24; // Middle page with NO Bill To, NO Summary totals
 const CAPACITY_LAST_PAGE = 16; // Last page with NO Bill To, WITH Summary totals
-const CAPACITY_SERIAL_PAGE = 30; // Serial-number annex rows per page
+const CAPACITY_SERIAL_PAGE = 38; // Serial-number rows per plain page (no letterhead)
 
 const BILL_TO_RED = '#ED1C24';
 const INFO_BLUE = '#DCEEFB';
@@ -141,13 +141,23 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
 
   const pages = partitionInvoiceItems(items);
   // Serial-number annex (Bar_code_plan.md §7.4): one row per unit, after the invoice pages.
-  const serialRows = (invoice.serialAnnex ?? []).flatMap((group) =>
-    group.serials.map((serial) => ({ group, serial })),
+  const productCodeById = new Map(items.map((item) => [item.productId, item.product.productCode]));
+  const serialGroups = invoice.serialAnnex ?? [];
+  const serialRows = serialGroups.flatMap((group, groupIndex) =>
+    group.serials.map((serial) => ({ group, groupIndex, serial })),
   );
   const serialPages: (typeof serialRows)[] = [];
   for (let i = 0; i < serialRows.length; i += CAPACITY_SERIAL_PAGE) {
     serialPages.push(serialRows.slice(i, i + CAPACITY_SERIAL_PAGE));
   }
+  // Rows of one product on a page share merged product cells (rowSpan).
+  const groupSpan = (rows: typeof serialRows, rowIndex: number) => {
+    const row = rows[rowIndex];
+    if (rowIndex > 0 && rows[rowIndex - 1].groupIndex === row.groupIndex) return 0;
+    let span = 1;
+    while (rows[rowIndex + span]?.groupIndex === row.groupIndex) span += 1;
+    return span;
+  };
   const issueDateFormatted = formatInvoiceDate(invoice.createdAt);
   const deliveryDateFormatted = formatInvoiceDate(invoice.order?.deliveredAt);
 
@@ -409,71 +419,78 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
           className="invoice-page relative mx-auto flex flex-col justify-between overflow-hidden bg-white text-black shadow-lg pb-4 print:m-0 print:pb-0 print:shadow-none"
           style={{ width: '210mm', height: `${PAGE_HEIGHT_MM}mm`, boxSizing: 'border-box' }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/invoice-header.png"
-            alt=""
-            className="block w-full flex-shrink-0"
-            style={{ height: `${HEADER_HEIGHT_MM}mm` }}
-          />
-          <div className="flex flex-1 flex-col min-h-0 overflow-hidden text-[10px]" style={{ padding: '16px' }}>
-            <div className="py-1 pl-2 font-bold uppercase text-white" style={{ background: BILL_TO_RED }}>
-              Serial Numbers
+          {/* Plain black-and-white page: no letterhead or colours, just the serial table. */}
+          <div className="flex flex-1 flex-col min-h-0 overflow-hidden text-[10px]" style={{ padding: '12mm' }}>
+            <div className="flex items-end justify-between gap-6 border-b border-black pb-2">
+              <div>
+                <p className="text-[13px] font-bold uppercase">Serial Numbers</p>
+                <p>
+                  <span className="font-bold">Customer:</span> {invoice.dealer?.businessName ?? ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p>
+                  <span className="font-bold">Invoice Ref:</span> #{invoice.invoiceNumber}
+                </p>
+                {issueDateFormatted && (
+                  <p>
+                    <span className="font-bold">Issue Date:</span> {issueDateFormatted}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex justify-between gap-6 px-2 py-2 leading-[1.6]" style={{ background: INFO_BLUE }}>
-              <p>
-                <span className="font-bold">Customer Name:</span> {invoice.dealer?.businessName ?? ''}
-              </p>
-              <p className="text-right">
-                <span className="font-bold">Invoice Ref:</span> #{invoice.invoiceNumber}
-              </p>
-            </div>
-            <table className="mt-2 w-full border-collapse table-fixed text-[9px]">
+            <table className="mt-3 w-full border-collapse table-fixed text-[9px]">
               <thead>
-                <tr className="text-white" style={{ background: TABLE_HEAD_NAVY }}>
-                  <th className="w-[7%] border border-black px-1.5 py-1">S.No</th>
-                  <th className="w-[43%] border border-black px-1.5 py-1 text-left">Item / Description</th>
+                <tr>
+                  <th className="w-[6%] border border-black px-1.5 py-1">S.No</th>
+                  <th className="w-[14%] border border-black px-1.5 py-1 text-left">Product Code</th>
+                  <th className="w-[34%] border border-black px-1.5 py-1 text-left">Item / Description</th>
                   <th className="w-[32%] border border-black px-1.5 py-1 text-left">Serial Number</th>
-                  <th className="w-[18%] border border-black px-1.5 py-1">Warranty Until</th>
+                  <th className="w-[14%] border border-black px-1.5 py-1">Warranty Until</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ group, serial }, rowIndex) => (
-                  <tr key={serial.id} className="break-inside-avoid">
-                    <td className="border border-black px-1.5 py-1 text-center">
-                      {pageIndex * CAPACITY_SERIAL_PAGE + rowIndex + 1}
-                    </td>
-                    <td className="border border-black px-1.5 py-1 truncate" title={group.productName}>
-                      {group.productName}
-                      {group.model ? ` (${group.model})` : ''}
-                    </td>
-                    <td className="border border-black px-1.5 py-1 font-mono">
-                      {serial.serialNumber}
-                      {serial.replacesSerial && (
-                        <span className="text-gray-600"> — replaces {serial.replacesSerial}</span>
+                {rows.map(({ group, serial }, rowIndex) => {
+                  const span = groupSpan(rows, rowIndex);
+                  return (
+                    <tr key={serial.id} className="break-inside-avoid">
+                      <td className="border border-black px-1.5 py-1 text-center">
+                        {pageIndex * CAPACITY_SERIAL_PAGE + rowIndex + 1}
+                      </td>
+                      {span > 0 && (
+                        <>
+                          <td rowSpan={span} className="border border-black px-1.5 py-1 align-top">
+                            {productCodeById.get(group.productId) ?? '-'}
+                          </td>
+                          <td rowSpan={span} className="border border-black px-1.5 py-1 align-top">
+                            {/* One line when the product has a single row here, so rows keep their height. */}
+                            <p className={cn(span === 1 && 'truncate')} title={group.productName}>
+                              {group.productName}
+                            </p>
+                            {span > 1 && <p>Qty: {group.serials.length}</p>}
+                          </td>
+                        </>
                       )}
-                    </td>
-                    <td className="border border-black px-1.5 py-1 text-center">
-                      {formatInvoiceDate(serial.warrantyExpiresAt) ?? '-'}
-                    </td>
-                  </tr>
-                ))}
+                      <td className="border border-black px-1.5 py-1 font-mono">
+                        {serial.serialNumber}
+                        {serial.replacesSerial && (
+                          <span className="block font-sans">replaces {serial.replacesSerial}</span>
+                        )}
+                      </td>
+                      {/* Left blank on purpose — no warranty date is printed. */}
+                      <td className="border border-black px-1.5 py-1">&nbsp;</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            <div className="mt-auto flex items-center justify-between border-t border-gray-200 pt-1 text-[9px] italic text-gray-500">
-              <span>Please keep this page for warranty claims — the serial number identifies each unit.</span>
+            <div className="mt-auto flex items-center justify-between pt-2 text-[9px]">
+              <span>Keep this page for warranty claims.</span>
               <span>
-                Serial page {pageIndex + 1} of {serialPages.length}
+                Page {pageIndex + 1} of {serialPages.length}
               </span>
             </div>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/invoice-footer.png"
-            alt=""
-            className="block w-full flex-shrink-0"
-            style={{ height: `${FOOTER_HEIGHT_MM}mm` }}
-          />
         </div>
       ))}
     </div>

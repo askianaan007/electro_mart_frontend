@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { fetchAllPages } from '@/lib/api/fetch-all-pages';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const supplierKeys = {
@@ -17,10 +18,11 @@ export function useSuppliers(params: PaginationParams) {
   });
 }
 
+/** Every supplier, across all pages — for pickers and filters. */
 export function useAllSuppliers() {
   return useQuery({
-    queryKey: supplierKeys.list({ limit: 100 }),
-    queryFn: () => api.suppliers.list({ limit: 100 }),
+    queryKey: [...supplierKeys.list({}), 'all'] as const,
+    queryFn: async () => ({ data: await fetchAllPages((page, limit) => api.suppliers.list({ page, limit })) }),
   });
 }
 

@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { SearchPicker } from '@/components/search-picker';
+import { ProductPickerRow, productForCode, productSearchText } from '@/components/admin/product-line-parts';
 import { CameraScanDialog } from '@/components/scan/camera-scan-dialog';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useAllProducts } from '@/hooks/use-products';
@@ -167,35 +168,6 @@ function defaultValuesFor(order?: Order): FormValues {
 
 function dealerSearchText(dealer: Dealer) {
   return [dealer.businessName, dealer.ownerName, dealer.phone, dealer.district].filter(Boolean).join(' ');
-}
-
-function productSearchText(product: Product) {
-  return [product.name, product.productCode, product.brand, product.model, product.sku, product.barcode]
-    .filter(Boolean)
-    .join(' ');
-}
-
-/** Product barcode / SKU / code that equals a scanned value. */
-function productForCode(products: Product[], code: string) {
-  const key = serialKey(code);
-  return products.find((p) => [p.barcode, p.sku, p.productCode].some((v) => v && serialKey(v) === key));
-}
-
-function ProductRow({ product }: { product: Product }) {
-  return (
-    <>
-      <span className="line-clamp-2 font-medium">{product.name}</span>
-      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-        <span className="font-mono">{product.productCode}</span>
-        <span
-          className={cn('tabular-nums', product.currentStock <= 0 ? 'font-medium text-destructive' : 'text-success')}
-        >
-          {product.currentStock <= 0 ? 'Out of stock' : `${product.currentStock} in stock`}
-        </span>
-        <span className="tabular-nums">{formatCurrency(product.wholesalePrice)}</span>
-      </span>
-    </>
-  );
 }
 
 function Segmented<T extends string>({
@@ -612,7 +584,7 @@ export function OrderForm({ order }: { order?: Order }) {
                 className="min-h-11"
                 icon={<Search className="size-4 shrink-0 text-muted-foreground" />}
                 renderValue={() => null}
-                renderItem={(product) => <ProductRow product={product} />}
+                renderItem={(product) => <ProductPickerRow product={product} price={product.wholesalePrice} />}
               />
 
               <div className="flex gap-2">
@@ -709,7 +681,7 @@ export function OrderForm({ order }: { order?: Order }) {
                               loading={productsLoading}
                               className="mt-0.5 min-h-0 w-auto gap-0.5 border-0 bg-transparent p-0 text-xs text-primary shadow-none hover:bg-transparent hover:underline dark:bg-transparent [&_span]:text-primary"
                               renderValue={() => null}
-                              renderItem={(p) => <ProductRow product={p} />}
+                              renderItem={(p) => <ProductPickerRow product={p} price={p.wholesalePrice} />}
                             />
                           </div>
                           <button
