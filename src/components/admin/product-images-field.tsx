@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { ImagePlus, Loader2, X } from 'lucide-react';
@@ -46,13 +46,9 @@ export function ProductImagesField({
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadImages = useUploadProductImages();
   const removeImage = useRemoveProductImage();
-  const [previews, setPreviews] = useState<string[]>([]);
-
-  useEffect(() => {
-    const urls = stagedFiles.map((file) => URL.createObjectURL(file));
-    setPreviews(urls);
-    return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [stagedFiles]);
+  const previews = useMemo(() => stagedFiles.map((file) => URL.createObjectURL(file)), [stagedFiles]);
+  // Free the preview URLs when the files change or the field goes away.
+  useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
   const totalCount = images.length + stagedFiles.length;
   const remainingSlots = MAX_PRODUCT_IMAGES - totalCount;
@@ -89,7 +85,9 @@ export function ProductImagesField({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-semibold">Images (optional, up to {MAX_PRODUCT_IMAGES}, 5MB each)</p>
+      <p className="text-sm font-medium">
+        Photos <span className="font-normal text-muted-foreground">(optional, up to {MAX_PRODUCT_IMAGES}, 5MB each)</span>
+      </p>
       <div className="flex flex-wrap gap-3">
         {images.map((image) => (
           <div
@@ -102,9 +100,9 @@ export function ProductImagesField({
               onClick={() => confirmRemoveImage(image.id)}
               disabled={removeImage.isPending}
               aria-label="Remove image"
-              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-foreground/70 text-background opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute right-1 top-1 flex size-7 items-center justify-center rounded-full bg-foreground/70 text-background transition-opacity focus-visible:opacity-100 group-hover:opacity-100 sm:size-5 sm:opacity-0"
             >
-              <X className="size-3" />
+              <X className="size-4 sm:size-3" />
             </button>
           </div>
         ))}
@@ -121,9 +119,9 @@ export function ProductImagesField({
               type="button"
               onClick={() => removeStagedFile(index)}
               aria-label="Remove image"
-              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-foreground/70 text-background opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute right-1 top-1 flex size-7 items-center justify-center rounded-full bg-foreground/70 text-background transition-opacity focus-visible:opacity-100 group-hover:opacity-100 sm:size-5 sm:opacity-0"
             >
-              <X className="size-3" />
+              <X className="size-4 sm:size-3" />
             </button>
           </div>
         ))}

@@ -4,6 +4,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { X } from 'lucide-react';
+import { useVisualViewport } from '@/hooks/use-visual-viewport';
 import { cn } from '@/lib/utils';
 
 const Dialog = DialogPrimitive.Root;
@@ -26,16 +27,34 @@ function DialogContent({
   className,
   children,
   title,
+  mobileFullScreen,
+  style,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { title?: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  title?: string;
+  /** On phones, fill the screen above the keyboard instead of floating in the middle — for forms with typing. */
+  mobileFullScreen?: boolean;
+}) {
+  const viewport = useVisualViewport();
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
           'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl scrollbar-thin data-[state=open]:animate-ui-pop-in sm:p-6',
+          mobileFullScreen &&
+            'max-sm:left-0 max-sm:top-(--vv-top) max-sm:h-(--vv-height) max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:content-start max-sm:overscroll-contain max-sm:rounded-none max-sm:border-0 max-sm:pt-[max(1.25rem,env(safe-area-inset-top))]',
           className,
         )}
+        style={
+          mobileFullScreen
+            ? ({
+                '--vv-height': viewport ? `${viewport.height}px` : '100dvh',
+                '--vv-top': viewport ? `${viewport.top}px` : '0px',
+                ...style,
+              } as React.CSSProperties)
+            : style
+        }
         {...props}
       >
         {!title && (
@@ -58,12 +77,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
-      {...props}
-    />
-  );
+  return <div className={cn('mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />;
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
