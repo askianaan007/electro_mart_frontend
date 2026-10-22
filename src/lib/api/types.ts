@@ -130,6 +130,10 @@ export interface Product {
   retailPrice: string | null;
   compareAtPrice: string | null;
   isFeatured: boolean;
+  /** Each unit carries a scanned serial (Bar_code_plan.md). Optional per product. */
+  trackSerials?: boolean;
+  /** Stamps each sold unit's warranty expiry; null = no expiry date. */
+  warrantyMonths?: number | null;
 }
 
 export interface InventoryStockRow {
@@ -185,6 +189,8 @@ export interface Purchase {
   cancelReason: string | null;
   items: PurchaseItem[];
   purchaseReturns?: { totalAmount: string }[];
+  /** Serials registered against this purchase (detail only). */
+  units?: PurchaseUnitRow[];
 }
 
 export interface PurchaseReturnItem {
@@ -211,6 +217,8 @@ export interface PurchaseReturn {
   /** Created by cancelling its purchase — undone only by reinstating that purchase. */
   isCancellation: boolean;
   items: PurchaseReturnItem[];
+  /** Serial units sent back on this return. */
+  units?: { id: string; productId: string; serialNumber: string; condition: ProductUnitCondition }[];
 }
 
 export interface SupplierPayment {
@@ -302,6 +310,10 @@ export interface Order {
   items: OrderItem[];
   invoice: Invoice | null;
   salesReturns?: { totalAmount: string }[];
+  /** Detail only: serials per product, safe to show the dealer. */
+  serialAnnex?: SerialAnnexGroup[];
+  /** Detail only (admin): assigned vs required serials per tracked line. */
+  serialProgress?: { productId: string; assigned: number; required: number }[];
 }
 
 export interface Invoice {
@@ -322,6 +334,8 @@ export interface Invoice {
   returnedAmount?: string;
   /** grandTotal minus returnedAmount — what's actually still owed. */
   netGrandTotal?: string;
+  /** Detail only: printed as the invoice's serial-number page. */
+  serialAnnex?: SerialAnnexGroup[];
 }
 
 export interface Payment {
@@ -704,6 +718,14 @@ export interface SalesReturn {
   returnDate: string;
   createdAt: string;
   items: SalesReturnItem[];
+  /** Serial units taken back on this return. */
+  serials?: {
+    productId: string;
+    unitId: string;
+    serialNumber: string;
+    condition: ProductUnitCondition;
+    faultNote: string | null;
+  }[];
 }
 
 export interface ActivityLog {
@@ -1097,4 +1119,320 @@ export interface CategorySalesRow {
   category: string;
   quantitySold: number;
   revenue: string;
+}
+
+// ---------------------------------------------------------------------------
+// Serial tracking (Bar_code_plan.md)
+// ---------------------------------------------------------------------------
+
+export type ProductUnitStatus = 'IN_STOCK' | 'ALLOCATED' | 'SOLD' | 'RETURNED_TO_SUPPLIER' | 'WRITTEN_OFF';
+export type ProductUnitCondition = 'GOOD' | 'DEFECTIVE';
+export type ProductUnitSource = 'PURCHASE' | 'REPLACEMENT' | 'OPENING_STOCK';
+export type ProductUnitEventType =
+  | 'REGISTERED'
+  | 'SERIAL_CORRECTED'
+  | 'ASSIGNED_TO_ORDER'
+  | 'UNASSIGNED_FROM_ORDER'
+  | 'MARKED_SOLD'
+  | 'RETURNED_BY_DEALER'
+  | 'DEALER_RETURN_REVERSED'
+  | 'RETURNED_TO_SUPPLIER'
+  | 'SUPPLIER_RETURN_REVERSED'
+  | 'SUPPLIER_RETURN_RELINKED'
+  | 'MARKED_DEFECTIVE'
+  | 'MARKED_GOOD'
+  | 'WARRANTY_SWAP_OUT'
+  | 'WARRANTY_SWAP_IN'
+  | 'WRITTEN_OFF'
+  | 'WRITE_OFF_REVERSED'
+  | 'WARRANTY_UPDATED'
+  | 'RELEASED_BY_DATA_CLEAR';
+
+export type SerialContext = 'RECEIVE' | 'ASSIGN' | 'SALES_RETURN' | 'PURCHASE_RETURN' | 'WRITE_OFF';
+
+export type SerialVerdictCode =
+  | 'OK'
+  | 'NEW_WILL_REGISTER'
+  | 'INVALID_FORMAT'
+  | 'DUPLICATE_IN_REQUEST'
+  | 'ALREADY_EXISTS'
+  | 'IS_MODEL_BARCODE'
+  | 'NOT_REGISTERED'
+  | 'ALREADY_ON_ORDER'
+  | 'NOT_IN_STOCK'
+  | 'DEFECTIVE'
+  | 'NOT_ON_THIS_ORDER'
+  | 'OTHER_PURCHASE';
+
+export interface SerialVerdict {
+  input: string;
+  serialNumber: string | null;
+  code: SerialVerdictCode;
+  ok: boolean;
+  message: string;
+  unitId?: string;
+}
+
+export interface PurchaseUnitRow {
+  id: string;
+  productId: string;
+  serialNumber: string;
+  status: ProductUnitStatus;
+  condition: ProductUnitCondition;
+}
+
+export interface SerialAnnexGroup {
+  productId: string;
+  productName: string;
+  brand: string | null;
+  model: string | null;
+  serials: {
+    id: string;
+    serialNumber: string;
+    status: ProductUnitStatus;
+    warrantyExpiresAt: string | null;
+    replacesSerial: string | null;
+  }[];
+}
+
+export interface ProductUnit {
+  id: string;
+  productId: string;
+  serialNumber: string;
+  serialKey: string;
+  status: ProductUnitStatus;
+  condition: ProductUnitCondition;
+  source: ProductUnitSource;
+  replacesUnitId: string | null;
+  purchaseId: string | null;
+  replacementId: string | null;
+  receivedAt: string;
+  orderId: string | null;
+  allocatedAt: string | null;
+  soldAt: string | null;
+  warrantyStartsAt: string | null;
+  warrantyExpiresAt: string | null;
+  warrantyManual: boolean;
+  purchaseReturnId: string | null;
+  notes: string | null;
+  createdByAdminId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductUnitListRow extends ProductUnit {
+  product: { id: string; name: string; brand: string | null; model: string | null; productCode: string };
+  order: { id: string; orderNumber: string; dealer: { businessName: string } } | null;
+  purchase: { id: string; invoiceNumber: string } | null;
+}
+
+export type UnitTone = 'success' | 'info' | 'warning' | 'purple' | 'muted';
+
+export interface UnitStatusSummary {
+  tone: UnitTone;
+  headline: string;
+  subline: string;
+}
+
+export type SerialScanResult =
+  | {
+      kind: 'UNIT';
+      code: string;
+      units: {
+        id: string;
+        serialNumber: string;
+        status: ProductUnitStatus;
+        condition: ProductUnitCondition;
+        product: { id: string; name: string; brand: string | null; model: string | null };
+        statusSummary: UnitStatusSummary;
+      }[];
+    }
+  | {
+      kind: 'PRODUCT';
+      code: string;
+      product: {
+        id: string;
+        name: string;
+        brand: string | null;
+        model: string | null;
+        productCode: string;
+        barcode: string | null;
+        currentStock: number;
+        trackSerials: boolean;
+      } | null;
+    }
+  | { kind: 'NONE'; code: string };
+
+export interface ProductUnitEvent {
+  id: string;
+  unitId: string;
+  type: ProductUnitEventType;
+  documentId: string | null;
+  documentRef: string | null;
+  partyName: string | null;
+  reason: string | null;
+  faultNote: string | null;
+  statusAfter: ProductUnitStatus;
+  conditionAfter: ProductUnitCondition;
+  eventDate: string;
+  amount: string | null;
+  details: string | null;
+  adminId: string;
+  adminName: string;
+  createdAt: string;
+}
+
+export interface UnitCustomerReturn {
+  eventId: string;
+  salesReturnId: string | null;
+  documentRef: string | null;
+  documentDeleted: boolean;
+  returnNumber: string | null;
+  returnDate: string;
+  order: { id: string; orderNumber: string; invoice: { id: string; invoiceNumber: string } | null } | null;
+  dealer: { id: string | null; businessName: string | null };
+  reasonAtTime: string | null;
+  reasonNow: string | null;
+  reasonEdited: boolean;
+  faultNote: string | null;
+  condition: ProductUnitCondition;
+  creditedAmount: string | null;
+  recordedBy: string;
+  recordedAt: string;
+  reversed: boolean;
+  next: { type: ProductUnitEventType; documentRef: string | null; eventDate: string; documentId: string | null } | null;
+}
+
+export interface UnitSupplierReturn {
+  eventId: string;
+  purchaseReturnId: string | null;
+  documentDeleted: boolean;
+  returnNumber: string | null;
+  returnDate: string;
+  supplier: { id: string | null; name: string | null; phone: string | null };
+  purchase: { id: string; invoiceNumber: string; cancelReason: string | null } | null;
+  isCancellation: boolean;
+  reasonAtTime: string | null;
+  reasonNow: string | null;
+  reasonEdited: boolean;
+  condition: ProductUnitCondition;
+  unitCost: string | null;
+  recordedBy: string;
+  recordedAt: string;
+  reversed: boolean;
+  replacement:
+    | {
+        state: 'RECEIVED';
+        unit: { id: string; serialNumber: string; status: ProductUnitStatus; receivedAt: string; source: ProductUnitSource };
+      }
+    | { state: 'AWAITING'; days: number }
+    | null;
+}
+
+export interface UnitDetail {
+  unit: ProductUnit & {
+    createdByAdminName: string | null;
+    product: Product & { warrantyMonths: number | null };
+    purchase: (Purchase & { supplier: Supplier }) | null;
+    replacement: { id: string; replacementNumber: string; receivedDate: string } | null;
+    purchaseReturn: (PurchaseReturn & { supplier: Supplier }) | null;
+    replacesUnit: { id: string; serialNumber: string; status: ProductUnitStatus } | null;
+    replacedBy: {
+      id: string;
+      serialNumber: string;
+      status: ProductUnitStatus;
+      receivedAt: string;
+      source: ProductUnitSource;
+    } | null;
+  };
+  statusSummary: UnitStatusSummary;
+  warranty: {
+    startsAt: string | null;
+    expiresAt: string | null;
+    months: number | null;
+    text: string | null;
+    manual: boolean;
+    state: 'NOT_SET' | 'VALID' | 'EXPIRED';
+    daysLeft: number | null;
+  };
+  currentSale: {
+    order: {
+      id: string;
+      orderNumber: string;
+      status: OrderStatus;
+      approvedAt: string | null;
+      deliveredAt: string | null;
+      completedAt: string | null;
+    };
+    invoice: { id: string; invoiceNumber: string; paymentStatus: PaymentStatus; dueDate: string | null; createdAt: string } | null;
+    dealer: Dealer;
+    rep: { id: string; name: string; phone: string | null } | null;
+    unitPrice: string | null;
+    netUnitPrice: string | null;
+  } | null;
+  customerReturns: UnitCustomerReturn[];
+  supplierReturns: UnitSupplierReturn[];
+  swaps: {
+    type: 'WARRANTY_SWAP_OUT' | 'WARRANTY_SWAP_IN';
+    eventDate: string;
+    reason: string | null;
+    faultNote: string | null;
+    documentRef: string | null;
+    partyName: string | null;
+    details: string | null;
+    recordedBy: string;
+  }[];
+  writeOff: { eventDate: string; reason: string | null; recordedBy: string } | null;
+  previousSales: {
+    orderId: string | null;
+    documentRef: string | null;
+    partyName: string | null;
+    eventDate: string;
+    amount: string | null;
+  }[];
+  timeline: ProductUnitEvent[];
+}
+
+export interface SerialCoverageRow {
+  id: string;
+  name: string;
+  productCode: string;
+  trackSerials: boolean;
+  currentStock: number;
+  reserved: number;
+  held: number;
+  serialsHeld: number;
+  /** Physical units on the shelf without a serial yet (never negative unless `problem`). */
+  gap: number;
+  inStock: number;
+  defectiveInStock: number;
+  allocated: number;
+  sold: number;
+  returnedToSupplier: number;
+  writtenOff: number;
+  problem: boolean;
+}
+
+export interface OrderUnitLine {
+  productId: string;
+  product: {
+    id: string;
+    name: string;
+    brand: string | null;
+    model: string | null;
+    trackSerials: boolean;
+    warrantyMonths: number | null;
+  };
+  quantity: number;
+  returnedQty: number;
+  /** Units still with the buyer — the most serials this line can carry. */
+  required: number;
+  assigned: {
+    id: string;
+    serialNumber: string;
+    status: ProductUnitStatus;
+    condition: ProductUnitCondition;
+    warrantyExpiresAt: string | null;
+    replacesSerial: string | null;
+  }[];
 }

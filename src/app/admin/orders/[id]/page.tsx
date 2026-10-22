@@ -44,6 +44,7 @@ import { RejectOrderDialog } from '@/components/admin/reject-order-dialog';
 import { ApproveOrderDialog } from '@/components/admin/approve-order-dialog';
 import { EditOrderItemsDialog } from '@/components/admin/edit-order-items-dialog';
 import { SalesReturnFormDialog } from '@/components/admin/sales-return-form-dialog';
+import { OrderSerialsCard } from '@/components/scan/order-serials-card';
 import { useCompleteOrderDirectly, useDeleteOrder, useOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { useDeleteSalesReturn, useSalesReturnsForOrder } from '@/hooks/use-sales-returns';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -83,6 +84,8 @@ export default function OrderDetailPage() {
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [editingReturn, setEditingReturn] = useState<SalesReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<SalesReturn | null>(null);
+  // Delivering with serials still unscanned is allowed, but asked about first.
+  const [missingSerialsFor, setMissingSerialsFor] = useState<'ADVANCE' | 'COMPLETE' | null>(null);
 
   const { data: order, isLoading, isError, error, refetch } = useOrder(id);
   const {
@@ -120,6 +123,26 @@ export default function OrderDetailPage() {
     !order.dealer.unlimitedCredit &&
     Number(order.dealer.outstandingBalance) + Number(order.totalAmount) > Number(order.dealer.creditLimit);
   const nextStatus = NEXT_STATUS[order.status];
+  const missingSerials = (order.serialProgress ?? []).reduce(
+    (sum, line) => sum + Math.max(0, line.required - line.assigned),
+    0,
+  );
+
+  function requestAdvance() {
+    if (nextStatus && nextStatus !== 'PACKED' && order!.status !== 'DELIVERED' && missingSerials > 0) {
+      setMissingSerialsFor('ADVANCE');
+      return;
+    }
+    handleAdvance();
+  }
+
+  function requestComplete() {
+    if (missingSerials > 0) {
+      setMissingSerialsFor('COMPLETE');
+      return;
+    }
+    setCompleteOpen(true);
+  }
 
   function handleAdvance() {
     if (!nextStatus) return;
@@ -255,7 +278,7 @@ export default function OrderDetailPage() {
                 </Button>
               )}
               {nextStatus && (
-                <Button onClick={handleAdvance} loading={updateStatus.isPending}>
+                <Button onClick={requestAdvance} loading={updateStatus.isPending}>
                   {nextStatus === 'PACKED' && <PackageCheck />}
                   {nextStatus === 'DELIVERED' && <Truck />}
                   {nextStatus === 'COMPLETED' && <CheckCircle2 />}
@@ -263,7 +286,7 @@ export default function OrderDetailPage() {
                 </Button>
               )}
               {nextStatus && nextStatus !== 'COMPLETED' && (
-                <Button variant="success" onClick={() => setCompleteOpen(true)}>
+                <Button variant="success" onClick={requestComplete}>
                   <FastForward />
                   Directly Completed
                 </Button>
@@ -464,6 +487,8 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      <OrderSerialsCard orderId={order.id} status={order.status} />
+
       {/* Sales returns */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
         <SectionHeader
@@ -506,7 +531,10 @@ export default function OrderDetailPage() {
                       <TableRow key={salesReturn.id}>
                         <TableCell className="font-medium text-foreground">{salesReturn.returnNumber}</TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(salesReturn.returnDate)}</TableCell>
-                        <TableCell className="max-w-xs whitespace-normal break-words">{salesReturn.reason}</TableCell>
+                        <TableCell className="max-w-xs whitespace-normal break-words">
+                          {salesReturn.reason}
+                          <ReturnSerials salesReturn={salesReturn} />
+                        </TableCell>
                         <TableCell className="text-right font-medium tabular-nums text-destructive">
                           −{formatCurrency(salesReturn.totalAmount)}
                         </TableCell>
@@ -552,6 +580,7 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">{formatDate(salesReturn.returnDate)}</div>
                     <p className="mt-2 break-words text-sm">{salesReturn.reason}</p>
+                    <ReturnSerials salesReturn={salesReturn} />
                     {canEditReturn(salesReturn) && (
                       <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
                         <Button
@@ -621,6 +650,31 @@ export default function OrderDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!missingSerialsFor} onOpenChange={(open) => !open && setMissingSerialsFor(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{missingSerials} serial number(s) not scanned yet</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some tracked units on this order have no serial, so they won&apos;t appear on the invoice&apos;s serial
+              page or carry a warranty date. You can still scan them later from this page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back and scan</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = missingSerialsFor;
+                setMissingSerialsFor(null);
+                if (target === 'ADVANCE') handleAdvance();
+                else setCompleteOpen(true);
+              }}
+            >
+              Continue without them
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -667,6 +721,30 @@ export default function OrderDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function ReturnSerials({ salesReturn }: { salesReturn: SalesReturn }) {
+  if (!salesReturn.serials || salesReturn.serials.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {salesReturn.serials.map((unit) => (
+        <Link
+          key={unit.unitId}
+          href={`/admin/units/${unit.unitId}`}
+          className={cn(
+            'rounded border px-1.5 py-0.5 font-mono text-[11px] hover:border-primary/40',
+            unit.condition === 'DEFECTIVE'
+              ? 'border-warning/40 bg-warning/10 text-foreground'
+              : 'border-border bg-muted/40 text-foreground',
+          )}
+          title={unit.faultNote ?? (unit.condition === 'DEFECTIVE' ? 'Defective' : 'Good')}
+        >
+          {unit.serialNumber}
+          {unit.condition === 'DEFECTIVE' && ' · defective'}
+        </Link>
+      ))}
     </div>
   );
 }

@@ -45,6 +45,7 @@ function invalidatePurchaseReturnRelated(queryClient: ReturnType<typeof useQuery
   queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
   queryClient.invalidateQueries({ queryKey: ['products'] });
   queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['product-units'] });
   queryClient.invalidateQueries({ queryKey: creditKeys.all });
   queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 }
@@ -57,7 +58,7 @@ export function useCreatePurchaseReturn() {
       supplierId?: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number; unitCost?: number }[];
+      items: { productId: string; quantity: number; unitCost?: number; serials?: string[] }[];
     }) => api.purchaseReturns.create(data),
     onSuccess: () => invalidatePurchaseReturnRelated(queryClient),
   });
@@ -75,7 +76,7 @@ export function useUpdatePurchaseReturn() {
       id: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number; unitCost?: number }[];
+      items: { productId: string; quantity: number; unitCost?: number; serials?: string[] }[];
     }) =>
       api.purchaseReturns.update(data.id, {
         reason: data.reason,

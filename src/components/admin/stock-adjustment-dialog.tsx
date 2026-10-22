@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -13,6 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAdjustStock } from '@/hooks/use-inventory';
 import { useProducts } from '@/hooks/use-products';
+import { SerialScanInput, type SerialScanState } from '@/components/scan/serial-scan-input';
+import { StockOutSerialsForProduct } from '@/components/scan/stock-out-serials-field';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn } from '@/lib/utils';
 
@@ -29,10 +31,15 @@ export function StockAdjustmentDialog({
   open,
   onOpenChange,
   defaultProductId,
+  defaultDirection = 'IN',
+  defaultSerials,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProductId?: string;
+  defaultDirection?: 'IN' | 'OUT';
+  /** Pre-filled serials, e.g. writing off the unit open on the unit page. */
+  defaultSerials?: string[];
 }) {
   const { data: products } = useProducts({ limit: 100, status: 'ACTIVE' });
   const adjustStock = useAdjustStock();
@@ -45,18 +52,42 @@ export function StockAdjustmentDialog({
   const selectedProductId = form.watch('productId');
   const direction = form.watch('direction');
   const quantityStr = form.watch('quantity');
+  const trackedProduct = products?.data.find((p) => p.id === selectedProductId);
+
+  const [serials, setSerials] = useState<string[]>([]);
+  const [scanState, setScanState] = useState<SerialScanState>({ ok: true, pending: false, problems: [] });
 
   useEffect(() => {
-    if (open) form.reset({ productId: defaultProductId ?? '', direction: 'IN', quantity: '1', reason: '' });
-  }, [open, defaultProductId, form]);
+    if (open) {
+      form.reset({
+        productId: defaultProductId ?? '',
+        direction: defaultDirection,
+        quantity: String(defaultSerials?.length || 1),
+        reason: '',
+      });
+    }
+  }, [open, defaultProductId, defaultDirection, defaultSerials, form]);
+
+  // Serials belong to one product and one direction — start over when either changes
+  // (the pre-filled ones apply to the defaults they came with).
+  useEffect(() => {
+    setSerials(
+      defaultSerials && selectedProductId === defaultProductId && direction === defaultDirection ? defaultSerials : [],
+    );
+  }, [selectedProductId, direction, defaultSerials, defaultProductId, defaultDirection]);
 
   const onSubmit = form.handleSubmit((values) => {
+    if (trackedProduct?.trackSerials && serials.length > 0 && (!scanState.ok || scanState.pending)) {
+      form.setError('quantity', { message: 'Fix the serials marked in red first' });
+      return;
+    }
     adjustStock.mutate(
       {
         productId: values.productId,
         direction: values.direction,
         quantity: Number(values.quantity),
         reason: values.reason,
+        ...(trackedProduct?.trackSerials && serials.length > 0 && { serials }),
       },
       {
         onSuccess: () => {
@@ -70,6 +101,7 @@ export function StockAdjustmentDialog({
 
   const selectedProduct = products?.data.find((p) => p.id === selectedProductId);
   const qtyNumber = Number.isInteger(Number(quantityStr)) && Number(quantityStr) >= 1 ? Number(quantityStr) : 0;
+  const showSerials = !!selectedProduct?.trackSerials;
   const currentStock = selectedProduct?.currentStock ?? 0;
   const projectedStock = direction === 'IN' ? currentStock + qtyNumber : Math.max(0, currentStock - qtyNumber);
 
@@ -194,6 +226,34 @@ export function StockAdjustmentDialog({
                 </FormItem>
               )}
             />
+
+            {showSerials && qtyNumber > 0 &&
+              (direction === 'OUT' ? (
+                <StockOutSerialsForProduct
+                  productId={selectedProductId}
+                  context="WRITE_OFF"
+                  quantity={qtyNumber}
+                  value={serials}
+                  onChange={setSerials}
+                  onStateChange={setScanState}
+                  label="Serials written off"
+                />
+              ) : (
+                <div className="space-y-2 rounded-md border border-border bg-card p-2.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-1">
+                    <p className="text-xs font-semibold text-foreground">Serials of the incoming units</p>
+                    <p className="text-[11px] text-muted-foreground">Optional — can be added later</p>
+                  </div>
+                  <SerialScanInput
+                    productId={selectedProductId}
+                    context="RECEIVE"
+                    value={serials}
+                    onChange={setSerials}
+                    max={qtyNumber}
+                    onStateChange={setScanState}
+                  />
+                </div>
+              ))}
 
             {/* Reason Input */}
             <FormField

@@ -93,6 +93,7 @@ export function useClearDealerData(id: string) {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['product-units'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });

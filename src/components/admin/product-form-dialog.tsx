@@ -41,6 +41,13 @@ const schema = z.object({
   isFeatured: z.boolean(),
   currentStock: numberField('Current stock'),
   warranty: z.string(),
+  trackSerials: z.boolean(),
+  warrantyMonths: z
+    .string()
+    .refine(
+      (v) => v.trim() === '' || (Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 240),
+      'Whole months, 0–240',
+    ),
   status: z.enum(['ACTIVE', 'INACTIVE']),
 });
 
@@ -63,6 +70,8 @@ function defaultValuesFor(product?: Product): FormValues {
     isFeatured: product?.isFeatured ?? false,
     currentStock: product ? String(product.currentStock) : '0',
     warranty: product?.warranty ?? '',
+    trackSerials: product?.trackSerials ?? false,
+    warrantyMonths: product?.warrantyMonths != null ? String(product.warrantyMonths) : '',
     status: product?.status ?? 'ACTIVE',
   };
 }
@@ -113,6 +122,8 @@ export function ProductFormDialog({
       compareAtPrice: values.compareAtPrice ? Number(values.compareAtPrice) : undefined,
       isFeatured: values.isFeatured,
       warranty: values.warranty || undefined,
+      trackSerials: values.trackSerials,
+      warrantyMonths: values.warrantyMonths.trim() === '' ? null : Number(values.warrantyMonths),
       status: values.status,
     };
 
@@ -377,6 +388,39 @@ export function ProductFormDialog({
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <h3 className="border-t border-border pt-5 text-sm font-semibold">Serial numbers &amp; warranty</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="trackSerials"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between gap-2 rounded-lg border border-border p-3">
+                    <div>
+                      <FormLabel>Track serial numbers</FormLabel>
+                      <FormDescription>Scan each unit&apos;s serial when it arrives and when it&apos;s sold</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="warrantyMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Warranty length in months (optional)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} max={240} step={1} placeholder="e.g. 12" {...field} />
+                    </FormControl>
+                    <FormDescription>Each sold unit gets an expiry date from its delivery date</FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

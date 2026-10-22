@@ -39,13 +39,14 @@ export function useCreatePurchase() {
       supplierId: string;
       invoiceNumber: string;
       purchaseDate: string;
-      items: { productId: string; quantity: number; unitCost: number }[];
+      items: { productId: string; quantity: number; unitCost: number; serials?: string[] }[];
       transportCharges?: number;
     }) => api.purchases.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['product-units'] });
       queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -59,13 +60,14 @@ export function useUpdatePurchase(id: string) {
       supplierId: string;
       invoiceNumber: string;
       purchaseDate: string;
-      items: { productId: string; quantity: number; unitCost: number }[];
+      items: { productId: string; quantity: number; unitCost: number; serials?: string[] }[];
       transportCharges?: number;
     }) => api.purchases.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['product-units'] });
       queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -80,6 +82,7 @@ export function useDeletePurchase() {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['product-units'] });
       queryClient.invalidateQueries({ queryKey: ['purchase-returns'] });
       queryClient.invalidateQueries({ queryKey: creditKeys.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -95,6 +98,7 @@ function invalidateCancellationRelated(queryClient: ReturnType<typeof useQueryCl
   queryClient.invalidateQueries({ queryKey: ['refunds'] });
   queryClient.invalidateQueries({ queryKey: productKeys.all });
   queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['product-units'] });
   queryClient.invalidateQueries({ queryKey: creditKeys.all });
   queryClient.invalidateQueries({ queryKey: creditBalanceKeys.all });
   queryClient.invalidateQueries({ queryKey: balanceSheetKeys.all });

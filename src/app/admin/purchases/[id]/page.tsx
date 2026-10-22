@@ -28,6 +28,7 @@ import { PurchaseReturnFormDialog } from '@/components/admin/purchase-return-for
 import { CancelPurchaseDialog } from '@/components/admin/cancel-purchase-dialog';
 import { PurchaseRefundCard } from '@/components/admin/purchase-refund-card';
 import { UnlinkedReturnsNotice } from '@/components/admin/unlinked-returns-notice';
+import { PurchaseSerialsCard } from '@/components/scan/purchase-serials-card';
 import { useDeletePurchase, usePurchase, useReinstatePurchase } from '@/hooks/use-purchases';
 import {
   useDeletePurchaseReturn,
@@ -274,6 +275,8 @@ export default function PurchaseDetailPage() {
           </ul>
         </CardContent>
       </Card>
+
+      <PurchaseSerialsCard purchase={purchase} returns={purchaseReturns ?? []} />
 
       <Card className="overflow-hidden">
         <CardHeader className="flex-row items-center justify-between pb-3 sm:pb-3">
