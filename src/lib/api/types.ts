@@ -1413,6 +1413,23 @@ export interface SerialCoverageRow {
   problem: boolean;
 }
 
+/** Pieces of one product still without a serial, and the purchases with room for one. */
+export interface UnlabelledStock {
+  productId: string;
+  name: string;
+  currentStock: number;
+  missing: number;
+  purchases: {
+    id: string;
+    invoiceNumber: string;
+    purchaseDate: string;
+    supplierName: string;
+    quantity: number;
+    registered: number;
+    room: number;
+  }[];
+}
+
 export interface OrderUnitLine {
   productId: string;
   product: {

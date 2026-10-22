@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Camera, ChevronDown, Settings2 } from 'lucide-react';
+import { ChevronDown, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,6 @@ import { Switch } from '@/components/ui/switch';
 import { SearchPicker } from '@/components/search-picker';
 import { CategoryManagerDialog } from '@/components/admin/category-manager-dialog';
 import { ProductImagesField } from '@/components/admin/product-images-field';
-import { CameraScanDialog } from '@/components/scan/camera-scan-dialog';
 import { useCreateProduct, useUpdateProduct, useUploadProductImages } from '@/hooks/use-products';
 import { useAllCategories } from '@/hooks/use-categories';
 import { getErrorMessage } from '@/lib/api/error';
@@ -107,8 +106,6 @@ function Optional() {
 type CreateOptions = {
   /** Called with the new product once it's created (e.g. to add it to a purchase). */
   onCreated?: (product: Product) => void;
-  /** A scanned code that matched no product — filled in as the new product's barcode. */
-  initialBarcode?: string;
   /** Opened from Record Purchase: stock starts at 0 and comes from that purchase. */
   fromPurchase?: boolean;
 };
@@ -137,7 +134,6 @@ function ProductFormBody({
   product,
   close,
   onCreated,
-  initialBarcode,
   fromPurchase,
 }: { product?: Product; close: () => void } & CreateOptions) {
   const isEdit = !!product;
@@ -148,15 +144,16 @@ function ProductFormBody({
   const { data: categories } = useAllCategories();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [stagedImageFiles, setStagedImageFiles] = useState<File[]>([]);
+  // An existing barcode isn't shown here but is kept as it is when saving.
   const [defaults] = useState(() => ({
     ...defaultValuesFor(product),
-    ...(!product && initialBarcode ? { barcode: initialBarcode } : {}),
+    // Bought from a supplier now: its units usually get their barcodes registered right away.
+    ...(!product && fromPurchase ? { trackSerials: true } : {}),
   }));
   // Unfolded when it already holds something.
   const [portalOpen, setPortalOpen] = useState(
     !!(defaults.retailPrice || defaults.compareAtPrice || defaults.isFeatured),
   );
-  const [scanBarcodeOpen, setScanBarcodeOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -336,42 +333,6 @@ function ProductFormBody({
                       <Settings2 />
                     </Button>
                   </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="barcode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Barcode <Optional />
-                  </FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        {...field}
-                        {...codeStep}
-                        autoCapitalize="off"
-                        className="h-10 flex-1 font-mono"
-                        placeholder="Box barcode — scan or type"
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 shrink-0"
-                      onClick={() => setScanBarcodeOpen(true)}
-                      aria-label="Scan barcode with camera"
-                    >
-                      <Camera />
-                      <span className="hidden sm:inline">Scan</span>
-                    </Button>
-                  </div>
-                  <FormDescription>
-                    Lets you add this product to orders and purchases by scanning the box.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -635,16 +596,6 @@ function ProductFormBody({
         onOpenChange={setCategoryManagerOpen}
         onCategoryCreated={(category) => form.setValue('category', category.name, { shouldDirty: true })}
       />
-      {scanBarcodeOpen && (
-        <CameraScanDialog
-          open={scanBarcodeOpen}
-          onOpenChange={setScanBarcodeOpen}
-          mode="single"
-          title="Scan product barcode"
-          description="Point the camera at the barcode on the box (not a unit's serial)."
-          onDetect={(code) => form.setValue('barcode', code, { shouldDirty: true, shouldValidate: true })}
-        />
-      )}
     </>
   );
 }

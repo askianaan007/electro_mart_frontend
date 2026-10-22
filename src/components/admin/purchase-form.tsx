@@ -6,35 +6,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import {
-  AlertCircle,
-  Camera,
-  ChevronDown,
-  Loader2,
-  Minus,
-  PackagePlus,
-  Plus,
-  ScanLine,
-  Search,
-  Trash2,
-} from 'lucide-react';
+import { AlertCircle, ChevronDown, Minus, PackagePlus, Plus, ScanLine, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { SearchPicker } from '@/components/search-picker';
-import { ProductPickerRow, productForCode, productSearchText } from '@/components/admin/product-line-parts';
+import { ProductPickerRow, productSearchText } from '@/components/admin/product-line-parts';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
-import { CameraScanDialog } from '@/components/scan/camera-scan-dialog';
 import { SerialScanInput, type SerialScanState } from '@/components/scan/serial-scan-input';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useAllProducts } from '@/hooks/use-products';
 import { useCreatePurchase, useUpdatePurchase } from '@/hooks/use-purchases';
-import { useScanCode } from '@/hooks/use-product-units';
-import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import { getErrorMessage } from '@/lib/api/error';
-import { cleanSerial, scanBeep, UNIT_STATUS_LABEL } from '@/lib/serial';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { Product, Purchase, Supplier } from '@/lib/api/types';
 
@@ -97,7 +82,6 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   const { data: products, isLoading: productsLoading } = useAllProducts({ status: 'ACTIVE' });
   const createPurchase = useCreatePurchase();
   const updatePurchase = useUpdatePurchase(purchase?.id ?? '');
-  const scanCode = useScanCode();
   const pending = createPurchase.isPending || updatePurchase.isPending;
 
   // Products created from this screen show up before the product list refetches.
@@ -115,8 +99,6 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   const watchedItems = useWatch({ control: form.control, name: 'items' });
   const transportChargesValue = Number(useWatch({ control: form.control, name: 'transportCharges' })) || 0;
 
-  const [scanText, setScanText] = useState('');
-  const [cameraOpen, setCameraOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(!!defaults.transportCharges);
   const [flashId, setFlashId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,15 +119,13 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
       return { productId, product, room: Math.max(0, quantity - (registeredByProduct.get(productId) ?? 0)) };
     })
-    .filter((line) => line.product?.trackSerials);
+    .filter((line) => !!line.product);
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
-  const [quickAddBarcode, setQuickAddBarcode] = useState<string | undefined>();
 
-  function openQuickAdd(index: number | null, barcode?: string) {
+  function openQuickAdd(index: number | null) {
     setQuickAddIndex(index);
-    setQuickAddBarcode(barcode);
     setQuickAddOpen(true);
   }
 
@@ -184,6 +164,8 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
 
   function handleProductCreated(product: Product) {
     setCreated((prev) => [...prev, product]);
+    // New products usually arrive with their unit barcodes — open that box straight away.
+    setSerialsOpen((prev) => ({ ...prev, [product.id]: true }));
     if (quickAddIndex !== null && form.getValues(`items.${quickAddIndex}`)) changeProduct(quickAddIndex, product);
     else addProduct(product);
   }
@@ -192,51 +174,6 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
     if (next < 1) return;
     form.setValue(`items.${index}.quantity`, String(next), { shouldValidate: true });
   }
-
-  async function handleCode(raw: string) {
-    const code = cleanSerial(raw);
-    if (!code) return;
-
-    const byCode = productForCode(productList, code);
-    if (byCode) {
-      scanBeep(true);
-      addProduct(byCode);
-      return;
-    }
-
-    try {
-      const result = await scanCode.mutateAsync(code);
-      if (result.kind === 'PRODUCT') {
-        const product = result.product && productList.find((p) => p.id === result.product!.id);
-        if (!product) throw new Error(`"${result.product?.name ?? code}" is not an active product`);
-        scanBeep(true);
-        addProduct(product);
-        return;
-      }
-      scanBeep(false);
-      if (result.kind === 'UNIT') {
-        const unit = result.units[0];
-        toast.error(
-          `Serial ${code} is already registered (${unit.product.name} — ${(
-            UNIT_STATUS_LABEL[unit.status] ?? unit.status
-          ).toLowerCase()})`,
-        );
-        return;
-      }
-      toast.error(`No product has the code ${code}`, {
-        description:
-          "New box? Tap New product — this code is saved as its barcode. A unit serial goes in the product's Serial numbers box.",
-        action: { label: 'New product', onClick: () => openQuickAdd(null, code) },
-
-      });
-    } catch (error) {
-      scanBeep(false);
-      toast.error(error instanceof Error && !('isAxiosError' in error) ? error.message : getErrorMessage(error));
-    }
-  }
-
-  // A USB/Bluetooth scanner works anywhere on the page, even with nothing focused.
-  useBarcodeScanner((code) => void handleCode(code), { enabled: !cameraOpen && !quickAddOpen });
 
   const grandTotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0),
@@ -438,44 +375,6 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 renderItem={(product) => <ProductPickerRow product={product} price={product.costPrice} />}
               />
 
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <ScanLine className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={scanText}
-                    onChange={(e) => setScanText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || (e.key === 'Tab' && scanText.trim())) {
-                        e.preventDefault();
-                        const code = scanText;
-                        setScanText('');
-                        void handleCode(code);
-                      }
-                    }}
-                    placeholder="Scan product barcode"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    enterKeyHint="go"
-                    className="h-11 pl-9 font-mono text-base sm:text-sm"
-                  />
-                  {scanCode.isPending && (
-                    <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 shrink-0"
-                  onClick={() => setCameraOpen(true)}
-                  aria-label="Scan with camera"
-                >
-                  <Camera />
-                  <span className="hidden sm:inline">Camera</span>
-                </Button>
-              </div>
-
               {itemsError && (
                 <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
                   <AlertCircle className="size-4" /> {itemsError}
@@ -487,7 +386,8 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                   <PackagePlus className="size-6 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">No products yet</p>
                   <p className="text-xs text-muted-foreground">
-                    Search above or scan the box barcode. Scanning again adds one more.
+                    Search for a product, or create a New product. Then set the quantity and, if you like, register each
+                    unit&apos;s barcode.
                   </p>
                 </div>
               ) : (
@@ -642,7 +542,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                             >
                               <span className="flex items-center gap-2 text-xs font-medium text-foreground">
                                 <ScanLine className="size-3.5" />
-                                Serial numbers
+                                Unit barcodes
                                 <span className="font-normal text-muted-foreground">
                                   {scanned}/{tracked.room}
                                   {registered > 0 && ` · ${registered} already registered`} · optional
@@ -677,7 +577,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                                 <p className="mt-2 text-[11px] text-muted-foreground">
                                   {isEdit
                                     ? 'Scan serials for units of this purchase that do not have one yet.'
-                                    : 'Scan each unit as it is unpacked — or skip and add them later from the purchase page.'}
+                                    : "Scan or type each unit's barcode (serial number) — or skip and add them later from the purchase page."}
                                 </p>
                               </div>
                             )}
@@ -773,21 +673,8 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         open={quickAddOpen}
         onOpenChange={setQuickAddOpen}
         onCreated={handleProductCreated}
-        initialBarcode={quickAddBarcode}
         fromPurchase
       />
-
-
-      {cameraOpen && (
-        <CameraScanDialog
-          open={cameraOpen}
-          onOpenChange={setCameraOpen}
-          mode="multi"
-          title="Scan products"
-          description="Scan each box's product barcode. Each scan adds one."
-          onDetect={(code) => void handleCode(code)}
-        />
-      )}
     </div>
   );
 }
