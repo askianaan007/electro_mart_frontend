@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/endpoints';
+import { fetchAllPages } from '@/lib/api/fetch-all-pages';
 import type { PaginationParams } from '@/lib/api/types';
 
 type ProductParams = PaginationParams & { category?: string; status?: string; outOfStockOnly?: boolean };
@@ -16,6 +17,16 @@ export function useProducts(params: ProductParams) {
     queryKey: productKeys.list(params),
     queryFn: () => api.products.list(params),
     placeholderData: (prev) => prev,
+  });
+}
+
+/** Every product matching the filters, across all pages — for pickers. */
+export function useAllProducts(params: Omit<ProductParams, 'page' | 'limit'>) {
+  return useQuery({
+    queryKey: [...productKeys.lists(), 'all', params] as const,
+    queryFn: async () => ({
+      data: await fetchAllPages((page, limit) => api.products.list({ ...params, page, limit })),
+    }),
   });
 }
 
@@ -46,8 +57,7 @@ export function useUpdateProduct(id: string) {
 export function useSetProductStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; status: 'ACTIVE' | 'INACTIVE' }) =>
-      api.products.setStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: string; status: 'ACTIVE' | 'INACTIVE' }) => api.products.setStatus(vars.id, vars.status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: productKeys.all }),
   });
 }

@@ -5,6 +5,7 @@ import { invoiceKeys } from './use-invoices';
 import { paymentKeys } from './use-payments';
 import { productKeys } from './use-products';
 import { inventoryKeys } from './use-inventory';
+import { fetchAllPages } from '@/lib/api/fetch-all-pages';
 import type { PaginationParams } from '@/lib/api/types';
 
 export const dealerKeys = {
@@ -22,10 +23,11 @@ export function useCustomer(params: PaginationParams & { status?: string }) {
   });
 }
 
+/** Every dealer, across all pages — for pickers and filters. */
 export function useAllCustomer() {
   return useQuery({
-    queryKey: dealerKeys.list({ limit: 100 }),
-    queryFn: () => api.dealers.list({ limit: 100 }),
+    queryKey: [...dealerKeys.lists(), 'all'] as const,
+    queryFn: async () => ({ data: await fetchAllPages((page, limit) => api.dealers.list({ page, limit })) }),
   });
 }
 
