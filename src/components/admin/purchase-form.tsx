@@ -141,9 +141,11 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
+  const [quickAddBarcode, setQuickAddBarcode] = useState<string | undefined>();
 
-  function openQuickAdd(index: number | null) {
+  function openQuickAdd(index: number | null, barcode?: string) {
     setQuickAddIndex(index);
+    setQuickAddBarcode(barcode);
     setQuickAddOpen(true);
   }
 
@@ -222,8 +224,9 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         return;
       }
       toast.error(`No product has the code ${code}`, {
-        description: "If it's a unit serial, scan it in the product's Serial numbers box below.",
-        action: { label: 'New product', onClick: () => openQuickAdd(null) },
+        description:
+          "New box? Tap New product — this code is saved as its barcode. A unit serial goes in the product's Serial numbers box.",
+        action: { label: 'New product', onClick: () => openQuickAdd(null, code) },
       });
     } catch (error) {
       scanBeep(false);
@@ -765,7 +768,12 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
         </form>
       </Form>
 
-      <QuickAddProductDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} onCreated={handleProductCreated} />
+      <QuickAddProductDialog
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        onCreated={handleProductCreated}
+        initialBarcode={quickAddBarcode}
+      />
 
       {cameraOpen && (
         <CameraScanDialog

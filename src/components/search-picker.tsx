@@ -4,6 +4,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { ArrowLeft, Check, ChevronDown, Loader2, Search, X } from 'lucide-react';
+import { useVisualViewport } from '@/hooks/use-visual-viewport';
 import { cn } from '@/lib/utils';
 
 /** Phones and touch tablets get the full-screen picker; mouse screens get a dropdown. */
@@ -21,33 +22,6 @@ function useSheetLayout() {
     () => window.matchMedia(SHEET_QUERY).matches,
     () => false,
   );
-}
-
-// The on-screen keyboard shrinks the *visual* viewport (not the layout one on
-// iOS), so the full-screen picker sizes itself to it — the end of the list is
-// never stuck behind the keyboard.
-function subscribeViewport(onChange: () => void) {
-  const vv = window.visualViewport;
-  vv?.addEventListener('resize', onChange);
-  vv?.addEventListener('scroll', onChange);
-  return () => {
-    vv?.removeEventListener('resize', onChange);
-    vv?.removeEventListener('scroll', onChange);
-  };
-}
-
-function useVisualViewport() {
-  const raw = React.useSyncExternalStore(
-    subscribeViewport,
-    () => {
-      const vv = window.visualViewport;
-      return vv ? `${Math.round(vv.height)}:${Math.round(vv.offsetTop)}` : '';
-    },
-    () => '',
-  );
-  if (!raw) return null;
-  const [height, top] = raw.split(':').map(Number);
-  return { height, top };
 }
 
 /** Every word typed must appear somewhere in the item's text. */
