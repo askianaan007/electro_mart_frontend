@@ -25,6 +25,8 @@ import {
   Scale,
   FileSpreadsheet,
   RotateCcw,
+  ScanLine,
+  Barcode,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -50,6 +52,8 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
       { label: 'Products', href: '/admin/products', icon: Package },
+      { label: 'Scan Serial', href: '/admin/scan', icon: ScanLine },
+      { label: 'Serial Units', href: '/admin/units', icon: Barcode },
     ],
   },
   {

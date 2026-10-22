@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, ScanLine, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { QuickAddProductDialog } from '@/components/admin/quick-add-product-dialog';
+import { SerialScanInput, type SerialScanState } from '@/components/scan/serial-scan-input';
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useProducts } from '@/hooks/use-products';
 import { useCreatePurchase, useUpdatePurchase } from '@/hooks/use-purchases';
@@ -88,6 +89,23 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   const watchedItems = useWatch({ control: form.control, name: 'items' });
   const transportChargesValue = Number(form.watch('transportCharges')) || 0;
 
+  // Serials scanned on arrival, per product (optional — can be added later from the purchase page).
+  const [serials, setSerials] = useState<Record<string, string[]>>({});
+  const [scanStates, setScanStates] = useState<Record<string, SerialScanState>>({});
+  const registeredByProduct = new Map<string, number>();
+  for (const unit of purchase?.units ?? []) {
+    registeredByProduct.set(unit.productId, (registeredByProduct.get(unit.productId) ?? 0) + 1);
+  }
+  const trackedLines = [...new Set(watchedItems.map((i) => i.productId).filter(Boolean))]
+    .map((productId) => {
+      const product = products?.data.find((p) => p.id === productId);
+      const quantity = watchedItems
+        .filter((i) => i.productId === productId)
+        .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+      return { productId, product, room: Math.max(0, quantity - (registeredByProduct.get(productId) ?? 0)) };
+    })
+    .filter((line) => line.product?.trackSerials);
+
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddIndex, setQuickAddIndex] = useState<number | null>(null);
 
@@ -116,15 +134,32 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   );
 
   const onSubmit = form.handleSubmit((values) => {
+    const tracked = new Set(trackedLines.map((l) => l.productId));
+    for (const line of trackedLines) {
+      const state = scanStates[line.productId];
+      const count = serials[line.productId]?.length ?? 0;
+      if (count > line.room || (count > 0 && state && (!state.ok || state.pending))) {
+        toast.error(`Check the serials of ${line.product?.name ?? 'a product'} — some are marked in red`);
+        return;
+      }
+    }
+    // Serials ride on the first line of their product.
+    const seen = new Set<string>();
     const payload = {
       supplierId: values.supplierId,
       invoiceNumber: values.invoiceNumber,
       purchaseDate: values.purchaseDate,
-      items: values.items.map((item) => ({
-        productId: item.productId,
-        quantity: Number(item.quantity),
-        unitCost: Number(item.unitCost),
-      })),
+      items: values.items.map((item) => {
+        const first = !seen.has(item.productId);
+        seen.add(item.productId);
+        const chosen = first && tracked.has(item.productId) ? (serials[item.productId] ?? []) : [];
+        return {
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          unitCost: Number(item.unitCost),
+          ...(chosen.length > 0 && { serials: chosen }),
+        };
+      }),
       transportCharges: values.transportCharges.trim() === '' ? undefined : Number(values.transportCharges),
     };
 
@@ -461,6 +496,50 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
               </div>
             </CardContent>
           </Card>
+
+          {trackedLines.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ScanLine className="size-4" />
+                  Serial numbers
+                </CardTitle>
+                <CardDescription>
+                  {isEdit
+                    ? 'Scan serials for units of this purchase that do not have one yet.'
+                    : 'Scan each unit as it is unpacked — or skip and add them later from the purchase page.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {trackedLines.map((line) => (
+                  <div key={line.productId} className="space-y-2 rounded-lg border border-border p-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-1">
+                      <p className="text-sm font-medium text-foreground">{line.product?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isEdit && (registeredByProduct.get(line.productId) ?? 0) > 0
+                          ? `${registeredByProduct.get(line.productId)} already registered · `
+                          : ''}
+                        room for {line.room}
+                      </p>
+                    </div>
+                    {line.room > 0 ? (
+                      <SerialScanInput
+                        productId={line.productId}
+                        context="RECEIVE"
+                        purchaseId={purchase?.id}
+                        value={serials[line.productId] ?? []}
+                        onChange={(next) => setSerials((prev) => ({ ...prev, [line.productId]: next }))}
+                        max={line.room}
+                        onStateChange={(state) => setScanStates((prev) => ({ ...prev, [line.productId]: state }))}
+                      />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Every unit of this line already has a serial.</p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => router.back()}>

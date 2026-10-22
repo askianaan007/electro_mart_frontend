@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAllSuppliers } from '@/hooks/use-suppliers';
 import { useProducts } from '@/hooks/use-products';
 import { useCreatePurchaseReturn, useUpdatePurchaseReturn } from '@/hooks/use-purchase-returns';
+import { StockOutSerialsForProduct } from '@/components/scan/stock-out-serials-field';
+import type { SerialScanState } from '@/components/scan/serial-scan-input';
 import { getErrorMessage } from '@/lib/api/error';
 import type { PurchaseReturn } from '@/lib/api/types';
 
@@ -67,6 +69,21 @@ export function StandalonePurchaseReturnFormDialog({
     defaultValues: defaultValues(supplierId, editingReturn),
   });
 
+  const [serials, setSerials] = useState<string[]>([]);
+  const [scanState, setScanState] = useState<SerialScanState>({ ok: true, pending: false, problems: [] });
+  const editingSerials = useMemo(() => (editingReturn?.units ?? []).map((u) => u.serialNumber), [editingReturn]);
+  const productId = useWatch({ control: form.control, name: 'productId' });
+  const quantity = Number(useWatch({ control: form.control, name: 'quantity' })) || 0;
+  const selectedProduct = products?.data.find((p) => p.id === productId);
+  const showSerials = !!productId && (!!selectedProduct?.trackSerials || editingSerials.length > 0);
+  // Fresh serials each time the dialog opens (adjusted during render, not in an effect).
+  const session = open ? (editingReturn?.id ?? 'new') : null;
+  const [serialSession, setSerialSession] = useState<string | null>(null);
+  if (session !== serialSession) {
+    setSerialSession(session);
+    if (session) setSerials(editingSerials);
+  }
+
   useEffect(() => {
     if (open) {
       form.reset(defaultValues(supplierId, editingReturn));
@@ -76,6 +93,7 @@ export function StandalonePurchaseReturnFormDialog({
 
   function handleProductSelect(productId: string) {
     form.setValue('productId', productId);
+    setSerials([]);
     const product = products?.data.find((p) => p.id === productId);
     if (product) {
       form.setValue('unitCost', String(product.costPrice ?? 0));
@@ -83,11 +101,16 @@ export function StandalonePurchaseReturnFormDialog({
   }
 
   const onSubmit = form.handleSubmit((values) => {
+    if (showSerials && (!scanState.ok || scanState.pending)) {
+      form.setError('quantity', { message: 'Fix the serials marked in red first' });
+      return;
+    }
     const items = [
       {
         productId: values.productId,
         quantity: Number(values.quantity),
         unitCost: Number(values.unitCost),
+        ...(showSerials && serials.length > 0 && { serials }),
       },
     ];
 
@@ -219,6 +242,19 @@ export function StandalonePurchaseReturnFormDialog({
                 )}
               />
             </div>
+
+            {showSerials && (
+              <StockOutSerialsForProduct
+                productId={productId}
+                context="PURCHASE_RETURN"
+                quantity={quantity}
+                value={serials}
+                onChange={setSerials}
+                onStateChange={setScanState}
+                editingSerials={editingSerials.length ? editingSerials : undefined}
+                label="Serials going back to the supplier"
+              />
+            )}
 
             <FormField
               control={form.control}

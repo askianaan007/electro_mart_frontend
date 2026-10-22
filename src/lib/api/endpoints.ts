@@ -73,6 +73,15 @@ import type {
   ReturnedChequeRow,
   SettlementStatus,
   SettlementSummaryRow,
+  OrderUnitLine,
+  ProductUnitCondition,
+  ProductUnitListRow,
+  ProductUnitStatus,
+  SerialContext,
+  SerialCoverageRow,
+  SerialScanResult,
+  SerialVerdict,
+  UnitDetail,
 } from './types';
 
 // Per-line discount is mutually exclusive with the order-wide discount —
@@ -82,6 +91,13 @@ type OrderItemInput = {
   quantity: number;
   discountPercentage?: number;
   discountAmount?: number;
+  serials?: string[];
+};
+
+export type SalesReturnItemInput = {
+  productId: string;
+  quantity: number;
+  serials?: { serial: string; condition: ProductUnitCondition; faultNote?: string }[];
 };
 
 function buildParams<T extends object>(params: T) {
@@ -201,7 +217,13 @@ export const api = {
       apiClient
         .get<Paginated<InventoryLog>>(`/inventory/${productId}/ledger`, { params: buildParams(params) })
         .then((r) => r.data),
-    adjust: (data: { productId: string; direction: 'IN' | 'OUT'; quantity: number; reason: string }) =>
+    adjust: (data: {
+      productId: string;
+      direction: 'IN' | 'OUT';
+      quantity: number;
+      reason: string;
+      serials?: string[];
+    }) =>
       apiClient.post<Product>('/inventory/adjustment', data).then((r) => r.data),
   },
 
@@ -213,7 +235,7 @@ export const api = {
       supplierId: string;
       invoiceNumber: string;
       purchaseDate: string;
-      items: { productId: string; quantity: number; unitCost: number }[];
+      items: { productId: string; quantity: number; unitCost: number; serials?: string[] }[];
       transportCharges?: number;
     }) => apiClient.post<Purchase>('/purchases', data).then((r) => r.data),
     update: (
@@ -222,7 +244,7 @@ export const api = {
         supplierId: string;
         invoiceNumber: string;
         purchaseDate: string;
-        items: { productId: string; quantity: number; unitCost: number }[];
+        items: { productId: string; quantity: number; unitCost: number; serials?: string[] }[];
         transportCharges?: number;
       },
     ) => apiClient.patch<Purchase>(`/purchases/${id}`, data).then((r) => r.data),
@@ -247,14 +269,14 @@ export const api = {
       supplierId?: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number; unitCost?: number }[];
+      items: { productId: string; quantity: number; unitCost?: number; serials?: string[] }[];
     }) => apiClient.post<PurchaseReturn>('/purchase-returns', data).then((r) => r.data),
     update: (
       id: string,
       data: {
         reason: string;
         returnDate: string;
-        items: { productId: string; quantity: number; unitCost?: number }[];
+        items: { productId: string; quantity: number; unitCost?: number; serials?: string[] }[];
       },
     ) => apiClient.patch<PurchaseReturn>(`/purchase-returns/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/purchase-returns/${id}`).then((r) => r.data),
@@ -507,6 +529,76 @@ export const api = {
     summary: () => apiClient.get<BalanceSheetResponse>('/balance-sheet').then((r) => r.data),
   },
 
+  productUnits: {
+    validate: (data: {
+      productId: string;
+      serials: string[];
+      context: SerialContext;
+      orderId?: string;
+      purchaseId?: string;
+    }) => apiClient.post<SerialVerdict[]>('/product-units/validate', data).then((r) => r.data),
+    register: (data: {
+      productId: string;
+      serials: string[];
+      purchaseId?: string;
+      receivedAt?: string;
+      notes?: string;
+      idempotencyKey: string;
+    }) => apiClient.post<{ registered: number }>('/product-units', data).then((r) => r.data),
+    list: (
+      params: PaginationParams & {
+        productId?: string;
+        status?: ProductUnitStatus;
+        condition?: ProductUnitCondition;
+        purchaseId?: string;
+        orderId?: string;
+      },
+    ) =>
+      apiClient
+        .get<Paginated<ProductUnitListRow>>('/product-units', { params: buildParams(params) })
+        .then((r) => r.data),
+    coverage: (productId?: string) =>
+      apiClient
+        .get<SerialCoverageRow[]>('/product-units/coverage', { params: buildParams({ productId }) })
+        .then((r) => r.data),
+    scan: (code: string) =>
+      apiClient.get<SerialScanResult>(`/product-units/scan/${encodeURIComponent(code)}`).then((r) => r.data),
+    get: (id: string) => apiClient.get<UnitDetail>(`/product-units/${id}`).then((r) => r.data),
+    update: (
+      id: string,
+      data: {
+        serialNumber?: string;
+        notes?: string | null;
+        warrantyStartsAt?: string | null;
+        warrantyExpiresAt?: string | null;
+        reason?: string;
+      },
+    ) => apiClient.patch(`/product-units/${id}`, data).then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ message: string }>(`/product-units/${id}`).then((r) => r.data),
+    setCondition: (id: string, data: { condition: ProductUnitCondition; reason: string }) =>
+      apiClient.post(`/product-units/${id}/condition`, data).then((r) => r.data),
+    warrantySwap: (
+      id: string,
+      data: { replacementSerial: string; reason: string; faultNote?: string; idempotencyKey: string },
+    ) => apiClient.post(`/product-units/${id}/warranty-swap`, data).then((r) => r.data),
+    supplierReplacement: (
+      id: string,
+      data: { serial: string; replacementId?: string; receivedAt: string; notes?: string; idempotencyKey: string },
+    ) =>
+      apiClient
+        .post<{ newUnitId: string }>(`/product-units/${id}/supplier-replacement`, data)
+        .then((r) => r.data),
+    orderUnits: (orderId: string) =>
+      apiClient.get<OrderUnitLine[]>(`/orders/${orderId}/units`).then((r) => r.data),
+    assignOrderUnits: (
+      orderId: string,
+      data: { lines: { productId: string; serials: string[] }[]; idempotencyKey: string },
+    ) =>
+      apiClient
+        .put<{ added: number; removed: number; registered: number }>(`/orders/${orderId}/units`, data)
+        .then((r) => r.data),
+  },
+
   salesReturns: {
     list: (params: PaginationParams) =>
       apiClient.get<Paginated<SalesReturn>>('/sales-returns', { params: buildParams(params) }).then((r) => r.data),
@@ -517,14 +609,14 @@ export const api = {
       orderId: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number }[];
+      items: SalesReturnItemInput[];
     }) => apiClient.post<SalesReturn>('/sales-returns', data).then((r) => r.data),
     update: (
       id: string,
       data: {
         reason: string;
         returnDate: string;
-        items: { productId: string; quantity: number }[];
+        items: SalesReturnItemInput[];
       },
     ) => apiClient.patch<SalesReturn>(`/sales-returns/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string }>(`/sales-returns/${id}`).then((r) => r.data),

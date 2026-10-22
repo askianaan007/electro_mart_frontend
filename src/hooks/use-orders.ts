@@ -51,6 +51,7 @@ function invalidateOrderRelated(queryClient: ReturnType<typeof useQueryClient>, 
   if (id) queryClient.invalidateQueries({ queryKey: orderKeys.detail(id) });
   queryClient.invalidateQueries({ queryKey: productKeys.all });
   queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['product-units'] });
   queryClient.invalidateQueries({ queryKey: dealerKeys.all });
   queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.all });

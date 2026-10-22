@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,6 +16,8 @@ import {
   usePurchaseReturnsForPurchase,
   useUpdatePurchaseReturn,
 } from '@/hooks/use-purchase-returns';
+import { StockOutSerialsForProduct } from '@/components/scan/stock-out-serials-field';
+import type { SerialScanState } from '@/components/scan/serial-scan-input';
 import { getErrorMessage } from '@/lib/api/error';
 import type { Purchase, PurchaseReturn } from '@/lib/api/types';
 
@@ -66,6 +68,31 @@ export function PurchaseReturnFormDialog({
   }, [purchase, existingReturns, isEdit, editingReturn]);
 
   const returnableItems = (purchase?.items ?? []).filter((item) => (remainingByProduct.get(item.productId) ?? 0) > 0);
+
+  // Serials going back, per product (shown under the product's first row).
+  const [serials, setSerials] = useState<Record<string, string[]>>({});
+  const [scanStates, setScanStates] = useState<Record<string, SerialScanState>>({});
+  const editingSerialsByProduct = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const unit of editingReturn?.units ?? []) {
+      map.set(unit.productId, [...(map.get(unit.productId) ?? []), unit.serialNumber]);
+    }
+    return map;
+  }, [editingReturn]);
+  // Fresh serials each time the dialog opens (adjusted during render, not in an effect).
+  const session = open ? `${purchase?.id}:${editingReturn?.id ?? 'new'}` : null;
+  const [serialSession, setSerialSession] = useState<string | null>(null);
+  if (session !== serialSession) {
+    setSerialSession(session);
+    if (session) {
+      setSerials(Object.fromEntries(editingSerialsByProduct));
+      setScanStates({});
+    }
+  }
+  const tracksSerials = (productId: string) =>
+    !!purchase?.items.find((i) => i.productId === productId)?.product?.trackSerials ||
+    !!purchase?.units?.some((u) => u.productId === productId) ||
+    editingSerialsByProduct.has(productId);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -129,7 +156,26 @@ export function PurchaseReturnFormDialog({
       usedByProduct.set(item.productId, usedSoFar + qty);
     }
 
-    const items = values.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) }));
+    const badScan = Object.entries(scanStates).find(
+      ([productId, state]) => values.items.some((i) => i.productId === productId) && (!state.ok || state.pending),
+    );
+    if (badScan) {
+      const index = values.items.findIndex((i) => i.productId === badScan[0]);
+      form.setError(`items.${index}.quantity`, { message: 'Fix the serials marked in red first' });
+      return;
+    }
+
+    const seen = new Set<string>();
+    const items = values.items.map((item) => {
+      const first = !seen.has(item.productId);
+      seen.add(item.productId);
+      const chosen = first ? (serials[item.productId] ?? []) : [];
+      return {
+        productId: item.productId,
+        quantity: Number(item.quantity),
+        ...(chosen.length > 0 && { serials: chosen }),
+      };
+    });
 
     if (isEdit && editingReturn) {
       updatePurchaseReturn.mutate(
@@ -176,8 +222,16 @@ export function PurchaseReturnFormDialog({
                 {fields.map((rowField, index) => {
                   const selectedProductId = watchedItems?.[index]?.productId ?? '';
                   const remaining = remainingForRow(selectedProductId, index);
+                  const isFirstOfProduct =
+                    !!selectedProductId &&
+                    (watchedItems ?? []).findIndex((r) => r.productId === selectedProductId) === index;
+                  const productQty = (watchedItems ?? []).reduce(
+                    (sum, r) => (r.productId === selectedProductId ? sum + (Number(r.quantity) || 0) : sum),
+                    0,
+                  );
                   return (
-                    <div key={rowField.id} className="flex items-start gap-2">
+                    <div key={rowField.id} className="space-y-2">
+                    <div className="flex items-start gap-2">
                       <FormField
                         control={form.control}
                         name={`items.${index}.productId`}
@@ -235,6 +289,20 @@ export function PurchaseReturnFormDialog({
                       >
                         <Trash2 />
                       </Button>
+                    </div>
+                    {isFirstOfProduct && tracksSerials(selectedProductId) && (
+                      <StockOutSerialsForProduct
+                        productId={selectedProductId}
+                        context="PURCHASE_RETURN"
+                        purchaseId={purchase?.id}
+                        quantity={productQty}
+                        value={serials[selectedProductId] ?? []}
+                        onChange={(next) => setSerials((prev) => ({ ...prev, [selectedProductId]: next }))}
+                        onStateChange={(state) => setScanStates((prev) => ({ ...prev, [selectedProductId]: state }))}
+                        editingSerials={editingSerialsByProduct.get(selectedProductId)}
+                        label="Serials going back to the supplier"
+                      />
+                    )}
                     </div>
                   );
                 })}

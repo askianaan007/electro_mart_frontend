@@ -7,6 +7,7 @@ import { productKeys } from './use-products';
 import { inventoryKeys } from './use-inventory';
 import { dealerKeys } from './use-dealers';
 import type { PaginationParams } from '@/lib/api/types';
+import type { SalesReturnItemInput } from '@/lib/api/endpoints';
 
 export const salesReturnKeys = {
   all: ['sales-returns'] as const,
@@ -48,6 +49,7 @@ function invalidateSalesReturnRelated(
   queryClient.invalidateQueries({ queryKey: paymentKeys.all });
   queryClient.invalidateQueries({ queryKey: productKeys.all });
   queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: ['product-units'] });
   queryClient.invalidateQueries({ queryKey: dealerKeys.all });
   queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 }
@@ -59,7 +61,7 @@ export function useCreateSalesReturn() {
       orderId: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number }[];
+      items: SalesReturnItemInput[];
     }) => api.salesReturns.create(data),
     onSuccess: (_result, variables) => invalidateSalesReturnRelated(queryClient, variables.orderId),
   });
@@ -73,7 +75,7 @@ export function useUpdateSalesReturn() {
       orderId: string;
       reason: string;
       returnDate: string;
-      items: { productId: string; quantity: number }[];
+      items: SalesReturnItemInput[];
     }) =>
       api.salesReturns.update(data.id, {
         reason: data.reason,

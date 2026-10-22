@@ -135,6 +135,36 @@ export default function DealerOrderDetailPage() {
           </dl>
         </div>
       </div>
+
+      {order.serialAnnex && order.serialAnnex.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <SectionHeader
+            title="Serial numbers"
+            description="Keep these for warranty claims"
+            className="pb-3"
+          />
+          <ul className="divide-y divide-border border-t border-border">
+            {order.serialAnnex.map((group) => (
+              <li key={group.productId} className="space-y-2 px-4 py-3 sm:px-5">
+                <p className="text-sm font-medium text-foreground">{group.productName}</p>
+                <ul className="grid gap-1.5 sm:grid-cols-2">
+                  {group.serials.map((serial) => (
+                    <li
+                      key={serial.id}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs"
+                    >
+                      <span className="font-mono text-foreground">{serial.serialNumber}</span>
+                      <span className="text-muted-foreground">
+                        {serial.warrantyExpiresAt ? `Warranty until ${formatDate(serial.warrantyExpiresAt)}` : '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
