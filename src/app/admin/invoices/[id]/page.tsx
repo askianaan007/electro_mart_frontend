@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Pencil, Trash2, Undo2, Wallet } from 'lucide-react';
+import { ArrowLeft, Pencil, PiggyBank, Trash2, Undo2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -29,16 +29,28 @@ import { SalesReturnFormDialog } from '@/components/admin/sales-return-form-dial
 import { InvoicePrintLayout } from '@/components/invoice-print-layout';
 import { FitToWidth } from '@/components/fit-to-width';
 import { useInvoice } from '@/hooks/use-invoices';
+import { useDealerWallet, useRemoveWalletCredit } from '@/hooks/use-dealer-wallet';
+import { UseWalletCreditDialog } from '@/components/admin/use-wallet-credit-dialog';
+import { invoiceMoney } from '@/lib/invoice-money';
 import { useDeleteSalesReturn, useSalesReturnsForOrder } from '@/hooks/use-sales-returns';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/api/error';
-import type { SalesReturn } from '@/lib/api/types';
+import type { DealerCreditUse, SalesReturn } from '@/lib/api/types';
 import { PrintButton } from '@/components/print-button';
 
 const RETURN_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function canEditReturn(salesReturn: SalesReturn) {
   return Date.now() - new Date(salesReturn.createdAt).getTime() <= RETURN_EDIT_WINDOW_MS;
+}
+
+function SummaryRow({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className={cn('flex justify-between gap-3 text-sm', className)}>
+      <span className={className ? undefined : 'text-muted-foreground'}>{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
 }
 
 export default function InvoiceDetailPage() {
@@ -48,10 +60,14 @@ export default function InvoiceDetailPage() {
   const [returnFormOpen, setReturnFormOpen] = useState(false);
   const [editingReturn, setEditingReturn] = useState<SalesReturn | null>(null);
   const [deletingReturn, setDeletingReturn] = useState<SalesReturn | null>(null);
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [removingCredit, setRemovingCredit] = useState<DealerCreditUse | null>(null);
 
   const { data: invoice, isLoading, isError, error, refetch } = useInvoice(id);
   const { data: salesReturns, isLoading: returnsLoading } = useSalesReturnsForOrder(invoice?.orderId);
   const deleteSalesReturn = useDeleteSalesReturn();
+  const { data: wallet } = useDealerWallet(invoice?.dealerId);
+  const removeCredit = useRemoveWalletCredit();
 
   if (isError) {
     return (
@@ -80,10 +96,22 @@ export default function InvoiceDetailPage() {
     setDeletingReturn(null);
   }
 
-  const isFullyPaid = invoice.paymentStatus === 'PAID' || Number(invoice.netGrandTotal ?? invoice.grandTotal) <= 0;
+  function confirmRemoveCredit() {
+    if (!removingCredit) return;
+    removeCredit.mutate(removingCredit.id, {
+      onSuccess: () => toast.success('Wallet credit removed — back in the wallet'),
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+    setRemovingCredit(null);
+  }
+
+  const money = invoiceMoney(invoice);
+  const isFullyPaid = invoice.paymentStatus === 'PAID' || money.due <= 0;
   const returnedAmount = Number(invoice.returnedAmount ?? 0);
   const hasReturns = returnedAmount > 0;
-  const netGrandTotal = invoice.netGrandTotal ?? invoice.grandTotal;
+  const creditUses = invoice.creditUses ?? [];
+  const hasHistory = (invoice.payments?.length ?? 0) > 0 || creditUses.length > 0;
+  const canUseWallet = !isFullyPaid && (wallet?.available ?? 0) > 0;
 
   return (
     <div className="space-y-6">
@@ -114,6 +142,12 @@ export default function InvoiceDetailPage() {
                 </Button>
               )}
               <PrintButton />
+              {canUseWallet && (
+                <Button variant="outline" onClick={() => setWalletOpen(true)}>
+                  <PiggyBank />
+                  Use wallet ({formatCurrency(wallet?.available ?? 0)})
+                </Button>
+              )}
               {!isFullyPaid && (
                 <Button onClick={() => setPaymentOpen(true)}>
                   <Wallet />
@@ -131,33 +165,49 @@ export default function InvoiceDetailPage() {
         </FitToWidth>
       </div>
 
-      {hasReturns && (
+      {(hasReturns || hasHistory) && (
         <Card className="print:hidden">
           <CardHeader>
-            <CardTitle>Totals after returns</CardTitle>
+            <CardTitle>Payment summary</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:ml-auto sm:max-w-xs">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Grand Total</span>
-              <span className="tabular-nums">{formatCurrency(invoice.grandTotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-destructive">
-              <span>Returned</span>
-              <span className="tabular-nums">−{formatCurrency(returnedAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t border-border pt-2 text-sm font-semibold">
-              <span>Net Due</span>
-              <span className="tabular-nums">{formatCurrency(netGrandTotal)}</span>
+          <CardContent className="grid gap-2 sm:ml-auto sm:max-w-sm">
+            <SummaryRow label="Grand Total" value={formatCurrency(invoice.grandTotal)} />
+            {hasReturns && (
+              <SummaryRow
+                label="Returned"
+                value={`−${formatCurrency(returnedAmount)}`}
+                className="text-destructive"
+              />
+            )}
+            {hasReturns && <SummaryRow label="Net total" value={formatCurrency(money.net)} />}
+            <SummaryRow label="Paid" value={`−${formatCurrency(money.paid)}`} className="text-success" />
+            {money.credit > 0 && (
+              <SummaryRow
+                label="Paid from wallet"
+                value={`−${formatCurrency(money.credit)}`}
+                className="text-success"
+              />
+            )}
+            <div className="border-t border-border pt-2">
+              {money.excess > 0 ? (
+                <SummaryRow
+                  label="Extra paid → dealer's wallet"
+                  value={formatCurrency(money.excess)}
+                  className="font-semibold text-primary"
+                />
+              ) : (
+                <SummaryRow label="Balance due" value={formatCurrency(money.due)} className="font-semibold" />
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {invoice.payments && invoice.payments.length > 0 && (
+      {hasHistory && (
         <Card className="overflow-hidden print:hidden">
           <CardHeader>
             <CardTitle>Payment history</CardTitle>
-            <CardDescription>Payments recorded against this invoice.</CardDescription>
+            <CardDescription>Payments and wallet credit recorded against this invoice.</CardDescription>
           </CardHeader>
           <CardContent className="p-0 sm:p-0">
             <div className="hidden lg:block">
@@ -168,10 +218,11 @@ export default function InvoiceDetailPage() {
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Mode</TableHead>
                     <TableHead>Reference</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoice.payments.map((payment) => (
+                  {(invoice.payments ?? []).map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{formatDate(payment.paymentDate)}</TableCell>
                       <TableCell className="text-right font-medium tabular-nums text-success">
@@ -179,13 +230,35 @@ export default function InvoiceDetailPage() {
                       </TableCell>
                       <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
                       <TableCell className="text-muted-foreground">{payment.reference ?? '—'}</TableCell>
+                      <TableCell />
+                    </TableRow>
+                  ))}
+                  {creditUses.map((use) => (
+                    <TableRow key={use.id}>
+                      <TableCell>{formatDate(use.createdAt)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums text-success">
+                        {formatCurrency(use.amount)}
+                      </TableCell>
+                      <TableCell>WALLET CREDIT</TableCell>
+                      <TableCell className="text-muted-foreground">{use.note ?? '—'}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Remove wallet credit"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setRemovingCredit(use)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
             <ul className="divide-y divide-border border-t border-border lg:hidden">
-              {invoice.payments.map((payment) => (
+              {(invoice.payments ?? []).map((payment) => (
                 <li key={payment.id} className="flex items-start justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium">{formatDate(payment.paymentDate)}</div>
@@ -196,6 +269,28 @@ export default function InvoiceDetailPage() {
                   <span className="shrink-0 font-semibold tabular-nums text-success">
                     {formatCurrency(payment.amount)}
                   </span>
+                </li>
+              ))}
+              {creditUses.map((use) => (
+                <li key={use.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{formatDate(use.createdAt)}</div>
+                    <div className="mt-0.5 break-words text-xs text-muted-foreground">
+                      Wallet credit{use.note ? ` · ${use.note}` : ''}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="font-semibold tabular-nums text-success">{formatCurrency(use.amount)}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Remove wallet credit"
+                      className="size-9 text-destructive hover:text-destructive"
+                      onClick={() => setRemovingCredit(use)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -321,6 +416,38 @@ export default function InvoiceDetailPage() {
       </Card>
 
       <RecordPaymentDialog open={paymentOpen} onOpenChange={setPaymentOpen} invoice={invoice} />
+      <UseWalletCreditDialog
+        open={walletOpen}
+        onOpenChange={setWalletOpen}
+        invoiceId={invoice.id}
+        invoiceNumber={invoice.invoiceNumber}
+        dealerName={invoice.dealer?.businessName ?? 'Dealer'}
+        due={money.due}
+        available={wallet?.available ?? 0}
+        pending={wallet?.pending ?? 0}
+      />
+
+      <AlertDialog open={!!removingCredit} onOpenChange={(open) => !open && setRemovingCredit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this wallet credit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removingCredit ? formatCurrency(removingCredit.amount) : ''} goes back to the dealer&apos;s wallet and
+              becomes due on this invoice again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveCredit}
+              disabled={removeCredit.isPending}
+              className={buttonVariants({ variant: 'destructive' })}
+            >
+              Remove credit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <SalesReturnFormDialog open={returnFormOpen} onOpenChange={setReturnFormOpen} orderId={invoice.orderId} />
       <SalesReturnFormDialog
         open={!!editingReturn}

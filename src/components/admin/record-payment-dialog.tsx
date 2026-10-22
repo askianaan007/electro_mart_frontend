@@ -15,6 +15,7 @@ import { undoErrorMessage, useCreatePayment, useUndoPayment, useUpdatePayment } 
 import { isPossibleDuplicate } from '@/lib/api/duplicate';
 import { getErrorMessage } from '@/lib/api/error';
 import { businessToday, formatCurrency } from '@/lib/utils';
+import { invoiceMoney, paymentCounts } from '@/lib/invoice-money';
 import type { Invoice, Payment } from '@/lib/api/types';
 
 const schema = z
@@ -94,20 +95,11 @@ export function RecordPaymentDialog({
     body: Parameters<typeof createPayment.mutate>[0];
   } | null>(null);
 
-  // A RETURNED (bounced) cheque never paid anything, so it doesn't eat into
-  // what's left on the invoice — mirrors isEffectivePayment on the backend.
-  const counts = (p: Pick<Payment, 'mode' | 'chequeStatus'>) => !(p.mode === 'CHEQUE' && p.chequeStatus === 'RETURNED');
-  const alreadyPaid = (effectiveInvoice?.payments ?? []).reduce(
-    (sum, p) => (counts(p) ? sum + Number(p.amount) : sum),
-    0,
-  );
-  const ownAmount = payment && counts(payment) ? Number(payment.amount) : 0;
-  // netGrandTotal (grandTotal minus any sales returns) is what's actually
-  // owed — falling back to grandTotal only for the rare case a caller
-  // didn't include it, not because gross is ever the right default.
-  const remaining = effectiveInvoice
-    ? Number(effectiveInvoice.netGrandTotal ?? effectiveInvoice.grandTotal) - alreadyPaid + ownAmount
-    : 0;
+  // Net of returns, less what's paid (bounced cheques excluded) and any
+  // wallet credit used — editing a payment frees up its own amount.
+  const money = effectiveInvoice ? invoiceMoney(effectiveInvoice) : null;
+  const ownAmount = payment && paymentCounts(payment) ? Number(payment.amount) : 0;
+  const remaining = money ? money.net - money.paid - money.credit + ownAmount : 0;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -127,6 +119,10 @@ export function RecordPaymentDialog({
   }, [open, payment?.id, effectiveInvoice?.id]);
 
   const mode = form.watch('mode');
+  const amount = Number(form.watch('amount')) || 0;
+  // Money above the balance is kept in the dealer's wallet, never refused.
+  const excess = effectiveInvoice ? Math.round((amount - Math.max(remaining, 0)) * 100) / 100 : 0;
+  const dealerName = effectiveInvoice?.dealer?.businessName ?? payment?.dealer?.businessName ?? 'the dealer';
 
   function submitCreate(body: Parameters<typeof createPayment.mutate>[0]) {
     createPayment.mutate(body, {
@@ -157,6 +153,7 @@ export function RecordPaymentDialog({
       chequeDate: values.mode === 'CHEQUE' ? values.chequeDate : undefined,
       collectedDate: values.mode === 'CHEQUE' ? values.collectedDate : undefined,
       remarks: values.remarks || undefined,
+      ...(excess > 0 && { excessToWallet: true }),
     };
 
     if (isEdit && payment) {
@@ -217,9 +214,21 @@ export function RecordPaymentDialog({
                 <FormItem>
                   <FormLabel>Amount received</FormLabel>
                   <FormControl>
-                    <Input type="number" min={0.01} step="0.01" {...field} />
+                    <Input type="number" min={0.01} step="0.01" inputMode="decimal" {...field} />
                   </FormControl>
                   <FormMessage />
+                  {excess > 0 && (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
+                      <p className="font-medium text-foreground">
+                        {formatCurrency(excess)} more than the balance → {dealerName}&apos;s wallet
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        The invoice is marked paid and the extra is kept for their next purchase
+                        {mode === 'CHEQUE' ? ' — usable once this cheque clears' : ''}. You can pay it back from
+                        Refunds.
+                      </p>
+                    </div>
+                  )}
                 </FormItem>
               )}
             />
@@ -358,7 +367,7 @@ export function RecordPaymentDialog({
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>
-                {isEdit ? 'Save changes' : 'Save payment'}
+                {isEdit ? 'Save changes' : excess > 0 ? 'Save & add to wallet' : 'Save payment'}
               </Button>
             </DialogFooter>
           </form>

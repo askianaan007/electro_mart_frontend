@@ -69,6 +69,14 @@ export interface Dealer {
   creditLimit: string;
   unlimitedCredit: boolean;
   outstandingBalance: string;
+  /**
+   * What the dealer really owes (negative = credit we hold): outstandingBalance
+   * plus invoices of orders not completed yet, which it only picks up at
+   * completion. Sent by the admin dealer list/detail.
+   */
+  balance?: string;
+  /** Invoiced orders not completed yet (included in `balance`). */
+  pendingInvoices?: string;
   status: AccountStatus;
   createdAt: string;
   updatedAt: string;
@@ -336,6 +344,32 @@ export interface Invoice {
   netGrandTotal?: string;
   /** Detail only: printed as the invoice's serial-number page. */
   serialAnnex?: SerialAnnexGroup[];
+  /** Wallet credit spent on this invoice — pays it like a payment, but isn't new money. */
+  creditUses?: DealerCreditUse[];
+}
+
+export interface DealerCreditUse {
+  id: string;
+  dealerId: string;
+  invoiceId: string;
+  amount: string;
+  note: string | null;
+  createdAt: string;
+}
+
+/** Money a dealer paid above their invoices (overpayments, returns on paid invoices), kept for later purchases. */
+export interface DealerWallet {
+  dealerId: string;
+  /** Negative = overdrawn (e.g. a cheque that funded spent credit bounced). */
+  balance: number;
+  /** Spendable now — excess paid by a pending cheque waits until it clears. */
+  available: number;
+  pending: number;
+  used: number;
+  refunded: number;
+  standalone: number;
+  sources: { invoiceId: string; invoiceNumber: string; excess: number; pending: number }[];
+  uses: { id: string; invoiceId: string; invoiceNumber: string; amount: number; note: string | null; createdAt: string }[];
 }
 
 export interface Payment {
@@ -575,7 +609,12 @@ export type CreditBalanceEntryType =
   | 'PURCHASE_RETURN'
   | 'REPLACEMENT'
   | 'SETTLEMENT'
-  | 'REFUND';
+  | 'REFUND'
+  // Customer wallet movements — money held for dealers is owed back to them.
+  | 'WALLET_CREDIT'
+  | 'WALLET_USED'
+  | 'WALLET_REFUND'
+  | 'WALLET_ADJUSTMENT';
 
 export interface CreditBalanceSummary {
   balance: number;
@@ -587,6 +626,11 @@ export interface CreditBalanceSummary {
   totalRefundsReceived?: number;
   /** Already included in `balance` — informational: what would bounce back onto the balance if returned. */
   pendingChequeSettlements: number;
+  /** Extra money customers paid, kept in their wallets — owed back to them. Not part of `balance`. */
+  customerWallets?: number;
+  customerWalletDealers?: number;
+  /** balance (suppliers) + customerWallets. */
+  totalOwed?: number;
 }
 
 export interface CreditBalanceHistoryEntry {
@@ -647,7 +691,8 @@ export interface BalanceSheetResponse {
       refundChequesIssued?: string;
       taxPayable: null;
       accruedExpenses: null;
-      customerAdvances: null;
+      /** Customer wallet money — extra paid, owed back until used or refunded. */
+      customerAdvances: string | null;
       totalCurrentLiabilities: string;
     };
     nonCurrent: {
