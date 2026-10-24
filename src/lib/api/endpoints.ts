@@ -80,6 +80,8 @@ import type {
   SerialContext,
   SerialCoverageRow,
   UnlabelledStock,
+  DealerCreditUse,
+  DealerWallet,
   SerialScanResult,
   SerialVerdict,
   UnitDetail,
@@ -126,8 +128,13 @@ export const api = {
 
   dealers: {
     list: (params: PaginationParams & { status?: string }) =>
-      apiClient.get<Paginated<Dealer>>('/dealers', { params: buildParams(params) }).then((r) => r.data),
+      apiClient
+        .get<Paginated<Dealer> & { totals?: { owed: string; credit: string } }>('/dealers', {
+          params: buildParams(params),
+        })
+        .then((r) => r.data),
     get: (id: string) => apiClient.get<DealerDetail>(`/dealers/${id}`).then((r) => r.data),
+    wallet: (id: string) => apiClient.get<DealerWallet>(`/dealers/${id}/wallet`).then((r) => r.data),
     create: (data: Record<string, unknown>) =>
       apiClient
         .post<{ dealer: Dealer; temporaryPassword?: string }>('/dealers', data)
@@ -303,6 +310,8 @@ export const api = {
       discountPercentage?: number;
       discountAmount?: number;
       saleDate?: string;
+      /** Pay this much of the new invoice from the dealer's wallet. */
+      walletCredit?: number;
     }) => apiClient.post<Order>('/orders', data).then((r) => r.data),
     approve: (id: string, discount?: { discountPercentage?: number; discountAmount?: number }) =>
       apiClient.patch<Order>(`/orders/${id}/approve`, discount ?? {}).then((r) => r.data),
@@ -339,6 +348,10 @@ export const api = {
       },
     ) => apiClient.get<Paginated<Invoice>>('/invoices', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Invoice>(`/invoices/${id}`).then((r) => r.data),
+    useWalletCredit: (id: string, data: { amount: number; note?: string }) =>
+      apiClient.post<DealerCreditUse>(`/invoices/${id}/wallet-credit`, data).then((r) => r.data),
+    removeWalletCredit: (useId: string) =>
+      apiClient.delete<{ message: string }>(`/wallet-credit/${useId}`).then((r) => r.data),
     resetCounter: () =>
       apiClient.post<{ message: string; nextSerial: number }>('/invoices/reset-counter').then((r) => r.data),
   },
@@ -368,6 +381,8 @@ export const api = {
       remarks?: string;
       /** Resend after a 409 POSSIBLE_DUPLICATE the user confirmed. */
       confirmDuplicate?: boolean;
+      /** Accept more than is due; the excess goes to the dealer's wallet. */
+      excessToWallet?: boolean;
     }) => apiClient.post<Payment>('/payments', data).then((r) => r.data),
     update: (
       id: string,
@@ -381,6 +396,7 @@ export const api = {
         chequeDate?: string;
         collectedDate?: string;
         remarks?: string;
+        excessToWallet?: boolean;
       },
     ) => apiClient.patch<Payment>(`/payments/${id}`, data).then((r) => r.data),
     remove: (id: string) => apiClient.delete<{ message: string; revisionId?: string }>(`/payments/${id}`).then((r) => r.data),
@@ -389,8 +405,10 @@ export const api = {
       apiClient.post<Payment>(`/payments/${id}/undo`, revisionId ? { revisionId } : {}).then((r) => r.data),
     listDeleted: (params: PaginationParams) =>
       apiClient.get<Paginated<DeletedPayment>>('/payments/deleted', { params: buildParams(params) }).then((r) => r.data),
-    updateChequeStatus: (id: string, status: ChequeStatus) =>
-      apiClient.patch<Payment>(`/payments/${id}/cheque-status`, { status }).then((r) => r.data),
+    updateChequeStatus: (id: string, status: ChequeStatus, excessToWallet?: boolean) =>
+      apiClient
+        .patch<Payment>(`/payments/${id}/cheque-status`, { status, ...(excessToWallet && { excessToWallet }) })
+        .then((r) => r.data),
   },
 
   activityLog: {

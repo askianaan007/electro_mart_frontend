@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/lib/api/types';
+import { invoiceMoney } from '@/lib/invoice-money';
 
 const PAGE_HEIGHT_MM = 297;
 const HEADER_HEIGHT_MM = (210 * 263) / 1541;
 const FOOTER_HEIGHT_MM = (210 * 457) / 1544;
 
-const CAPACITY_SINGLE_PAGE = 20; // Page 1 with Bill To AND Summary totals
+const CAPACITY_SINGLE_PAGE = 15; // Page 1 with Bill To AND Summary totals
 const CAPACITY_FIRST_PAGE = 18; // Page 1 with Bill To, NO Summary totals
 const CAPACITY_MIDDLE_PAGE = 24; // Middle page with NO Bill To, NO Summary totals
-const CAPACITY_LAST_PAGE = 16; // Last page with NO Bill To, WITH Summary totals
+const CAPACITY_LAST_PAGE = 15; // Last page with NO Bill To, WITH Summary totals
 const CAPACITY_SERIAL_PAGE = 38; // Serial-number rows per plain page (no letterhead)
 
 const BILL_TO_RED = '#ED1C24';
@@ -138,6 +139,10 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
   const subtotal = Number(invoice.subtotal);
   const discountTotal = Number(invoice.discountTotal);
   const grandTotal = Number(invoice.grandTotal);
+  // Settlement lines appear once anything is paid, returned or taken from the wallet.
+  const money = invoiceMoney(invoice);
+  const returnedAmount = Number(invoice.returnedAmount ?? 0);
+  const showSettlement = money.paid > 0 || money.credit > 0 || returnedAmount > 0;
 
   const pages = partitionInvoiceItems(items);
   // Serial-number annex (Bar_code_plan.md §7.4): one row per unit, after the invoice pages.
@@ -357,32 +362,77 @@ export function InvoicePrintLayout({ invoice }: { invoice: Invoice }) {
             {/* Bottom Footer Details */}
             <div className="mt-3 pb-2 flex flex-shrink-0 flex-col justify-end gap-1">
               {page.isLastPage ? (
-                <div className="flex items-end justify-between">
-                  <div className="text-center">
+                <div className="flex items-end">
+                  {/* Same widths as the items table: everything left of the Discount columns. */}
+                  <div className="w-[63%] text-center">
                     <div className="w-[60mm] border-t border-black" />
-                    <p className="mt-1">For, Customer Signature</p>
+                    <p className="mt-1 w-[60mm]">For, Customer Signature</p>
                   </div>
 
-                  <table className="border-collapse text-[9px]" style={{ background: INFO_BLUE }}>
+                  {/* Labels span the Discount (% + Amount) columns, values the Total Amount column,
+                      so the divider sits on the items table's Discount | Total line. */}
+                  <table className="w-[37%] table-fixed border-collapse text-[9px]" style={{ background: INFO_BLUE }}>
+                    <colgroup>
+                      <col style={{ width: `${(21 / 37) * 100}%` }} />
+                      <col style={{ width: `${(16 / 37) * 100}%` }} />
+                    </colgroup>
                     <tbody>
                       <tr>
-                        <td className="border border-black px-2 py-1 font-semibold">TOTAL GROSS AMOUNT</td>
-                        <td className="border border-black px-2 py-1 text-right">{formatCurrency(subtotal)}</td>
+                        <td className="border border-black px-1.5 py-1 font-semibold leading-tight">TOTAL GROSS AMOUNT</td>
+                        <td className="border border-black px-1.5 py-1 text-right">{formatCurrency(subtotal)}</td>
                       </tr>
                       <tr>
-                        <td className="border border-black px-2 py-1 font-semibold">TOTAL DISCOUNT AMOUNT</td>
-                        <td className="border border-black px-2 py-1 text-right text-red-600">
+                        <td className="border border-black px-1.5 py-1 font-semibold leading-tight">TOTAL DISCOUNT AMOUNT</td>
+                        <td className="border border-black px-1.5 py-1 text-right text-red-600">
                           {discountTotal > 0 ? `-${formatCurrency(discountTotal)}` : '-'}
                         </td>
                       </tr>
                       <tr>
-                        <td className="border border-black px-2 py-1 font-semibold">TOTAL DELIVERY COST</td>
-                        <td className="border border-black px-2 py-1 text-right">-</td>
+                        <td className="border border-black px-1.5 py-1 font-semibold leading-tight">TOTAL DELIVERY COST</td>
+                        <td className="border border-black px-1.5 py-1 text-right">-</td>
                       </tr>
                       <tr>
-                        <td className="border border-black px-2 py-1 font-bold">TOTAL NET AMOUNT DUE</td>
-                        <td className="border border-black px-2 py-1 text-right font-bold">{formatCurrency(grandTotal)}</td>
+                        <td className="border border-black px-1.5 py-1 font-bold leading-tight">TOTAL NET AMOUNT DUE</td>
+                        <td className="border border-black px-1.5 py-1 text-right font-bold">{formatCurrency(grandTotal)}</td>
                       </tr>
+                      {showSettlement && (
+                        <>
+                          {returnedAmount > 0 && (
+                            <tr>
+                              <td className="border border-black px-1.5 py-1 font-semibold leading-tight">LESS RETURNS</td>
+                              <td className="border border-black px-1.5 py-1 text-right text-red-600">
+                                -{formatCurrency(returnedAmount)}
+                              </td>
+                            </tr>
+                          )}
+                          <tr>
+                            <td className="border border-black px-1.5 py-1 font-semibold leading-tight">AMOUNT PAID</td>
+                            <td className="border border-black px-1.5 py-1 text-right">
+                              {money.paid > 0 ? `-${formatCurrency(money.paid)}` : '-'}
+                            </td>
+                          </tr>
+                          {money.credit > 0 && (
+                            <tr>
+                              <td className="border border-black px-1.5 py-1 font-semibold leading-tight">PAID FROM WALLET</td>
+                              <td className="border border-black px-1.5 py-1 text-right">-{formatCurrency(money.credit)}</td>
+                            </tr>
+                          )}
+                          <tr>
+                            <td className="border border-black px-1.5 py-1 font-bold leading-tight">BALANCE DUE</td>
+                            <td className="border border-black px-1.5 py-1 text-right font-bold">
+                              {formatCurrency(money.due)}
+                            </td>
+                          </tr>
+                          {money.excess > 0 && (
+                            <tr>
+                              <td className="border border-black px-1.5 py-1 font-semibold leading-tight">EXCESS ADDED TO WALLET</td>
+                              <td className="border border-black px-1.5 py-1 text-right font-semibold">
+                                {formatCurrency(money.excess)}
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>

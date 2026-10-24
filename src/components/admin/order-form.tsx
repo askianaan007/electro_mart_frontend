@@ -33,6 +33,7 @@ import { useAllCustomer } from '@/hooks/use-dealers';
 import { useAllProducts } from '@/hooks/use-products';
 import { useCreateOrder, useUpdateOrder } from '@/hooks/use-orders';
 import { useScanCode } from '@/hooks/use-product-units';
+import { useDealerWallet } from '@/hooks/use-dealer-wallet';
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import { getErrorMessage } from '@/lib/api/error';
 import { cleanSerial, scanBeep, serialKey, UNIT_STATUS_LABEL } from '@/lib/serial';
@@ -262,6 +263,10 @@ export function OrderForm({ order }: { order?: Order }) {
   const discountValue = Number(useWatch({ control: form.control, name: 'discountValue' })) || 0;
   const recordAsCompleted = useWatch({ control: form.control, name: 'recordAsCompleted' });
   const saleDate = useWatch({ control: form.control, name: 'saleDate' });
+  const dealerId = useWatch({ control: form.control, name: 'dealerId' });
+  // New orders only: credit left over from earlier overpayments or returns.
+  const { data: wallet } = useDealerWallet(isEdit ? undefined : dealerId || undefined);
+  const [useWallet, setUseWallet] = useState(false);
   const perItemDiscount = discountChoice === 'PRODUCT';
 
   const subtotal = watchedItems.reduce(
@@ -282,6 +287,9 @@ export function OrderForm({ order }: { order?: Order }) {
         : 0;
   const grandTotal = Math.max(subtotal - discountAmountTotal, 0);
   const unitCount = watchedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  const walletAvailable = wallet?.available ?? 0;
+  const walletCredit = useWallet ? Math.min(walletAvailable, grandTotal) : 0;
+  const toPay = grandTotal - walletCredit;
   const allSerials = watchedItems.flatMap((item) => item.serials ?? []);
 
   function chooseDiscount(choice: DiscountChoice) {
@@ -473,8 +481,9 @@ export function OrderForm({ order }: { order?: Order }) {
           onError: (error) => toast.error(getErrorMessage(error)),
         });
       } else {
-        createOrder.mutate(payload, {
+        createOrder.mutate({ ...payload, ...(walletCredit > 0 && { walletCredit }) }, {
           onSuccess: (created) => {
+            if (walletCredit > 0) toast.success(`${formatCurrency(walletCredit)} paid from the dealer's wallet`);
             toast.success(
               values.recordAsCompleted
                 ? discountAmountTotal > 0
@@ -520,7 +529,11 @@ export function OrderForm({ order }: { order?: Order }) {
                       <SearchPicker
                         items={dealers?.data ?? []}
                         value={field.value}
-                        onChange={field.onChange}
+                        onChange={(id) => {
+                          field.onChange(id);
+                          // Using credit is asked for each dealer, never carried over.
+                          setUseWallet(false);
+                        }}
                         getId={(dealer) => dealer.id}
                         getSearchText={dealerSearchText}
                         title="Select dealer"
@@ -552,6 +565,22 @@ export function OrderForm({ order }: { order?: Order }) {
                   </FormItem>
                 )}
               />
+              {walletAvailable > 0 && (
+                <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">
+                      Wallet credit {formatCurrency(walletAvailable)}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {useWallet && walletCredit > 0
+                        ? `${formatCurrency(walletCredit)} comes off this bill`
+                        : 'Use it to pay this order?'}
+                      {(wallet?.pending ?? 0) > 0 && ` · ${formatCurrency(wallet?.pending ?? 0)} waiting for a cheque`}
+                    </span>
+                  </span>
+                  <Switch checked={useWallet} onCheckedChange={setUseWallet} aria-label="Use wallet credit" />
+                </label>
+              )}
             </CardContent>
           </Card>
 
@@ -950,12 +979,13 @@ export function OrderForm({ order }: { order?: Order }) {
           <div className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-5 sm:shadow-lg">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {discountAmountTotal > 0
                     ? `${formatCurrency(subtotal)} − ${formatCurrency(discountAmountTotal)} discount`
                     : `${unitCount} pcs`}
+                  {walletCredit > 0 && ` · ${formatCurrency(grandTotal)} − ${formatCurrency(walletCredit)} wallet`}
                 </p>
-                <p className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(grandTotal)}</p>
+                <p className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(toPay)}</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button

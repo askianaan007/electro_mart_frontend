@@ -54,6 +54,7 @@ import {
 import { useResetSalesReturnCounter } from '@/hooks/use-sales-returns';
 import { useAllCustomer } from '@/hooks/use-dealers';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { ApiError } from '@/lib/api/client';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { ChequeStatus, Invoice, Payment, PaymentChangeAction, PaymentMode, PaymentStatus } from '@/lib/api/types';
@@ -343,6 +344,9 @@ function PaymentHistoryTab({
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [deletePayment, setDeletePayment] = useState<Payment | null>(null);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
+  // A re-presented cheque that would overpay its invoice waits here for the
+  // admin to confirm the extra goes to the dealer's wallet.
+  const [excessCheque, setExcessCheque] = useState<{ id: string; status: ChequeStatus } | null>(null);
   const updateChequeStatus = useUpdatePaymentChequeStatus();
   const deletePaymentMutation = useReturnPayment();
   const undoPayment = useUndoPayment();
@@ -400,9 +404,9 @@ function PaymentHistoryTab({
     action: { label: 'Undo', onClick: () => undo(paymentId, revisionId, doneMessage) },
   });
 
-  function markCheque(paymentId: string, status: ChequeStatus) {
+  function markCheque(paymentId: string, status: ChequeStatus, excessToWallet?: boolean) {
     updateChequeStatus.mutate(
-      { id: paymentId, status },
+      { id: paymentId, status, excessToWallet },
       {
         onSuccess: (updated) => {
           const message =
@@ -413,7 +417,13 @@ function PaymentHistoryTab({
                 : 'Cheque set back to pending';
           toast.success(message, undoAction(paymentId, updated?.lastChange?.id, 'Cheque status change undone'));
         },
-        onError: (error) => toast.error(getErrorMessage(error)),
+        onError: (error) => {
+          if (!excessToWallet && error instanceof ApiError && error.errorName === 'EXCEEDS_INVOICE_BALANCE') {
+            setExcessCheque({ id: paymentId, status });
+            return;
+          }
+          toast.error(getErrorMessage(error));
+        },
       },
     );
   }
@@ -720,6 +730,29 @@ function PaymentHistoryTab({
         onOpenChange={(open) => !open && setEditingPayment(null)}
         payment={editingPayment}
       />
+
+      <AlertDialog open={!!excessCheque} onOpenChange={(open) => !open && setExcessCheque(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cheque pays more than is due</AlertDialogTitle>
+            <AlertDialogDescription>
+              The invoice was paid another way after this cheque was returned, so it&apos;s now more than the balance.
+              If the bank really cleared it, the extra goes to the dealer&apos;s wallet for their next purchase.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (excessCheque) markCheque(excessCheque.id, excessCheque.status, true);
+                setExcessCheque(null);
+              }}
+            >
+              Record & add to wallet
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deletePayment} onOpenChange={(open) => !open && setDeletePayment(null)}>
         <AlertDialogContent>

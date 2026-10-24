@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/lib/api/error';
 import { invoiceKeys } from './use-invoices';
 import { dealerKeys } from './use-dealers';
 import { dashboardKeys } from './use-dashboard';
+import { refundKeys } from './use-refunds';
 import type { ChequeStatus, PaginationParams, PaymentMode } from '@/lib/api/types';
 
 type PaymentParams = PaginationParams & {
@@ -46,6 +47,8 @@ function invalidatePaymentRelated(queryClient: ReturnType<typeof useQueryClient>
   queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
   queryClient.invalidateQueries({ queryKey: dealerKeys.all });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+  // What a dealer can be refunded follows their wallet.
+  queryClient.invalidateQueries({ queryKey: refundKeys.all });
 }
 
 type PaymentInput = {
@@ -58,6 +61,8 @@ type PaymentInput = {
   chequeDate?: string;
   collectedDate?: string;
   remarks?: string;
+  /** Accept more than is due; the excess goes to the dealer's wallet. */
+  excessToWallet?: boolean;
 };
 
 export function useCreatePayment() {
@@ -73,7 +78,8 @@ export function useCreatePayment() {
 export function useUpdatePayment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string } & PaymentInput) => api.payments.update(vars.id, vars),
+    // The id goes in the URL only — the backend rejects unknown body fields.
+    mutationFn: ({ id, ...data }: { id: string } & PaymentInput) => api.payments.update(id, data),
     onSuccess: () => invalidatePaymentRelated(queryClient),
   });
 }
@@ -123,8 +129,9 @@ export function useDeletedPayments(params: PaginationParams, options?: { enabled
 export function useUpdatePaymentChequeStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: string; status: ChequeStatus }) =>
-      api.payments.updateChequeStatus(vars.id, vars.status),
+    // `excessToWallet` is only sent after the user confirms an EXCEEDS_INVOICE_BALANCE refusal.
+    mutationFn: (vars: { id: string; status: ChequeStatus; excessToWallet?: boolean }) =>
+      api.payments.updateChequeStatus(vars.id, vars.status, vars.excessToWallet),
     onSuccess: () => invalidatePaymentRelated(queryClient),
   });
 }

@@ -122,6 +122,27 @@ function DealerRowActions({
   );
 }
 
+/** Owed by the dealer (positive) or held as their credit (negative). */
+function dealerBalance(dealer: Dealer) {
+  return Number(dealer.balance ?? dealer.outstandingBalance);
+}
+
+function DealerBalance({ dealer }: { dealer: Dealer }) {
+  const balance = dealerBalance(dealer);
+  if (balance < 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-success">
+        <span>{formatCurrency(Math.abs(balance))}</span>
+        <span className="text-[10px] font-semibold uppercase">Cr</span>
+      </span>
+    );
+  }
+  if (balance > 0) {
+    return <span className="text-warning-foreground dark:text-warning">{formatCurrency(balance)}</span>;
+  }
+  return <span className="text-muted-foreground">{formatCurrency(0)}</span>;
+}
+
 export default function CustomerPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -177,7 +198,9 @@ export default function CustomerPage() {
   const dealersList = data?.data ?? [];
   const totalDealersCount = data?.meta?.total ?? 0;
   const activeDealersCount = dealersList.filter((d) => d.status === 'ACTIVE').length;
-  const totalOutstanding = dealersList.reduce((sum, d) => sum + Number(d.outstandingBalance), 0);
+  // Across all dealers (not just this page); credit is shown apart instead of netted off.
+  const totalOwed = Number(data?.totals?.owed ?? 0);
+  const totalCredit = Number(data?.totals?.credit ?? 0);
 
   return (
     <div className="space-y-6">
@@ -207,9 +230,10 @@ export default function CustomerPage() {
         />
         <StatCard
           label="Total Outstanding Balance"
-          value={isLoading ? '—' : formatCurrency(totalOutstanding)}
+          value={isLoading ? '—' : formatCurrency(totalOwed)}
           icon={Wallet}
           tone="warning"
+          hint={totalCredit > 0 ? `${formatCurrency(totalCredit)} held as dealer credit` : undefined}
         />
       </div>
 
@@ -344,18 +368,7 @@ export default function CustomerPage() {
                       </TableCell>
 
                       <TableCell className="text-right font-medium tabular-nums">
-                        {Number(dealer.outstandingBalance) < 0 ? (
-                          <span className="inline-flex items-center gap-1 text-success">
-                            <span>{formatCurrency(Math.abs(Number(dealer.outstandingBalance)))}</span>
-                            <span className="text-[10px] font-semibold uppercase">Cr</span>
-                          </span>
-                        ) : Number(dealer.outstandingBalance) > 0 ? (
-                          <span className="text-warning-foreground dark:text-warning">
-                            {formatCurrency(dealer.outstandingBalance)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">{formatCurrency(0)}</span>
-                        )}
+                        <DealerBalance dealer={dealer} />
                       </TableCell>
 
                       <TableCell>
@@ -402,9 +415,11 @@ export default function CustomerPage() {
 
                   <div className="flex items-center justify-between border-t border-border pt-3">
                     <div>
-                      <p className="text-xs text-muted-foreground">Outstanding</p>
-                      <p className="text-sm font-semibold tabular-nums text-warning-foreground dark:text-warning">
-                        {formatCurrency(dealer.outstandingBalance)}
+                      <p className="text-xs text-muted-foreground">
+                        {dealerBalance(dealer) < 0 ? 'Credit' : 'Outstanding'}
+                      </p>
+                      <p className="text-sm font-semibold tabular-nums">
+                        <DealerBalance dealer={dealer} />
                       </p>
                     </div>
 

@@ -8,6 +8,10 @@ const TYPE_LABEL: Record<CreditBalanceEntryType, string> = {
   REPLACEMENT: 'Replacement',
   SETTLEMENT: 'Settlement',
   REFUND: 'Refund Received',
+  WALLET_CREDIT: 'Wallet Credit',
+  WALLET_USED: 'Wallet Used',
+  WALLET_REFUND: 'Wallet Refund',
+  WALLET_ADJUSTMENT: 'Wallet Overdrawn',
 };
 
 export interface CreditBalanceStatementMeta {
@@ -29,7 +33,8 @@ export async function downloadCreditBalanceStatementPdf(
     dateFrom: meta.dateFrom,
     dateTo: meta.dateTo,
     closingLabel: 'Closing Credit Balance',
-    closingValue: meta.summary.balance,
+    // Suppliers + customer wallets — where the history's running balance ends.
+    closingValue: meta.summary.totalOwed ?? meta.summary.balance,
     // Replacements / refunds received add back to the payable; shown only when non-zero.
     summaryItems: [
       { label: 'Purchases', value: meta.summary.totalPurchases, color: BLUE },
@@ -41,6 +46,9 @@ export async function downloadCreditBalanceStatementPdf(
       { label: 'Settlements Paid', value: -meta.summary.totalSettled, color: GREEN },
       ...(meta.summary.totalRefundsReceived
         ? [{ label: 'Refunds Received', value: meta.summary.totalRefundsReceived, color: BLUE }]
+        : []),
+      ...(meta.summary.customerWallets
+        ? [{ label: 'Customer Wallets', value: meta.summary.customerWallets, color: BLUE }]
         : []),
       { label: 'Pending Cheque Settlements', value: meta.summary.pendingChequeSettlements, color: AMBER },
     ],

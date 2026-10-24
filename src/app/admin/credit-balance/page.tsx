@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   Banknote,
@@ -12,9 +13,11 @@ import {
   Loader2,
   Package,
   PackageCheck,
+  PiggyBank,
   Search,
   Truck,
   Undo2,
+  Wallet as WalletIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +55,12 @@ const TYPE_META: Record<CreditBalanceEntryType, { label: string; icon: typeof Pa
   SETTLEMENT: { label: 'Settlement', icon: HandCoins, tone: 'text-destructive' },
   // Cash a supplier paid back to clear a credit they owed us — adds back.
   REFUND: { label: 'Refund Received', icon: Banknote, tone: 'text-primary' },
+  // Extra a customer paid, kept in their wallet — owed back to them.
+  WALLET_CREDIT: { label: 'Wallet Credit', icon: PiggyBank, tone: 'text-primary' },
+  WALLET_USED: { label: 'Wallet Used', icon: WalletIcon, tone: 'text-destructive' },
+  WALLET_REFUND: { label: 'Wallet Refund', icon: Banknote, tone: 'text-destructive' },
+  // An overdrawn wallet is owed by the customer, so it's taken back out.
+  WALLET_ADJUSTMENT: { label: 'Wallet Overdrawn', icon: AlertTriangle, tone: 'text-warning' },
 };
 
 const STATUS_META: Record<StatusKey, { label: string; variant: 'warning' | 'success' | 'destructive' }> = {
@@ -195,7 +204,9 @@ export default function CreditBalancePage() {
   } = useCreditBalanceHistory({ page, limit: 20, ...historyFilters });
 
   const history = historyResult?.data ?? [];
-  const animatedBalance = useCountUp(summary ? summary.balance : 0);
+  // Everything owed: suppliers plus customers' wallet money.
+  const animatedBalance = useCountUp(summary ? (summary.totalOwed ?? summary.balance) : 0);
+  const customerWallets = summary?.customerWallets ?? 0;
 
   function resetPageAnd<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -300,9 +311,21 @@ export default function CreditBalancePage() {
               {formatCurrency(animatedBalance)}
             </p>
           )}
+          {summary && customerWallets > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <span>
+                <span className="text-muted-foreground">Suppliers </span>
+                <span className="font-medium tabular-nums">{formatCurrency(summary.balance)}</span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">+ Customer wallets </span>
+                <span className="font-medium tabular-nums">{formatCurrency(customerWallets)}</span>
+              </span>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
-            Purchases − purchase returns + replacements − settlements paid − transport charges + refunds received,
-            all-time.
+            Suppliers: purchases − purchase returns + replacements − settlements paid − transport charges + refunds
+            received, all-time. Customer wallets: extra money customers paid, kept for their next purchase.
           </p>
         </div>
       </section>
@@ -387,6 +410,35 @@ export default function CreditBalancePage() {
                 footnoteLabel="Purchase Adjustment"
               />
 
+              {/* Customer wallets — money held for customers, full-width */}
+              {customerWallets > 0 && (
+                <div className="col-span-full rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
+                        <PiggyBank className="size-[18px]" />
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[13px] font-medium text-muted-foreground">Customer Wallets</p>
+                          <Badge variant="success">
+                            {summary.customerWalletDealers ?? 0} customer
+                            {(summary.customerWalletDealers ?? 0) === 1 ? '' : 's'}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                          +{formatCurrency(customerWallets)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="max-w-xs text-xs text-muted-foreground sm:text-right">
+                      Extra money customers paid above their bills. Added to the credit balance until it&apos;s used on
+                      their next invoice or refunded.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Pending Cheque Settlements — full-width */}
               <div className="col-span-full rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -425,7 +477,8 @@ export default function CreditBalancePage() {
             <>
               A settlement cheque reduces the balance as soon as it&apos;s recorded, marked with a status badge — only
               if it&apos;s later returned does the row&apos;s previous and after balance match, showing it never
-              actually settled the debt.
+              actually settled the debt. Customer wallet money is included: extra paid adds to the balance, and using or
+              refunding it takes it back off.
             </>
           }
           actions={
@@ -464,7 +517,7 @@ export default function CreditBalancePage() {
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search description, supplier, invoice..."
+              placeholder="Search description, supplier, customer, invoice..."
               value={search}
               onChange={(e) => resetPageAnd(setSearch)(e.target.value)}
               className="pl-9"
@@ -526,7 +579,7 @@ export default function CreditBalancePage() {
               <EmptyState
                 icon={HandCoins}
                 title="No history yet"
-                description="Purchases, returns, and settlements will appear here"
+                description="Purchases, returns, settlements and wallet movements will appear here"
               />
             )
           ) : (

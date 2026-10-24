@@ -13,6 +13,7 @@ import {
   Lock,
   Pencil,
   Phone,
+  PiggyBank,
   Receipt,
   ShoppingCart,
   Trash2,
@@ -55,6 +56,7 @@ import { useClearDealerData, useDealer, useDeleteDealer, useResetDealerPassword 
 import { useOrders } from '@/hooks/use-orders';
 import { useInvoices } from '@/hooks/use-invoices';
 import { usePayments } from '@/hooks/use-payments';
+import { useDealerWallet } from '@/hooks/use-dealer-wallet';
 import { getErrorMessage } from '@/lib/api/error';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
@@ -71,6 +73,7 @@ export default function DealerDetailPage() {
   const clearDealerData = useClearDealerData(id);
 
   const { data: dealer, isLoading, isError, error, refetch } = useDealer(id);
+  const { data: wallet } = useDealerWallet(id);
   const {
     data: orders,
     isLoading: ordersLoading,
@@ -110,6 +113,13 @@ export default function DealerDetailPage() {
   if (isLoading || !dealer) {
     return <PageSkeleton cards={4} />;
   }
+
+  // Owed (positive) or credit (negative), counting invoices of orders not completed yet.
+  const balance = Number(dealer.balance ?? dealer.outstandingBalance);
+  const pendingInvoices = Number(dealer.pendingInvoices ?? 0);
+  // Extra money the dealer paid sits in the Wallet card, so it isn't shown here
+  // again: this is only what's still owed on invoices (0 when they've paid ahead).
+  const owed = wallet ? Math.round((balance + wallet.balance) * 100) / 100 : null;
 
   function handleResetPassword() {
     resetPassword.mutate(dealer!.id, {
@@ -202,24 +212,39 @@ export default function DealerDetailPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={cn('grid gap-4 sm:grid-cols-2', dealer.unlimitedCredit ? 'xl:grid-cols-4' : 'xl:grid-cols-5')}
+      >
+        {!dealer.unlimitedCredit && (
+          <StatCard label="Credit Limit" value={formatCurrency(dealer.creditLimit)} icon={CreditCard} />
+        )}
         <StatCard
-          label="Credit Limit"
-          value={dealer.unlimitedCredit ? 'Unlimited' : formatCurrency(dealer.creditLimit)}
-          icon={CreditCard}
+          label={owed !== null && owed < 0 ? 'Credit Balance' : 'Outstanding Balance'}
+          value={owed === null ? '—' : formatCurrency(Math.abs(owed))}
+          icon={Wallet}
+          tone={owed === null || owed === 0 ? 'default' : owed < 0 ? 'success' : 'warning'}
+          hint={
+            owed !== null && owed > 0 && pendingInvoices > 0
+              ? `Includes invoices of orders not completed yet`
+              : owed === 0 && (wallet?.balance ?? 0) > 0
+                ? 'Nothing owed — the extra paid is in the Wallet'
+                : undefined
+          }
         />
         <StatCard
-          label={Number(dealer.outstandingBalance) < 0 ? 'Credit Balance' : 'Outstanding Balance'}
-          value={formatCurrency(Math.abs(Number(dealer.outstandingBalance)))}
-          icon={Wallet}
-          tone={
-            Number(dealer.outstandingBalance) < 0
-              ? 'success'
-              : Number(dealer.outstandingBalance) > 0
-                ? 'warning'
-                : 'default'
+          label={(wallet?.balance ?? 0) < 0 ? 'Wallet overdrawn' : 'Wallet'}
+          value={formatCurrency(Math.abs(wallet?.balance ?? 0))}
+          icon={PiggyBank}
+          tone={(wallet?.balance ?? 0) < 0 ? 'destructive' : (wallet?.balance ?? 0) > 0 ? 'success' : 'default'}
+          hint={
+            (wallet?.balance ?? 0) < 0
+              ? 'A cheque that funded spent credit bounced — the dealer owes this'
+              : (wallet?.pending ?? 0) > 0
+                ? `${formatCurrency(wallet?.available ?? 0)} usable · ${formatCurrency(wallet?.pending ?? 0)} waiting for a cheque`
+                : (wallet?.balance ?? 0) > 0
+                  ? 'Usable on the next order or invoice'
+                  : undefined
           }
-          hint={Number(dealer.outstandingBalance) < 0 ? 'From returned goods — usable on future orders' : undefined}
         />
         <StatCard label="Total Orders" value={dealer.summary.totalOrders} icon={ShoppingCart} tone="info" />
         <StatCard
@@ -235,6 +260,7 @@ export default function DealerDetailPage() {
           <TabsTrigger value="orders">Order History</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payment History</TabsTrigger>
+          <TabsTrigger value="wallet">Wallet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders">
@@ -473,6 +499,93 @@ export default function DealerDetailPage() {
                   ))}
                 </ul>
               </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="wallet">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+            <SectionHeader
+              title="Wallet"
+              description="Money paid above invoices (overpayments, returns on paid invoices), and where it was used."
+              className="pb-3"
+            />
+            {!wallet ? (
+              <TableSkeleton rows={3} />
+            ) : wallet.sources.length === 0 && wallet.uses.length === 0 && wallet.refunded === 0 ? (
+              <EmptyState
+                icon={PiggyBank}
+                title="Nothing in the wallet"
+                description="When this dealer pays more than an invoice, the extra is kept here for their next purchase"
+              />
+            ) : (
+              <ul className="divide-y divide-border border-t border-border">
+                {wallet.sources.map((source) => (
+                  <li key={`in-${source.invoiceId}`} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/invoices/${source.invoiceId}`}
+                        className="font-medium text-foreground hover:text-primary"
+                      >
+                        {source.invoiceNumber}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        Paid above the invoice
+                        {source.pending > 0 && ` · ${formatCurrency(source.pending)} waiting for a cheque`}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold tabular-nums text-success">
+                      +{formatCurrency(source.excess)}
+                    </span>
+                  </li>
+                ))}
+                {wallet.standalone > 0 && (
+                  <li className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                    <p className="text-sm text-foreground">Advance payments</p>
+                    <span className="shrink-0 font-semibold tabular-nums text-success">
+                      +{formatCurrency(wallet.standalone)}
+                    </span>
+                  </li>
+                )}
+                {wallet.uses.map((use) => (
+                  <li key={use.id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/invoices/${use.invoiceId}`}
+                        className="font-medium text-foreground hover:text-primary"
+                      >
+                        {use.invoiceNumber}
+                      </Link>
+                      <p className="break-words text-xs text-muted-foreground">
+                        Used on {formatDate(use.createdAt)}
+                        {use.note ? ` · ${use.note}` : ''}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                      −{formatCurrency(use.amount)}
+                    </span>
+                  </li>
+                ))}
+                {wallet.refunded > 0 && (
+                  <li className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+                    <p className="text-sm text-foreground">Refunded to the dealer</p>
+                    <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                      −{formatCurrency(wallet.refunded)}
+                    </span>
+                  </li>
+                )}
+                <li className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-3 sm:px-5">
+                  <p className="text-sm font-semibold">{wallet.balance < 0 ? 'Overdrawn' : 'Balance'}</p>
+                  <span
+                    className={cn(
+                      'shrink-0 font-semibold tabular-nums',
+                      wallet.balance < 0 ? 'text-destructive' : 'text-foreground',
+                    )}
+                  >
+                    {formatCurrency(Math.abs(wallet.balance))}
+                  </span>
+                </li>
+              </ul>
             )}
           </div>
         </TabsContent>

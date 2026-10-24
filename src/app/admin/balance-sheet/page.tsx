@@ -578,7 +578,11 @@ export default function BalanceSheetPage() {
                     )}
                     <LineItem label="Tax Payable" value={data.liabilities.current.taxPayable} />
                     <LineItem label="Accrued Expenses" value={data.liabilities.current.accruedExpenses} />
-                    <LineItem label="Customer Advances" value={data.liabilities.current.customerAdvances} />
+                    <LineItem
+                      label="Customer Advances"
+                      value={data.liabilities.current.customerAdvances}
+                      sub="Customer wallets — extra paid, owed back until used or refunded"
+                    />
                     <SectionTotal label="Total Current Liabilities" value={data.liabilities.current.totalCurrentLiabilities} />
 
                     <GroupLabel>Non-Current Liabilities</GroupLabel>
