@@ -55,6 +55,7 @@ export function useCreateSettlement(supplierId: string) {
       reference?: string;
       paymentDate: string;
       chequeDepositDate?: string;
+      bankName?: string;
       remarks?: string;
       // Only sent after the user confirms a 409 POSSIBLE_DUPLICATE.
       confirmDuplicate?: boolean;

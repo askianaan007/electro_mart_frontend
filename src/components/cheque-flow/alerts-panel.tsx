@@ -65,8 +65,8 @@ function Group({
               <span className="min-w-0">
                 <span className="block truncate font-medium">{e.partyName}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {SIDE_META[e.direction].short} · {formatDay(e.chequeDate)} · {e.chequeNumber ?? 'no number'} ·{' '}
-                  {dueLabel(e)}
+                  {e.source === 'MANUAL' ? SIDE_META[e.direction].short : (e.kindLabel ?? e.sourceLabel)} ·{' '}
+                  {formatDay(e.chequeDate)} · {e.chequeNumber ?? 'no number'} · {dueLabel(e)}
                 </span>
               </span>
               <span
