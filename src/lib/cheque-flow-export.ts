@@ -17,6 +17,12 @@ const ORANGE: [number, number, number] = [220, 104, 3];
 const GREEN_HEX = '#079455';
 const ORANGE_HEX = '#DC6803';
 
+/** Remarks plus where a linked cheque was recorded, e.g. "From Payments". */
+function remarksText(e: ChequeFlowEntry) {
+  const from = e.source === 'MANUAL' ? '' : (e.kindLabel ?? `From ${e.sourceLabel}`);
+  return [from, e.remarks].filter(Boolean).join(' · ');
+}
+
 function statusText(e: ChequeFlowEntry) {
   return STATUS_META[e.status].label;
 }
@@ -103,7 +109,7 @@ export async function downloadChequeFlowExcel(options: ChequeFlowExportOptions) 
             ? { value: new Date(`${e.clearedDate}T00:00:00.000Z`), type: Date, format: 'dd mmm yyyy' }
             : null,
           { value: e.amount, type: Number, format: '#,##0.00' },
-          { value: e.remarks ?? '', type: String },
+          { value: remarksText(e), type: String },
         ]
       : SIDE_COLS.map(() => null);
   const totalCells = (label: string, value: number, color?: string): Cell[] => [

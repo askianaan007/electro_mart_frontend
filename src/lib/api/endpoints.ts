@@ -692,6 +692,7 @@ export const api = {
         reference?: string;
         paymentDate: string;
         chequeDepositDate?: string;
+        bankName?: string;
         remarks?: string;
         confirmDuplicate?: boolean;
       },

@@ -240,6 +240,8 @@ export interface SupplierPayment {
   chequeStatus: ChequeStatus | null;
   chequeStatusUpdatedAt: string | null;
   chequeDepositDate: string | null;
+  /** Cheque settlements; null on older rows. */
+  bankName?: string | null;
   remarks: string | null;
   createdAt: string;
 }
@@ -1505,8 +1507,24 @@ export type ChequeFlowDirection = 'RECEIVABLE' | 'PAYABLE';
 export type ChequeFlowStatus = 'PENDING' | 'CLEARED' | 'BOUNCED' | 'CANCELLED';
 export type ChequeFlowDueState = 'overdue' | 'today' | 'soon' | null;
 
+/** Where a cheque was recorded: this page, Payments, Credits (settlements) or Refunds. */
+export type ChequeFlowSource = 'MANUAL' | 'PAYMENT' | 'SETTLEMENT' | 'REFUND';
+
 export interface ChequeFlowEntry {
+  /** MANUAL: the entry id. Linked rows: prefixed ("pay_…", "set_…", "ref_…"). */
   id: string;
+  source: ChequeFlowSource;
+  /** The id in its own table (payment / settlement / refund id). */
+  sourceId: string;
+  sourceLabel: string;
+  /** e.g. "Refund to customer", "Advance payment". */
+  kindLabel: string | null;
+  /** Linked rows: the page where they're edited or deleted. */
+  link: string | null;
+  /** Statuses it may move to now, by its source page's rules. */
+  allowedStatuses: ChequeFlowStatus[];
+  /** A manual cheque also recorded in Payments/Credits/Refunds — shown, not counted. */
+  duplicateOf: { source: ChequeFlowSource; id: string; label: string } | null;
   direction: ChequeFlowDirection;
   /** Text — leading zeros kept. */
   chequeNumber: string | null;
@@ -1562,6 +1580,8 @@ export interface ChequeFlowList {
   today: string;
   filtered: boolean;
   truncated: boolean;
+  /** Manual cheques also recorded in Payments/Credits/Refunds (listed, not counted). */
+  duplicates: number;
   entries: ChequeFlowEntry[];
   summary: ChequeFlowSummary;
   timeline: ChequeFlowTimelineDay[];
@@ -1608,6 +1628,7 @@ export interface ChequeFlowOptions {
 }
 
 export interface ChequeFlowFilters {
+  source?: ChequeFlowSource;
   direction?: ChequeFlowDirection;
   status?: ChequeFlowStatus[];
   bank?: string;
@@ -1650,7 +1671,7 @@ export interface ChequeFlowImportRowResult {
   result: 'ready' | 'duplicate' | 'error';
   errors: string[];
   warnings: string[];
-  duplicateOf?: 'register' | 'file';
+  duplicateOf?: 'register' | 'file' | 'linked';
   entry?: Omit<
     ChequeFlowEntry,
     'id' | 'importBatchId' | 'createdAt' | 'updatedAt' | 'dueState' | 'daysOverdue'

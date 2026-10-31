@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   CalendarRange,
+  Copy,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -53,6 +54,7 @@ import { AlertsPanel } from '@/components/cheque-flow/alerts-panel';
 import { ChequeFormDialog } from '@/components/cheque-flow/cheque-form-dialog';
 import { ChequeSideTable, type ChequeRowActions } from '@/components/cheque-flow/cheque-side-table';
 import { ImportDialog } from '@/components/cheque-flow/import-dialog';
+import { LinkedStatusDialog } from '@/components/cheque-flow/linked-status-dialog';
 import { MonthlyChart } from '@/components/cheque-flow/monthly-chart';
 import { SummaryCards } from '@/components/cheque-flow/summary-cards';
 import { TimelineCard } from '@/components/cheque-flow/timeline-card';
@@ -81,9 +83,21 @@ import {
   sideTotals,
 } from '@/lib/cheque-flow';
 import { businessToday, cn, formatCurrency } from '@/lib/utils';
-import type { ChequeFlowDirection, ChequeFlowEntry, ChequeFlowFilters, ChequeFlowStatus } from '@/lib/api/types';
+import type {
+  ChequeFlowDirection,
+  ChequeFlowEntry,
+  ChequeFlowFilters,
+  ChequeFlowSource,
+  ChequeFlowStatus,
+} from '@/lib/api/types';
 
 const ALL = '__all__';
+const SOURCE_OPTIONS: Record<ChequeFlowSource, string> = {
+  MANUAL: 'Added here',
+  PAYMENT: 'Payments',
+  SETTLEMENT: 'Credits',
+  REFUND: 'Refunds',
+};
 type SideView = 'both' | ChequeFlowDirection;
 
 export default function ChequeFlowPage() {
@@ -117,6 +131,7 @@ function ChequeFlow() {
   const [customer, setCustomer] = useState('');
   const [supplier, setSupplier] = useState('');
   const [status, setStatus] = useState<ChequeFlowStatus | ''>('');
+  const [source, setSource] = useState<ChequeFlowSource | ''>('');
   const [sideView, setSideView] = useState<SideView>('both');
   const debouncedSearch = useDebouncedValue(search.trim());
 
@@ -126,6 +141,7 @@ function ChequeFlow() {
     customer: customer || undefined,
     supplier: supplier || undefined,
     status: status ? [status] : undefined,
+    source: source || undefined,
   };
   const filterParts = [
     debouncedSearch && `search "${debouncedSearch}"`,
@@ -133,6 +149,7 @@ function ChequeFlow() {
     customer && `customer ${customer}`,
     supplier && `supplier ${supplier}`,
     status && `status ${STATUS_META[status].label}`,
+    source && `from ${SOURCE_OPTIONS[source]}`,
   ].filter(Boolean) as string[];
   const isFiltered = filterParts.length > 0;
   const filterLabel = isFiltered ? `Filtered: ${filterParts.join(', ')}` : '';
@@ -143,6 +160,7 @@ function ChequeFlow() {
     setCustomer('');
     setSupplier('');
     setStatus('');
+    setSource('');
   }
 
   const list = useChequeFlow({ ...filters, month: month ?? undefined });
@@ -159,6 +177,8 @@ function ChequeFlow() {
   const [form, setForm] = useState<{ entry?: ChequeFlowEntry; direction?: ChequeFlowDirection } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [clearing, setClearing] = useState<ChequeFlowEntry | null>(null);
+  // A cheque recorded in Payments / Credits / Refunds: its status changes go through that page's rules.
+  const [linked, setLinked] = useState<{ entry: ChequeFlowEntry; status: ChequeFlowStatus | null } | null>(null);
   const [deleting, setDeleting] = useState<ChequeFlowEntry | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
@@ -187,7 +207,11 @@ function ChequeFlow() {
   const actions: ChequeRowActions = {
     onEdit: (entry) => setForm({ entry }),
     onDelete: setDeleting,
-    onStatus: (entry, next) => (next === 'CLEARED' ? setClearing(entry) : changeStatus(entry, next)),
+    onStatus: (entry, next) => {
+      if (entry.source !== 'MANUAL') setLinked({ entry, status: next });
+      else if (next === 'CLEARED') setClearing(entry);
+      else changeStatus(entry, next);
+    },
     busyId,
   };
 
@@ -217,7 +241,9 @@ function ChequeFlow() {
     setExporting(kind);
     try {
       const fileBase = `cheque-flow-${month ?? 'all-months'}`;
-      const opts = { periodLabel, filterLabel, entries: data.entries, summary: data.summary, fileBase };
+      // Manual copies of linked cheques are left out — the linked cheque is exported once.
+      const entries = data.entries.filter((e) => !e.duplicateOf);
+      const opts = { periodLabel, filterLabel, entries, summary: data.summary, fileBase };
       if (kind === 'excel') {
         const { downloadChequeFlowExcel } = await import('@/lib/cheque-flow-export');
         await downloadChequeFlowExcel(opts);
@@ -235,7 +261,8 @@ function ChequeFlow() {
   function openFromAlert(entry: ChequeFlowEntry) {
     const m = entry.chequeDate.slice(0, 7);
     if (!allMonths && m !== month) setMonth(m);
-    setForm({ entry });
+    if (entry.source !== 'MANUAL') setLinked({ entry, status: null });
+    else setForm({ entry });
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -248,7 +275,7 @@ function ChequeFlow() {
     <div className="space-y-5 print:space-y-3 print:p-6">
       <PageHeader
         title="Cheque Flow"
-        description="Customer cheques to receive and supplier cheques to pay, month by month. A separate register — it doesn't change invoices, payments or stock."
+        description="Customer cheques to receive and supplier cheques to pay, month by month. Cheques recorded in Payments, Credits and Refunds appear here automatically; add any others by hand."
         actions={
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <Button variant="outline" onClick={() => setImportOpen(true)}>
@@ -355,7 +382,7 @@ function ChequeFlow() {
       </p>
 
       {/* Filters */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))_auto] print:hidden">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(5,minmax(0,1fr))_auto] print:hidden">
         <div className="relative col-span-2 sm:col-span-3 lg:col-span-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -378,6 +405,19 @@ function ChequeFlow() {
             {STATUS_ORDER.map((s) => (
               <SelectItem key={s} value={s}>
                 {STATUS_META[s].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={source || ALL} onValueChange={(v) => setSource(v === ALL ? '' : (v as ChequeFlowSource))}>
+          <SelectTrigger aria-label="Recorded in" className={cn(source && 'border-primary')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All sources</SelectItem>
+            {(Object.keys(SOURCE_OPTIONS) as ChequeFlowSource[]).map((s) => (
+              <SelectItem key={s} value={s}>
+                {SOURCE_OPTIONS[s]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -406,6 +446,16 @@ function ChequeFlow() {
               <TriangleAlert className="mt-0.5 size-4 shrink-0" />
               Showing the first 5,000 cheques only. Pick a single month or add a filter to see the rest — the totals
               still cover every matching cheque.
+            </p>
+          )}
+
+          {!!data?.duplicates && (
+            <p className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground print:hidden">
+              <Copy className="mt-0.5 size-4 shrink-0" />
+              {data.duplicates === 1
+                ? '1 cheque you added by hand is also recorded in Payments/Credits/Refunds.'
+                : `${data.duplicates} cheques you added by hand are also recorded in Payments/Credits/Refunds.`}{' '}
+              They&apos;re shown greyed and not counted — remove the manual copy from its menu when convenient.
             </p>
           )}
 
@@ -486,6 +536,7 @@ function ChequeFlow() {
         month={month ?? currentMonth}
       />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <LinkedStatusDialog target={linked} onClose={() => setLinked(null)} />
       <ClearDialog
         entry={clearing}
         today={today}
