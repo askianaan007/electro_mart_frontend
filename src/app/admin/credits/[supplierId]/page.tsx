@@ -541,6 +541,7 @@ export default function SupplierCreditDetailPage() {
                       <TableCell>{payment.mode.replace('_', ' ')}</TableCell>
                       <TableCell className="whitespace-normal break-words text-muted-foreground">
                         {payment.reference ?? '—'}
+                        {payment.bankName && <span className="block text-xs">{payment.bankName}</span>}
                       </TableCell>
                       <TableCell className="whitespace-normal break-words text-right font-medium tabular-nums">
                         {formatCurrency(payment.amount)}
@@ -567,7 +568,10 @@ export default function SupplierCreditDetailPage() {
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>{formatDate(payment.paymentDate)}</span>
-                    <span className="break-words text-right">{payment.reference ?? '—'}</span>
+                    <span className="break-words text-right">
+                      {payment.reference ?? '—'}
+                      {payment.bankName ? ` · ${payment.bankName}` : ''}
+                    </span>
                   </div>
                   {payment.chequeDepositDate && (
                     <p className="mt-1 text-xs text-muted-foreground">

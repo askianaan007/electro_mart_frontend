@@ -575,7 +575,12 @@ function PreviewStep({
                 )}
                 {r.result === 'duplicate' && (
                   <Badge variant="muted">
-                    <Copy className="size-3" /> {r.duplicateOf === 'file' ? 'Twice in file' : 'Already saved'}
+                    <Copy className="size-3" />{' '}
+                    {r.duplicateOf === 'file'
+                      ? 'Twice in file'
+                      : r.duplicateOf === 'linked'
+                        ? 'In Payments/Credits'
+                        : 'Already saved'}
                   </Badge>
                 )}
                 {r.result === 'error' && (

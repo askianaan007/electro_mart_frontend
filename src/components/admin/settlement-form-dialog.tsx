@@ -37,6 +37,7 @@ const schema = z.object({
     .min(1, 'Date is required')
     .refine((v) => v <= businessToday(), 'Payment date cannot be in the future'),
   chequeDepositDate: z.string(),
+  bankName: z.string().max(80, 'Keep the bank name under 80 characters'),
   remarks: z.string(),
 });
 
@@ -69,6 +70,7 @@ export function SettlementFormDialog({
       reference: '',
       paymentDate: businessToday(),
       chequeDepositDate: '',
+      bankName: '',
       remarks: '',
     },
   });
@@ -82,6 +84,7 @@ export function SettlementFormDialog({
         reference: '',
         paymentDate: businessToday(),
         chequeDepositDate: '',
+        bankName: '',
         remarks: '',
       });
     }
@@ -108,9 +111,22 @@ export function SettlementFormDialog({
   }
 
   const onSubmit = form.handleSubmit((values) => {
-    if (values.mode === 'CHEQUE' && !values.chequeDepositDate) {
-      form.setError('chequeDepositDate', { message: 'Deposit date is required for cheque settlements' });
-      return;
+    if (values.mode === 'CHEQUE') {
+      // Cheque Flow lists this cheque by its number and bank.
+      let missing = false;
+      if (!values.reference.trim()) {
+        form.setError('reference', { message: 'Cheque number is required' });
+        missing = true;
+      }
+      if (!values.bankName.trim()) {
+        form.setError('bankName', { message: 'Bank is required for cheque settlements' });
+        missing = true;
+      }
+      if (!values.chequeDepositDate) {
+        form.setError('chequeDepositDate', { message: 'Deposit date is required for cheque settlements' });
+        missing = true;
+      }
+      if (missing) return;
     }
 
     submit({
@@ -119,6 +135,7 @@ export function SettlementFormDialog({
       reference: values.reference || undefined,
       paymentDate: values.paymentDate,
       chequeDepositDate: values.mode === 'CHEQUE' ? values.chequeDepositDate : undefined,
+      bankName: values.mode === 'CHEQUE' ? values.bankName.trim() : undefined,
       remarks: values.remarks || undefined,
     });
   });
@@ -201,6 +218,22 @@ export function SettlementFormDialog({
                 )}
               />
             </div>
+
+            {mode === 'CHEQUE' && (
+              <FormField
+                control={form.control}
+                name="bankName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bank</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g. Sampath" maxLength={80} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {mode === 'CHEQUE' && (
               <FormField
