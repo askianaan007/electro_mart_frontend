@@ -1,6 +1,18 @@
 import { apiClient } from './client';
 import type {
   ActivityLog,
+  ChequeFlowAlerts,
+  ChequeFlowEntry,
+  ChequeFlowFilters,
+  ChequeFlowImportBatch,
+  ChequeFlowImportPreview,
+  ChequeFlowImportResult,
+  ChequeFlowImportRow,
+  ChequeFlowInput,
+  ChequeFlowList,
+  ChequeFlowMonthly,
+  ChequeFlowOptions,
+  ChequeFlowStatus,
   AdminDashboardSummary,
   AuthResponse,
   Category,
@@ -109,6 +121,12 @@ function buildParams<T extends object>(params: T) {
     if (value !== undefined && value !== null && value !== '') cleaned[key] = value;
   }
   return cleaned;
+}
+
+/** Status filters go as one comma-separated value. */
+function chequeFlowParams<T extends ChequeFlowFilters>(params: T) {
+  const { status, ...rest } = params;
+  return buildParams({ ...rest, status: status?.length ? status.join(',') : undefined });
 }
 
 export const api = {
@@ -907,5 +925,41 @@ export const api = {
       apiClient
         .get<RepresentativePerformanceRow[]>('/reports/sales/representative', { params: buildParams(params) })
         .then((r) => r.data),
+  },
+
+  chequeFlow: {
+    list: (params: ChequeFlowFilters & { month?: string }) =>
+      apiClient
+        .get<ChequeFlowList>('/cheque-flow', { params: chequeFlowParams(params) })
+        .then((r) => r.data),
+    alerts: () => apiClient.get<ChequeFlowAlerts>('/cheque-flow/alerts').then((r) => r.data),
+    monthly: (params: ChequeFlowFilters & { from?: string; to?: string }) =>
+      apiClient
+        .get<ChequeFlowMonthly>('/cheque-flow/monthly', { params: chequeFlowParams(params) })
+        .then((r) => r.data),
+    options: () => apiClient.get<ChequeFlowOptions>('/cheque-flow/options').then((r) => r.data),
+    create: (data: ChequeFlowInput) => apiClient.post<ChequeFlowEntry>('/cheque-flow', data).then((r) => r.data),
+    update: (id: string, data: Partial<ChequeFlowInput>) =>
+      apiClient.patch<ChequeFlowEntry>(`/cheque-flow/${id}`, data).then((r) => r.data),
+    setStatus: (id: string, status: ChequeFlowStatus, clearedDate?: string) =>
+      apiClient
+        .patch<ChequeFlowEntry>(`/cheque-flow/${id}/status`, { status, ...(clearedDate && { clearedDate }) })
+        .then((r) => r.data),
+    remove: (id: string) => apiClient.delete<{ id: string }>(`/cheque-flow/${id}`).then((r) => r.data),
+    restore: (id: string) => apiClient.post<ChequeFlowEntry>(`/cheque-flow/${id}/restore`).then((r) => r.data),
+    previewImport: (rows: ChequeFlowImportRow[], clearedOnChequeDate: boolean) =>
+      apiClient
+        .post<ChequeFlowImportPreview>('/cheque-flow/imports/preview', { rows, clearedOnChequeDate })
+        .then((r) => r.data),
+    commitImport: (data: {
+      importKey: string;
+      fileName: string;
+      rows: ChequeFlowImportRow[];
+      mapping?: Record<string, unknown>;
+      clearedOnChequeDate: boolean;
+    }) => apiClient.post<ChequeFlowImportResult>('/cheque-flow/imports', data).then((r) => r.data),
+    imports: () => apiClient.get<ChequeFlowImportBatch[]>('/cheque-flow/imports').then((r) => r.data),
+    undoImport: (id: string) =>
+      apiClient.delete<{ id: string; removed: number }>(`/cheque-flow/imports/${id}`).then((r) => r.data),
   },
 };
