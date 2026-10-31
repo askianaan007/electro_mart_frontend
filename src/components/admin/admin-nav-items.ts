@@ -27,6 +27,7 @@ import {
   RotateCcw,
   ScanLine,
   Barcode,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -93,6 +94,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Purchases', href: '/admin/purchases', icon: Truck },
       { label: 'Credits', href: '/admin/credits', icon: HandCoins },
       { label: 'Credit Balance', href: '/admin/credit-balance', icon: Scale },
+      { label: 'Cheque Flow', href: '/admin/cheque-flow', icon: CalendarClock },
     ],
   },
 

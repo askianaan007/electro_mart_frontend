@@ -1498,3 +1498,184 @@ export interface OrderUnitLine {
     replacesSerial: string | null;
   }[];
 }
+
+// ---- Cheque Flow (planning register — never touches payments or balances) ----
+
+export type ChequeFlowDirection = 'RECEIVABLE' | 'PAYABLE';
+export type ChequeFlowStatus = 'PENDING' | 'CLEARED' | 'BOUNCED' | 'CANCELLED';
+export type ChequeFlowDueState = 'overdue' | 'today' | 'soon' | null;
+
+export interface ChequeFlowEntry {
+  id: string;
+  direction: ChequeFlowDirection;
+  /** Text — leading zeros kept. */
+  chequeNumber: string | null;
+  bankName: string;
+  /** YYYY-MM-DD */
+  chequeDate: string;
+  partyName: string;
+  invoiceRef: string | null;
+  amount: number;
+  status: ChequeFlowStatus;
+  clearedDate: string | null;
+  remarks: string | null;
+  importBatchId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** PENDING only: past its date, due today, or within 7 days. */
+  dueState: ChequeFlowDueState;
+  daysOverdue: number;
+}
+
+export interface ChequeFlowSideTotals {
+  /** Pending + cleared; bounced and cancelled are kept out. */
+  total: number;
+  pending: number;
+  cleared: number;
+  bounced: number;
+  cancelled: number;
+  count: number;
+  pendingCount: number;
+  clearedCount: number;
+  bouncedCount: number;
+  cancelledCount: number;
+}
+
+export interface ChequeFlowSummary {
+  receivable: ChequeFlowSideTotals;
+  payable: ChequeFlowSideTotals;
+  /** Pending customer − pending supplier. Negative = additional funds required. */
+  netPending: number;
+}
+
+export interface ChequeFlowTimelineDay {
+  date: string;
+  receipts: number;
+  payments: number;
+  net: number;
+  cumulative: number;
+  shortfall: boolean;
+}
+
+export interface ChequeFlowList {
+  month: string | null;
+  today: string;
+  filtered: boolean;
+  truncated: boolean;
+  entries: ChequeFlowEntry[];
+  summary: ChequeFlowSummary;
+  timeline: ChequeFlowTimelineDay[];
+}
+
+export interface ChequeFlowAlertGroup {
+  entries: ChequeFlowEntry[];
+  receivable: number;
+  payable: number;
+}
+
+export interface ChequeFlowAlerts {
+  today: string;
+  overdue: ChequeFlowAlertGroup;
+  dueToday: ChequeFlowAlertGroup;
+  dueSoon: ChequeFlowAlertGroup;
+}
+
+export interface ChequeFlowMonth {
+  month: string;
+  receipts: number;
+  receiptsPending: number;
+  receiptsCleared: number;
+  payments: number;
+  paymentsPending: number;
+  paymentsCleared: number;
+  net: number;
+  netPending: number;
+}
+
+export interface ChequeFlowMonthly {
+  from: string;
+  to: string;
+  filtered: boolean;
+  months: ChequeFlowMonth[];
+}
+
+export interface ChequeFlowOptions {
+  banks: string[];
+  customers: string[];
+  suppliers: string[];
+  customerSuggestions: string[];
+  supplierSuggestions: string[];
+}
+
+export interface ChequeFlowFilters {
+  direction?: ChequeFlowDirection;
+  status?: ChequeFlowStatus[];
+  bank?: string;
+  customer?: string;
+  supplier?: string;
+  search?: string;
+}
+
+export interface ChequeFlowInput {
+  direction: ChequeFlowDirection;
+  chequeNumber?: string;
+  bankName: string;
+  chequeDate: string;
+  partyName: string;
+  invoiceRef?: string;
+  amount: number;
+  status?: ChequeFlowStatus;
+  clearedDate?: string;
+  remarks?: string;
+}
+
+/** A spreadsheet row after column mapping — sent as-is, checked by the server. */
+export interface ChequeFlowImportRow {
+  sourceRow?: number;
+  direction: ChequeFlowDirection;
+  chequeNumber?: string | number | null;
+  bankName?: string | number | null;
+  chequeDate?: string | null;
+  partyName?: string | number | null;
+  invoiceRef?: string | number | null;
+  amount?: string | number | null;
+  status?: string | number | null;
+  clearedDate?: string | null;
+  remarks?: string | number | null;
+}
+
+export interface ChequeFlowImportRowResult {
+  index: number;
+  sourceRow: number | null;
+  result: 'ready' | 'duplicate' | 'error';
+  errors: string[];
+  warnings: string[];
+  duplicateOf?: 'register' | 'file';
+  entry?: Omit<
+    ChequeFlowEntry,
+    'id' | 'importBatchId' | 'createdAt' | 'updatedAt' | 'dueState' | 'daysOverdue'
+  >;
+}
+
+export interface ChequeFlowImportPreview {
+  rows: ChequeFlowImportRowResult[];
+  ready: number;
+  duplicates: number;
+  errors: number;
+}
+
+export interface ChequeFlowImportResult {
+  importId: string;
+  inserted: number;
+  skipped: number;
+  replayed: boolean;
+}
+
+export interface ChequeFlowImportBatch {
+  id: string;
+  fileName: string;
+  inserted: number;
+  skipped: number;
+  undoneAt: string | null;
+  createdAt: string;
+}
