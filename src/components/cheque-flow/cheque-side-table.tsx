@@ -1,11 +1,15 @@
 'use client';
 
+import Link from 'next/link';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Ban,
   CheckCircle2,
   Clock,
+  Copy,
+  ExternalLink,
+  Link2,
   MoreVertical,
   Pencil,
   Plus,
@@ -56,8 +60,19 @@ function DueBadge({ entry }: { entry: ChequeFlowEntry }) {
   );
 }
 
+const STATUS_ACTION: Record<ChequeFlowStatus, { label: string; icon: typeof Clock }> = {
+  CLEARED: { label: 'Mark cleared…', icon: CheckCircle2 },
+  PENDING: { label: 'Back to pending', icon: Clock },
+  BOUNCED: { label: 'Mark bounced', icon: XCircle },
+  CANCELLED: { label: 'Mark cancelled', icon: Ban },
+};
+const ACTION_ORDER: ChequeFlowStatus[] = ['CLEARED', 'PENDING', 'BOUNCED', 'CANCELLED'];
+
 function RowMenu({ entry, actions }: { entry: ChequeFlowEntry; actions: ChequeRowActions }) {
   const busy = actions.busyId === entry.id;
+  const linked = entry.source !== 'MANUAL';
+  // Linked cheques follow their own page's rules (the server says which moves are allowed now).
+  const statuses = ACTION_ORDER.filter((s) => entry.allowedStatuses.includes(s));
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -72,36 +87,58 @@ function RowMenu({ entry, actions }: { entry: ChequeFlowEntry; actions: ChequeRo
           {!busy && <MoreVertical />}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {entry.status !== 'CLEARED' && (
-          <DropdownMenuItem onSelect={() => actions.onStatus(entry, 'CLEARED')}>
-            <CheckCircle2 /> Mark cleared…
-          </DropdownMenuItem>
-        )}
-        {entry.status !== 'PENDING' && (
-          <DropdownMenuItem onSelect={() => actions.onStatus(entry, 'PENDING')}>
-            <Clock /> Back to pending
-          </DropdownMenuItem>
-        )}
-        {entry.status !== 'BOUNCED' && (
-          <DropdownMenuItem onSelect={() => actions.onStatus(entry, 'BOUNCED')}>
-            <XCircle /> Mark bounced
-          </DropdownMenuItem>
-        )}
-        {entry.status !== 'CANCELLED' && (
-          <DropdownMenuItem onSelect={() => actions.onStatus(entry, 'CANCELLED')}>
-            <Ban /> Mark cancelled
+      <DropdownMenuContent align="end" className="w-52">
+        {statuses.map((status) => {
+          const { label, icon: Icon } = STATUS_ACTION[status];
+          return (
+            <DropdownMenuItem key={status} onSelect={() => actions.onStatus(entry, status)}>
+              <Icon /> {linked && status === 'CLEARED' ? 'Mark cleared' : label}
+            </DropdownMenuItem>
+          );
+        })}
+        {linked && statuses.length === 0 && (
+          <DropdownMenuItem disabled className="text-xs">
+            No status change allowed now
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => actions.onEdit(entry)}>
-          <Pencil /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onSelect={() => actions.onDelete(entry)}>
-          <Trash2 /> Delete…
-        </DropdownMenuItem>
+        {linked ? (
+          entry.link && (
+            <DropdownMenuItem asChild>
+              <Link href={entry.link}>
+                <ExternalLink /> Open in {entry.sourceLabel}
+              </Link>
+            </DropdownMenuItem>
+          )
+        ) : (
+          <>
+            <DropdownMenuItem onSelect={() => actions.onEdit(entry)}>
+              <Pencil /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={() => actions.onDelete(entry)}>
+              <Trash2 /> {entry.duplicateOf ? 'Remove manual copy…' : 'Delete…'}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Where a cheque came from, and whether it is a manual copy of a linked one. */
+function SourceTag({ entry }: { entry: ChequeFlowEntry }) {
+  if (entry.duplicateOf) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+        <Copy className="size-3" /> Also in {entry.duplicateOf.label} — not counted
+      </span>
+    );
+  }
+  if (entry.source === 'MANUAL') return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+      <Link2 className="size-3" /> {entry.kindLabel ?? `From ${entry.sourceLabel}`}
+    </span>
   );
 }
 
@@ -205,14 +242,18 @@ export function ChequeSideTable({
               </TableHeader>
               <TableBody>
                 {entries.map((e) => (
-                  <TableRow key={e.id} className={cn(e.dueState && ROW_TINT[e.dueState])}>
+                  <TableRow
+                    key={e.id}
+                    className={cn(e.dueState && ROW_TINT[e.dueState], e.duplicateOf && 'opacity-60')}
+                  >
                     <TableCell className="whitespace-nowrap align-top">
                       <p className="text-[13px] tabular-nums">{formatDay(e.chequeDate)}</p>
                       <p className="font-mono text-xs">{e.chequeNumber ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground">{e.bankName}</p>
+                      <p className="text-xs text-muted-foreground">{e.bankName || '—'}</p>
                     </TableCell>
                     <TableCell className="min-w-[120px] whitespace-normal break-words align-top">
                       <p className="text-[13px] font-medium">{e.partyName}</p>
+                      <SourceTag entry={e} />
                       {e.invoiceRef && <p className="text-xs text-muted-foreground">{e.invoiceRef}</p>}
                       {e.remarks && <p className="text-xs italic text-muted-foreground">{e.remarks}</p>}
                     </TableCell>
@@ -222,7 +263,8 @@ export function ChequeSideTable({
                     <TableCell
                       className={cn(
                         'whitespace-nowrap text-right align-top font-semibold tabular-nums',
-                        (e.status === 'BOUNCED' || e.status === 'CANCELLED') && 'text-muted-foreground line-through',
+                        (e.status === 'BOUNCED' || e.status === 'CANCELLED' || e.duplicateOf) &&
+                          'text-muted-foreground line-through',
                       )}
                     >
                       {formatCurrency(e.amount)}
@@ -242,14 +284,22 @@ export function ChequeSideTable({
           {/* Phones */}
           <ul className="divide-y divide-border md:hidden">
             {entries.map((e) => (
-              <li key={e.id} className={cn('flex gap-3 px-4 py-3', e.dueState && ROW_TINT[e.dueState])}>
+              <li
+                key={e.id}
+                className={cn(
+                  'flex gap-3 px-4 py-3',
+                  e.dueState && ROW_TINT[e.dueState],
+                  e.duplicateOf && 'opacity-60',
+                )}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 break-words text-sm font-medium">{e.partyName}</p>
                     <p
                       className={cn(
                         'shrink-0 text-sm font-semibold tabular-nums',
-                        (e.status === 'BOUNCED' || e.status === 'CANCELLED') && 'text-muted-foreground line-through',
+                        (e.status === 'BOUNCED' || e.status === 'CANCELLED' || e.duplicateOf) &&
+                          'text-muted-foreground line-through',
                       )}
                     >
                       {formatCurrency(e.amount)}
@@ -257,8 +307,9 @@ export function ChequeSideTable({
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatDay(e.chequeDate)} · <span className="font-mono">{e.chequeNumber ?? 'no number'}</span> ·{' '}
-                    {e.bankName}
+                    {e.bankName || 'bank not recorded'}
                   </p>
+                  <SourceTag entry={e} />
                   {(e.invoiceRef || e.remarks) && (
                     <p className="mt-0.5 break-words text-xs text-muted-foreground">
                       {[e.invoiceRef, e.remarks].filter(Boolean).join(' · ')}

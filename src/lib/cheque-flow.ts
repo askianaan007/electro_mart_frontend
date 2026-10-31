@@ -73,9 +73,11 @@ export function sumAmounts(values: number[]): number {
   return values.reduce((cents, v) => cents + Math.round(v * 100), 0) / 100;
 }
 
-/** Same rules as the server summary: bounced and cancelled are kept out of total/pending/cleared. */
+/** Same rules as the server summary: bounced, cancelled and duplicate copies are kept out of total/pending/cleared. */
 export function sideTotals(entries: ChequeFlowEntry[]): ChequeFlowSideTotals {
-  const by = (status: ChequeFlowStatus) => entries.filter((e) => e.status === status);
+  // A manual copy of a cheque that is also in Payments/Credits/Refunds is listed but never counted.
+  const counted = entries.filter((e) => !e.duplicateOf);
+  const by = (status: ChequeFlowStatus) => counted.filter((e) => e.status === status);
   const amount = (status: ChequeFlowStatus) => sumAmounts(by(status).map((e) => e.amount));
   const pending = amount('PENDING');
   const cleared = amount('CLEARED');
@@ -116,3 +118,6 @@ export function dueLabel(entry: Pick<ChequeFlowEntry, 'dueState' | 'daysOverdue'
   if (entry.dueState === 'soon') return 'Due this week';
   return null;
 }
+
+/** Linked statuses as the source pages store them. */
+export const ERP_CHEQUE_STATUS = { PENDING: 'PENDING', CLEARED: 'CLEARED', BOUNCED: 'RETURNED' } as const;
