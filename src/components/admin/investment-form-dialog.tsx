@@ -12,8 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAllInvestors } from '@/hooks/use-investors';
 import { useCreateInvestment, useUpdateInvestment } from '@/hooks/use-investments';
+import { useLiquidCashSummary } from '@/hooks/use-liquid-cash';
 import { getErrorMessage } from '@/lib/api/error';
-import { businessToday } from '@/lib/utils';
+import { businessToday, formatCurrency } from '@/lib/utils';
 import type { Investment } from '@/lib/api/types';
 
 const MAX_AMOUNT = 1_000_000_000;
@@ -90,6 +91,13 @@ export function InvestmentFormDialog({
   // Switching an existing non-cheque entry to cheque (or a new cheque) starts it as PENDING.
   const startsPending = isCheque && investment?.mode !== 'CHEQUE';
 
+  // Withdrawals are paid out of the business's Liquid Cash, not limited by the
+  // investor's equity. The backend enforces it; this just shows what's available.
+  const amountValue = useWatch({ control: form.control, name: 'amount' });
+  const isWithdrawal = Number(amountValue) < 0;
+  const { data: liquidCash } = useLiquidCashSummary();
+  const spendableCash = liquidCash ? liquidCash.balance - liquidCash.pendingOut : null;
+
   const onSubmit = form.handleSubmit((values) => {
     const payload = {
       investorId: values.investorId,
@@ -156,7 +164,11 @@ export function InvestmentFormDialog({
                     <FormControl>
                       <Input type="number" step="0.01" className="tabular-nums" {...field} />
                     </FormControl>
-                    <FormDescription>Negative for a withdrawal</FormDescription>
+                    <FormDescription>
+                      {isWithdrawal && spendableCash !== null
+                        ? `Available Liquid Cash: ${formatCurrency(spendableCash)}`
+                        : 'Negative for a withdrawal'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
