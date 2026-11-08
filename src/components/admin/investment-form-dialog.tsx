@@ -96,7 +96,7 @@ export function InvestmentFormDialog({
   const amountValue = useWatch({ control: form.control, name: 'amount' });
   const isWithdrawal = Number(amountValue) < 0;
   const { data: liquidCash } = useLiquidCashSummary();
-  const spendableCash = liquidCash ? liquidCash.balance - liquidCash.pendingOut : null;
+  const spendableCash = liquidCash ? liquidCash.balance : null;
 
   const onSubmit = form.handleSubmit((values) => {
     const payload = {
