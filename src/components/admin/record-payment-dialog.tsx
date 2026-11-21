@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DuplicateConfirmDialog } from '@/components/admin/duplicate-confirm-dialog';
 import { undoErrorMessage, useCreatePayment, useUndoPayment, useUpdatePayment } from '@/hooks/use-payments';
+import { useDealerWallet, useUseWalletCredit } from '@/hooks/use-dealer-wallet';
 import { isPossibleDuplicate } from '@/lib/api/duplicate';
 import { getErrorMessage } from '@/lib/api/error';
 import { businessToday, formatCurrency } from '@/lib/utils';
@@ -25,7 +26,8 @@ const schema = z
       .string()
       .refine((v) => /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0, 'Enter a valid amount (up to 2 decimals)')
       .refine((v) => Number(v) <= 1_000_000_000, 'Amount cannot exceed 1,000,000,000'),
-    mode: z.enum(['CASH', 'CHEQUE', 'BANK_TRANSFER']),
+    // WALLET is UI-only: it pays from the dealer's wallet via the wallet-credit endpoint, never stored as a payment mode.
+    mode: z.enum(['CASH', 'CHEQUE', 'BANK_TRANSFER', 'WALLET']),
     reference: z.string(),
     paymentDate: z.string().min(1, 'Payment date is required'),
     bankName: z.string(),
@@ -85,9 +87,10 @@ export function RecordPaymentDialog({
   const isEdit = !!payment;
   const effectiveInvoice = payment?.invoice ?? invoice ?? null;
   const createPayment = useCreatePayment();
+  const useWalletCredit = useUseWalletCredit();
   const updatePayment = useUpdatePayment();
   const undoPayment = useUndoPayment();
-  const pending = createPayment.isPending || updatePayment.isPending;
+  const pending = createPayment.isPending || updatePayment.isPending || useWalletCredit.isPending;
   // Set when the backend flags the new payment as a POSSIBLE_DUPLICATE: the
   // exact body that was refused, resent with confirmDuplicate only on confirm.
   const [duplicate, setDuplicate] = useState<{
@@ -100,6 +103,13 @@ export function RecordPaymentDialog({
   const money = effectiveInvoice ? invoiceMoney(effectiveInvoice) : null;
   const ownAmount = payment && paymentCounts(payment) ? Number(payment.amount) : 0;
   const remaining = money ? money.net - money.paid - money.credit + ownAmount : 0;
+
+  const { data: wallet } = useDealerWallet(isEdit ? undefined : effectiveInvoice?.dealerId);
+  const walletAvailable = wallet?.available ?? 0;
+  const walletPending = wallet?.pending ?? 0;
+  // Wallet is offered only when recording a new payment and there is credit to spend.
+  const canPayFromWallet = !isEdit && walletAvailable > 0 && remaining > 0;
+  const walletMax = Math.max(Math.min(remaining, walletAvailable), 0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,7 +131,15 @@ export function RecordPaymentDialog({
   const mode = form.watch('mode');
   const amount = Number(form.watch('amount')) || 0;
   // Money above the balance is kept in the dealer's wallet, never refused.
-  const excess = effectiveInvoice ? Math.round((amount - Math.max(remaining, 0)) * 100) / 100 : 0;
+  const isWallet = mode === 'WALLET';
+  const excess = effectiveInvoice && !isWallet ? Math.round((amount - Math.max(remaining, 0)) * 100) / 100 : 0;
+  const walletError = isWallet && amount > 0
+    ? amount > walletAvailable
+      ? `Only ${formatCurrency(walletAvailable)} is available in the wallet`
+      : amount > remaining
+        ? `Only ${formatCurrency(Math.max(remaining, 0))} is due on this invoice`
+        : null
+    : null;
   const dealerName = effectiveInvoice?.dealer?.businessName ?? payment?.dealer?.businessName ?? 'the dealer';
 
   function submitCreate(body: Parameters<typeof createPayment.mutate>[0]) {
@@ -143,9 +161,23 @@ export function RecordPaymentDialog({
   }
 
   const onSubmit = form.handleSubmit((values) => {
+    if (values.mode === 'WALLET') {
+      if (!effectiveInvoice || walletError) return;
+      useWalletCredit.mutate(
+        { invoiceId: effectiveInvoice.id, amount: Number(values.amount), note: values.remarks || undefined },
+        {
+          onSuccess: () => {
+            toast.success(`${formatCurrency(Number(values.amount))} paid from the wallet`);
+            onOpenChange(false);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
+        },
+      );
+      return;
+    }
     const payload = {
       amount: Number(values.amount),
-      mode: values.mode,
+      mode: values.mode as Exclude<FormValues['mode'], 'WALLET'>,
       reference: values.reference || undefined,
       paymentDate: values.paymentDate,
       bankName: values.mode === 'CHEQUE' ? values.bankName : undefined,
@@ -212,11 +244,22 @@ export function RecordPaymentDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount received</FormLabel>
+                  <FormLabel>{isWallet ? 'Amount from wallet' : 'Amount received'}</FormLabel>
                   <FormControl>
                     <Input type="number" min={0.01} step="0.01" inputMode="decimal" {...field} />
                   </FormControl>
                   <FormMessage />
+                  {isWallet && (
+                    <p className={`text-xs ${walletError ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {walletError ??
+                        `${formatCurrency(walletAvailable)} in wallet · up to ${formatCurrency(walletMax)} can be used here.`}
+                    </p>
+                  )}
+                  {isWallet && walletPending > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(walletPending)} more becomes usable when the cheque that paid it clears.
+                    </p>
+                  )}
                   {excess > 0 && (
                     <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
                       <p className="font-medium text-foreground">
@@ -249,12 +292,15 @@ export function RecordPaymentDialog({
                         <SelectItem value="CASH">Cash</SelectItem>
                         <SelectItem value="CHEQUE">Cheque</SelectItem>
                         <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                        {canPayFromWallet && (
+                          <SelectItem value="WALLET">Wallet ({formatCurrency(walletAvailable)})</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </FormItem>
                 )}
               />
-              <FormField
+              {!isWallet && <FormField
                 control={form.control}
                 name="paymentDate"
                 render={({ field }) => (
@@ -266,9 +312,9 @@ export function RecordPaymentDialog({
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              />}
             </div>
-            <FormField
+            {!isWallet && <FormField
               control={form.control}
               name="reference"
               render={({ field }) => (
@@ -280,7 +326,7 @@ export function RecordPaymentDialog({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            />}
 
             {mode === 'CHEQUE' && (
               <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
@@ -366,8 +412,8 @@ export function RecordPaymentDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" loading={pending}>
-                {isEdit ? 'Save changes' : excess > 0 ? 'Save & add to wallet' : 'Save payment'}
+              <Button type="submit" loading={pending} disabled={isWallet && (!!walletError || amount <= 0)}>
+                {isEdit ? 'Save changes' : isWallet ? 'Pay from wallet' : excess > 0 ? 'Save & add to wallet' : 'Save payment'}
               </Button>
             </DialogFooter>
           </form>
