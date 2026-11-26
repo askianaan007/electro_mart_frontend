@@ -1713,3 +1713,19 @@ export interface OutstandingInvoice {
   paid: number;
   due: number;
 }
+
+export interface PendingDealerCheque {
+  paymentId: string;
+  dealer: { id: string; businessName: string };
+  /** Null for an advance payment not tied to an invoice. */
+  invoiceNumber: string | null;
+  chequeNumber: string | null;
+  bankName: string | null;
+  chequeDate: string | null;
+  amount: number;
+}
+
+export interface OutstandingReport {
+  invoices: OutstandingInvoice[];
+  pendingCheques: PendingDealerCheque[];
+}

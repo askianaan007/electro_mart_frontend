@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api/endpoints';
 import { getErrorMessage } from '@/lib/api/error';
-import { downloadDealerDuesPdf, splitDues, totalDue } from '@/lib/dealer-dues-pdf';
+import { downloadDealerDuesPdf, filterDues, totalCheques, totalDue } from '@/lib/dealer-dues-pdf';
 import { formatCurrency } from '@/lib/utils';
 
-/** Asks for the overdue limit, then downloads the dealer dues PDF. */
+/** Asks for the minimum outstanding amount, then downloads the dealer dues PDF. */
 export function DealerDuesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -25,7 +25,7 @@ export function DealerDuesDialog({ open, onOpenChange }: { open: boolean; onOpen
 }
 
 function DealerDuesBody({ close }: { close: () => void }) {
-  const [days, setDays] = useState('30');
+  const [minAmount, setMinAmount] = useState('0');
   const [saving, setSaving] = useState(false);
   // Always fetched fresh: a report must not show payments from before the last change.
   const { data, isFetching, isError, error, refetch } = useQuery({
@@ -35,15 +35,15 @@ function DealerDuesBody({ close }: { close: () => void }) {
     gcTime: 0,
   });
 
-  const valid = /^\d{1,4}$/.test(days.trim());
-  const preview = data && valid ? splitDues(data, Number(days)) : null;
-  const empty = data?.length === 0;
+  const valid = /^\d{1,10}(\.\d{1,2})?$/.test(minAmount.trim());
+  const preview = data && valid ? filterDues(data, Number(minAmount)) : null;
+  const empty = preview?.dealers.length === 0;
 
   async function download() {
-    if (!data || !valid || empty) return;
+    if (!data || !preview || empty || isFetching) return;
     setSaving(true);
     try {
-      await downloadDealerDuesPdf(data, Number(days));
+      await downloadDealerDuesPdf(data, Number(minAmount));
       close();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -56,24 +56,24 @@ function DealerDuesBody({ close }: { close: () => void }) {
     <>
       <DialogHeader>
         <DialogTitle>Download dues PDF</DialogTitle>
-        <DialogDescription>Overdue and pending payments of all dealers.</DialogDescription>
+        <DialogDescription>Outstanding payments and pending cheques.</DialogDescription>
       </DialogHeader>
 
       <div className="space-y-1.5">
-        <Label htmlFor="overdue-days">Overdue after how many days?</Label>
+        <Label htmlFor="min-amount">Minimum outstanding amount</Label>
         <Input
-          id="overdue-days"
+          id="min-amount"
           type="number"
-          inputMode="numeric"
+          inputMode="decimal"
           min={0}
-          step={1}
-          value={days}
-          onChange={(e) => setDays(e.target.value)}
+          step="0.01"
+          value={minAmount}
+          onChange={(e) => setMinAmount(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && download()}
           aria-invalid={!valid}
         />
         <p className={valid ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
-          {valid ? 'Counted from the delivery date.' : 'Enter whole days, 0 or more.'}
+          {valid ? 'Dealers owing less are left out.' : 'Enter 0 or more, up to 2 decimals.'}
         </p>
       </div>
 
@@ -85,19 +85,25 @@ function DealerDuesBody({ close }: { close: () => void }) {
           </Button>
         </div>
       ) : empty ? (
-        <p className="text-sm text-muted-foreground">No payments are due.</p>
+        <p className="text-sm text-muted-foreground">No dealer owes this much.</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {(['overdue', 'pending'] as const).map((key) => (
-            <div key={key} className="rounded-lg border border-border bg-muted/40 px-3 py-2">
-              <p className="text-xs capitalize text-muted-foreground">
-                {key} {preview ? `(${preview[key].length})` : ''}
-              </p>
-              <p className="font-semibold tabular-nums">
-                {preview ? formatCurrency(totalDue(preview[key])) : 'Loading'}
-              </p>
-            </div>
-          ))}
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Outstanding {preview ? `(${preview.dealers.length} dealers)` : ''}
+            </p>
+            <p className="font-semibold tabular-nums">
+              {preview ? formatCurrency(totalDue(preview.invoices)) : valid ? 'Loading' : 'N/A'}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Pending cheques {preview ? `(${preview.cheques.length})` : ''}
+            </p>
+            <p className="font-semibold tabular-nums">
+              {preview ? formatCurrency(totalCheques(preview.cheques)) : valid ? 'Loading' : 'N/A'}
+            </p>
+          </div>
         </div>
       )}
 
