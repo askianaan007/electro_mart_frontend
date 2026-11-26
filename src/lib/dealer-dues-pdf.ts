@@ -9,6 +9,33 @@ const WHITE: Rgb = [255, 255, 255];
 // Only for hairlines between rows; all text stays black.
 const LINE: Rgb = [190, 190, 190];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface Badge {
+  fill: Rgb;
+  border: Rgb;
+  ink: Rgb;
+}
+
+// Pale fills with dark ink, so the date still reads on a black and white print.
+const AGE_BADGES: (Badge & { upTo: number; label: string })[] = [
+  { upTo: 30, label: 'Up to 30 days', fill: [220, 252, 231], border: [22, 163, 74], ink: [20, 83, 45] },
+  { upTo: 60, label: '31 to 60 days', fill: [254, 243, 199], border: [217, 119, 6], ink: [120, 53, 15] },
+  { upTo: Infinity, label: 'Over 60 days', fill: [254, 226, 226], border: [220, 38, 38], ink: [127, 29, 29] },
+];
+const NOT_DELIVERED: Badge = { fill: [243, 244, 246], border: [156, 163, 175], ink: [55, 65, 81] };
+
+/** The date text and colour for a delivery, aged in Sri Lanka calendar days. */
+function deliveryBadge(deliveredAt: string | null): { label: string; badge: Badge } {
+  if (!deliveredAt) return { label: 'Not delivered', badge: NOT_DELIVERED };
+  const delivered = new Date(deliveredAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
+  const days = Math.max(0, Math.round((Date.parse(businessToday()) - Date.parse(delivered)) / DAY_MS));
+  return {
+    label: `${formatStatementDate(deliveredAt)}   ${days} ${days === 1 ? 'day' : 'days'}`,
+    badge: AGE_BADGES.find((b) => days <= b.upTo)!,
+  };
+}
+
 // Summed in cents so long lists don't pick up rounding noise.
 const sum = (rows: OutstandingInvoice[], key: 'amount' | 'paid' | 'due') =>
   rows.reduce((total, row) => total + Math.round(row[key] * 100), 0) / 100;
@@ -48,6 +75,9 @@ export function filterDues(invoices: OutstandingInvoice[], minAmount: number) {
   };
 }
 
+const isBadgeCell = (raw: unknown): raw is { label: string; badge: Badge } =>
+  typeof raw === 'object' && raw !== null && 'badge' in raw;
+
 export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minAmount: number) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -62,6 +92,20 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
     doc.setFontSize(size);
     doc.setTextColor(...BLACK);
     doc.text(value, x, y, { align });
+  }
+
+  /** A rounded label starting at x, vertically centred on `middle`. */
+  function drawBadge(label: string, badge: Badge, x: number, middle: number) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    const badgeWidth = doc.getTextWidth(label) + 5;
+    doc.setFillColor(...badge.fill);
+    doc.setDrawColor(...badge.border);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, middle - 3, badgeWidth, 6, 1.5, 1.5, 'FD');
+    doc.setTextColor(...badge.ink);
+    doc.text(label, x + 2.5, middle, { baseline: 'middle' });
+    return badgeWidth;
   }
 
   function rule(y: number, weight: number) {
@@ -95,7 +139,13 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
   });
   rule(68, 0.2);
 
-  let y = 82;
+  text('Delivered date colours', MARGIN, 76, 8.5);
+  let legendX = MARGIN + 38;
+  for (const badge of AGE_BADGES) {
+    legendX += drawBadge(badge.label, badge, legendX, 74.9) + 4;
+  }
+
+  let y = 90;
 
   function section(title: string, note: string, rows: OutstandingInvoice[], showPaid: boolean) {
     // Keep a heading together with the first rows of its table.
@@ -132,7 +182,8 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
         ],
         ...list.map((r) => [
           r.invoiceNumber,
-          r.deliveredAt ? formatStatementDate(r.deliveredAt) : 'Not delivered',
+          // Width comes from `content`; the badge itself is drawn in didDrawCell.
+          { content: `${deliveryBadge(r.deliveredAt).label}      `, ...deliveryBadge(r.deliveredAt) },
           ...(showPaid ? [formatCurrency(r.amount), formatCurrency(r.paid)] : []),
           formatCurrency(r.due),
         ]),
@@ -161,6 +212,9 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
         // Number columns line up right; labels spanning columns stay left.
         if (data.cell.colSpan === 1 && data.column.index >= 2) data.cell.styles.halign = 'right';
       },
+      willDrawCell: (data) => {
+        if (isBadgeCell(data.cell.raw)) data.cell.text = [];
+      },
       didDrawCell: (data) => {
         const { x, y: cellY, width: w, height: h } = data.cell;
         const line = (at: number, weight: number, color: Rgb) => {
@@ -171,6 +225,8 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
         if (data.section === 'head') line(cellY + h, 0.4, BLACK);
         else if (data.section === 'foot') line(cellY, 0.4, BLACK);
         else line(cellY + h, 0.1, LINE);
+        const raw: unknown = data.cell.raw;
+        if (data.section === 'body' && isBadgeCell(raw)) drawBadge(raw.label, raw.badge, x + 1.5, cellY + h / 2);
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
