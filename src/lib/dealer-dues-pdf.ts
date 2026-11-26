@@ -72,16 +72,16 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
 
   // Letterhead, typeset so it prints sharp in black and white.
   text('ELECTRO MART TRADING', MARGIN, 20, 16, true);
-  text('192 Maliga Road, Malaigaikadu, Karaitivu, Kalmunai', MARGIN, 25.5, 8.5);
-  text('076 860 4800  |  075 075 0725  |  075 677 2045', MARGIN, 29.5, 8.5);
-  text('electromarttrade@gmail.com', MARGIN, 33.5, 8.5);
+  text('192 Maliga Road, Malaigaikadu, Karaitivu, Kalmunai', MARGIN, 27, 8.5);
+  text('076 860 4800  |  075 075 0725  |  075 677 2045', MARGIN, 32, 8.5);
+  text('electromarttrade@gmail.com', MARGIN, 37, 8.5);
   text('Outstanding Payments', right, 20, 14, true, 'right');
-  text(`Date: ${formatStatementDate(businessToday())}`, right, 25.5, 8.5, false, 'right');
+  text(`Date: ${formatStatementDate(businessToday())}`, right, 27, 8.5, false, 'right');
   if (minAmount > 0) {
-    text(`Dealers owing ${formatCurrency(minAmount)} or more`, right, 29.5, 8.5, false, 'right');
+    text(`Dealers owing ${formatCurrency(minAmount)} or more`, right, 32, 8.5, false, 'right');
   }
-  text('Amounts in LKR', right, 33.5, 8.5, false, 'right');
-  rule(38, 0.6);
+  text('Amounts in LKR', right, 37, 8.5, false, 'right');
+  rule(44, 0.6);
 
   const summary = [
     { label: 'Dealers', value: String(dealerCount) },
@@ -90,22 +90,22 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
   ];
   summary.forEach((item, i) => {
     const x = MARGIN + i * (width / 3);
-    text(item.label, x, 45, 8.5);
-    text(item.value, x, 51.5, 13, true);
+    text(item.label, x, 53, 8.5);
+    text(item.value, x, 61, 13, true);
   });
-  rule(56, 0.2);
+  rule(68, 0.2);
 
-  let y = 66;
+  let y = 82;
 
   function section(title: string, note: string, rows: OutstandingInvoice[], showPaid: boolean) {
     // Keep a heading together with the first rows of its table.
-    if (y > pageHeight - 50) {
+    if (y > pageHeight - 65) {
       doc.addPage();
       y = 20;
     }
     text(title, MARGIN, y, 12, true);
     text(note, right, y, 8.5, false, 'right');
-    y += 3;
+    y += 6;
     if (rows.length === 0) {
       text('No invoices.', MARGIN, y + 5, 9);
       y += 17;
@@ -119,10 +119,16 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
 
     const body = groupByDealer(rows).flatMap((list) => {
       const { businessName, phone } = list[0].dealer;
+      // Extra room above each customer so the groups read apart.
+      const customer = {
+        fontStyle: 'bold' as const,
+        fontSize: 10,
+        cellPadding: { top: 9, bottom: 3.5, left: 1.5, right: 1.5 },
+      };
       return [
         [
-          { content: `${businessName}     Phone: ${phone || 'Not available'}`, colSpan: last, styles: { fontStyle: 'bold' as const } },
-          { content: formatCurrency(totalDue(list)), styles: { fontStyle: 'bold' as const, halign: 'right' as const } },
+          { content: `${businessName}     Phone: ${phone || 'Not available'}`, colSpan: last, styles: customer },
+          { content: formatCurrency(totalDue(list)), styles: { ...customer, halign: 'right' as const } },
         ],
         ...list.map((r) => [
           r.invoiceNumber,
@@ -148,7 +154,7 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
       ],
       showFoot: 'lastPage',
       rowPageBreak: 'avoid',
-      styles: { font: 'helvetica', fontSize: 9, cellPadding: { top: 2.2, bottom: 2.2, left: 1.5, right: 1.5 }, textColor: BLACK },
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: { top: 3.5, bottom: 3.5, left: 1.5, right: 1.5 }, textColor: BLACK },
       headStyles: { fontStyle: 'bold', fillColor: WHITE },
       footStyles: { fontStyle: 'bold', fillColor: WHITE },
       didParseCell: (data) => {
@@ -168,21 +174,21 @@ export async function downloadDealerDuesPdf(invoices: OutstandingInvoice[], minA
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 12;
+    y = (doc as any).lastAutoTable.finalY + 18;
   }
 
   section('Pending Invoices', 'Nothing collected yet', pending, false);
   section('Partly Paid Invoices', 'Balance still to collect', partial, true);
 
-  if (y > pageHeight - 32) {
+  if (y > pageHeight - 36) {
     doc.addPage();
     y = 20;
   }
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.6);
-  doc.rect(MARGIN, y - 4, width, 12);
-  text('TOTAL TO COLLECT', MARGIN + 3, y + 3.5, 12, true);
-  text(formatCurrency(totalDue(all)), right - 3, y + 3.5, 12, true, 'right');
+  doc.rect(MARGIN, y - 4, width, 16);
+  text('TOTAL TO COLLECT', MARGIN + 4, y + 5.5, 12, true);
+  text(formatCurrency(totalDue(all)), right - 4, y + 5.5, 12, true, 'right');
 
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
