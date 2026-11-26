@@ -10,14 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api/endpoints';
 import { getErrorMessage } from '@/lib/api/error';
-import { downloadDealerDuesPdf, filterDues, totalCheques, totalDue } from '@/lib/dealer-dues-pdf';
+import { downloadDealerDuesPdf, filterDues, totalDue } from '@/lib/dealer-dues-pdf';
 import { formatCurrency } from '@/lib/utils';
 
 /** Asks for the minimum outstanding amount, then downloads the dealer dues PDF. */
 export function DealerDuesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Download dues PDF" className="sm:max-w-md">
+      <DialogContent title="Download outstanding PDF" className="sm:max-w-md">
         <DealerDuesBody close={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
@@ -37,7 +37,7 @@ function DealerDuesBody({ close }: { close: () => void }) {
 
   const valid = /^\d{1,10}(\.\d{1,2})?$/.test(minAmount.trim());
   const preview = data && valid ? filterDues(data, Number(minAmount)) : null;
-  const empty = preview?.dealers.length === 0;
+  const empty = preview?.dealerCount === 0;
 
   async function download() {
     if (!data || !preview || empty || isFetching) return;
@@ -55,8 +55,8 @@ function DealerDuesBody({ close }: { close: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Download dues PDF</DialogTitle>
-        <DialogDescription>Outstanding payments and pending cheques.</DialogDescription>
+        <DialogTitle>Download outstanding PDF</DialogTitle>
+        <DialogDescription>Invoices still to be collected.</DialogDescription>
       </DialogHeader>
 
       <div className="space-y-1.5">
@@ -88,22 +88,21 @@ function DealerDuesBody({ close }: { close: () => void }) {
         <p className="text-sm text-muted-foreground">No dealer owes this much.</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
-            <p className="text-xs text-muted-foreground">
-              Outstanding {preview ? `(${preview.dealers.length} dealers)` : ''}
-            </p>
-            <p className="font-semibold tabular-nums">
-              {preview ? formatCurrency(totalDue(preview.invoices)) : valid ? 'Loading' : 'N/A'}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
-            <p className="text-xs text-muted-foreground">
-              Pending cheques {preview ? `(${preview.cheques.length})` : ''}
-            </p>
-            <p className="font-semibold tabular-nums">
-              {preview ? formatCurrency(totalCheques(preview.cheques)) : valid ? 'Loading' : 'N/A'}
-            </p>
-          </div>
+          {(
+            [
+              ['pending', 'Pending'],
+              ['partial', 'Partly paid'],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                {label} {preview ? `(${preview[key].length} invoices)` : ''}
+              </p>
+              <p className="font-semibold tabular-nums">
+                {preview ? formatCurrency(totalDue(preview[key])) : valid ? 'Loading' : 'N/A'}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 

@@ -214,7 +214,7 @@ export default function CustomerPage() {
           <>
             <Button variant="outline" onClick={() => setDuesOpen(true)}>
               <Download />
-              Dues PDF
+              Outstanding PDF
             </Button>
             <Button onClick={openCreate}>
               <Plus />

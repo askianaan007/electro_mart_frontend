@@ -35,7 +35,7 @@ import type {
   CreditBalanceEntryType,
   Expense,
   Invoice,
-  OutstandingReport,
+  OutstandingInvoice,
   InventoryLog,
   InventoryLogType,
   InventoryStockRow,
@@ -367,7 +367,7 @@ export const api = {
       },
     ) => apiClient.get<Paginated<Invoice>>('/invoices', { params: buildParams(params) }).then((r) => r.data),
     get: (id: string) => apiClient.get<Invoice>(`/invoices/${id}`).then((r) => r.data),
-    outstanding: () => apiClient.get<OutstandingReport>('/invoices/outstanding').then((r) => r.data),
+    outstanding: () => apiClient.get<OutstandingInvoice[]>('/invoices/outstanding').then((r) => r.data),
     useWalletCredit: (id: string, data: { amount: number; note?: string }) =>
       apiClient.post<DealerCreditUse>(`/invoices/${id}/wallet-credit`, data).then((r) => r.data),
     removeWalletCredit: (useId: string) =>
