@@ -1700,3 +1700,16 @@ export interface ChequeFlowImportBatch {
   undoneAt: string | null;
   createdAt: string;
 }
+
+/** One invoice with money still due, for the dealer dues report. */
+export interface OutstandingInvoice {
+  invoiceId: string;
+  invoiceNumber: string;
+  dealer: { id: string; businessName: string; ownerName: string | null; phone: string | null };
+  invoiceDate: string;
+  deliveredAt: string | null;
+  /** Grand total less returns. */
+  amount: number;
+  paid: number;
+  due: number;
+}

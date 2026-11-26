@@ -69,7 +69,7 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
               Financial &amp; Operational Metrics
             </PanelTitle>
           </CardTitle>
-          <CardDescription className="pl-[42px] text-xs">Change shown vs last month where available</CardDescription>
+          <CardDescription className="pl-[42px] text-xs">Compared to last month</CardDescription>
         </div>
         <Badge variant="muted">Live Summary</Badge>
       </CardHeader>
@@ -91,7 +91,7 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
             tone="primary"
           />
           <MetricTile
-            label="Net cash flow (this month)"
+            label="Cash Flow This Month"
             value={formatCurrency(data.netCashFlow)}
             icon={Landmark}
             // netCashFlow is the whole month's change in Liquid Cash, capital
@@ -99,8 +99,8 @@ export function MoreMetricsStrip({ data }: { data: AdminDashboardSummary }) {
             // adjustments back out.
             hint={
               typeof data.operatingCashFlow === 'number'
-                ? `Operating (excl. capital): ${formatCurrency(data.operatingCashFlow)}`
-                : 'Change in Liquid Cash this month'
+                ? `Without investments: ${formatCurrency(data.operatingCashFlow)}`
+                : 'Change in cash this month'
             }
             tone="purple"
           />

@@ -84,7 +84,7 @@ export default function AdminDashboardPage() {
               gradient="orange"
               featured
               mask="CASH"
-              subtitle="Investments + collections − supplier payments − expenses"
+              subtitle="Cash you have right now"
               href="/admin/liquid-cash"
             />
 
@@ -98,8 +98,8 @@ export default function AdminDashboardPage() {
               icon={HandCoins}
               gradient="red"
               mask="DEBT"
-              subtitle="Outstanding balance owed to suppliers"
-              progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of total cash position` }}
+              subtitle="Money you owe suppliers"
+              progress={{ pct: creditSharePct, label: `${creditSharePct.toFixed(0)}% of cash plus debt` }}
               href="/admin/credit-balance"
             />
 
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
               icon={IndianRupee}
               gradient="green"
               mask="SALE"
-              subtitle="Sales recorded today"
+              subtitle="Sales made today"
             />
 
           </Rise>
@@ -127,7 +127,7 @@ export default function AdminDashboardPage() {
               icon={BadgeDollarSign}
               gradient="purple"
               mask="REVN"
-              subtitle="All-time net sales from completed orders, after returns"
+              subtitle="All sales after returns"
               href="/admin/sales-analysis"
             />
 
@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
               icon={Landmark}
               gradient="teal"
               mask="PAID"
-              subtitle="All-time dealer payments collected (cheques counted once cleared)"
+              subtitle="Money received from dealers"
               href="/admin/payments"
             />
 
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
               icon={Clock}
               gradient="blue"
               mask="CHQ"
-              subtitle="Cheque payments recorded but not yet cleared by the bank"
+              subtitle="Cheques waiting for the bank"
               onClick={() => setPendingChequesDialogOpen(true)}
             />
 

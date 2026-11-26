@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Copy,
   CreditCard,
+  Download,
   KeyRound,
   MoreHorizontal,
   Phone,
@@ -52,6 +53,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DealerFormDialog } from '@/components/admin/dealer-form-dialog';
+import { DealerDuesDialog } from '@/components/admin/dealer-dues-dialog';
 import { FilterBar } from '@/components/filter-bar';
 import { SectionHeader } from '@/components/section-header';
 import { PageHeader } from '@/components/page-header';
@@ -150,6 +152,7 @@ export default function CustomerPage() {
   const debouncedSearch = useDebouncedValue(search);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [duesOpen, setDuesOpen] = useState(false);
   const [editingDealer, setEditingDealer] = useState<Dealer | undefined>(undefined);
   const [credentials, setCredentials] = useState<{ username: string; temporaryPassword: string } | null>(null);
   const [deletingDealer, setDeletingDealer] = useState<Dealer | null>(null);
@@ -208,10 +211,16 @@ export default function CustomerPage() {
         title="Dealers"
         description="Manage authorized dealer accounts, assign credit limits, track balances, and issue credentials."
         actions={
-          <Button onClick={openCreate}>
-            <Plus />
-            Add New Dealer
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setDuesOpen(true)}>
+              <Download />
+              Dues PDF
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus />
+              Add New Dealer
+            </Button>
+          </>
         }
       />
 
@@ -442,6 +451,8 @@ export default function CustomerPage() {
           </>
         )}
       </div>
+
+      <DealerDuesDialog open={duesOpen} onOpenChange={setDuesOpen} />
 
       <DealerFormDialog
         open={formOpen}

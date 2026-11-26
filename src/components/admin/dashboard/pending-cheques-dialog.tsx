@@ -168,7 +168,7 @@ export function PendingChequesDialog({
             <DialogTitle>Pending Dealer Cheques Deposit Heatmap</DialogTitle>
           </div>
           <DialogDescription>
-            Cheques awaiting bank clearance color-coded from upcoming deposit dates (green) to overdue deposit alerts (red)
+            Green means upcoming, red means overdue
           </DialogDescription>
         </DialogHeader>
 
@@ -248,10 +248,10 @@ export function PendingChequesDialog({
 
                           <TableCell>
                             <div className="flex items-center gap-2.5">
-                              <DealerMonogram name={payment.dealer?.businessName ?? '—'} />
+                              <DealerMonogram name={payment.dealer?.businessName ?? 'Unknown'} />
                               <div className="min-w-0">
                                 <p className="truncate font-medium text-foreground">
-                                  {payment.dealer?.businessName ?? '—'}
+                                  {payment.dealer?.businessName ?? 'Unknown'}
                                 </p>
                                 {payment.dealer?.ownerName && (
                                   <div className="text-xs text-muted-foreground">{payment.dealer.ownerName}</div>
@@ -263,7 +263,7 @@ export function PendingChequesDialog({
                           <TableCell className="text-muted-foreground">
                             <span className="inline-flex items-center gap-1">
                               <Landmark className="size-3" />
-                              {payment.chequeNumber ?? '—'}
+                              {payment.chequeNumber ?? 'N/A'}
                               {payment.bankName ? ` · ${payment.bankName}` : ''}
                             </span>
                           </TableCell>
@@ -271,7 +271,7 @@ export function PendingChequesDialog({
                           <TableCell>
                             <span className="inline-flex items-center gap-1 text-foreground">
                               <Calendar className="size-3 text-muted-foreground" />
-                              {payment.chequeDate ? formatDate(payment.chequeDate) : '—'}
+                              {payment.chequeDate ? formatDate(payment.chequeDate) : 'N/A'}
                             </span>
                           </TableCell>
 
@@ -311,10 +311,10 @@ export function PendingChequesDialog({
                       </div>
 
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <DealerMonogram name={payment.dealer?.businessName ?? '—'} />
+                        <DealerMonogram name={payment.dealer?.businessName ?? 'Unknown'} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">
-                            {payment.dealer?.businessName ?? '—'}
+                            {payment.dealer?.businessName ?? 'Unknown'}
                           </p>
                           {payment.chequeDate && (
                             <p className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -328,7 +328,7 @@ export function PendingChequesDialog({
                       <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Landmark className="size-3" />
-                          {payment.chequeNumber ?? '—'}
+                          {payment.chequeNumber ?? 'N/A'}
                           {payment.bankName ? ` · ${payment.bankName}` : ''}
                         </span>
                         <span className="text-sm font-medium text-foreground tabular-nums">

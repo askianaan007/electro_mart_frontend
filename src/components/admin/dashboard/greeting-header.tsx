@@ -65,7 +65,7 @@ export function GreetingHeader() {
             {greeting}, Electro <span className="text-brand-red">Mart</span>
           </h1>
           <p className="max-w-xl text-sm text-white/70">
-            Real-time enterprise metrics, cash flow position, and operational activities.
+            Your business at a glance.
           </p>
         </div>
 

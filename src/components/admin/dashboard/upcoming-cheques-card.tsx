@@ -91,7 +91,7 @@ export function UpcomingChequesCard({ cheques }: { cheques: UpcomingCheque[] }) 
                         {cheque.supplierName}
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{cheque.reference ?? '—'}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{cheque.reference ?? 'No reference'}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">{formatCurrency(cheque.amount)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(cheque.chequeDepositDate)}</TableCell>
                     <TableCell>
@@ -116,7 +116,7 @@ export function UpcomingChequesCard({ cheques }: { cheques: UpcomingCheque[] }) 
                   <ChequeDueBadge cheque={cheque} />
                 </div>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">
-                  {cheque.reference ?? '—'} &middot; {formatDate(cheque.chequeDepositDate)}
+                  {cheque.reference ?? 'No reference'} &middot; {formatDate(cheque.chequeDepositDate)}
                 </p>
                 <p className="mt-2 text-sm font-medium text-foreground tabular-nums">{formatCurrency(cheque.amount)}</p>
               </Link>

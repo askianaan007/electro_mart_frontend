@@ -45,7 +45,7 @@ export function RevenueAnalyticsCard({ data }: { data: RevenuePoint[] }) {
   const growthPct = hasTrend ? (previous === 0 ? (last > 0 ? 100 : 0) : ((last - previous) / previous) * 100) : null;
 
   const rangeLabel =
-    data.length > 0 ? `${monthLabel(data[0].month)} – ${monthLabel(data[data.length - 1].month)}` : null;
+    data.length > 0 ? `${monthLabel(data[0].month)} to ${monthLabel(data[data.length - 1].month)}` : null;
 
   return (
     <Card className="flex h-full flex-col">

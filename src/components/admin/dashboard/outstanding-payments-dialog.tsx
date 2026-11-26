@@ -99,7 +99,7 @@ export function OutstandingPaymentsDialog({
                               {dealer.phone}
                             </span>
                           ) : (
-                            '—'
+                            'N/A'
                           )}
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums">
